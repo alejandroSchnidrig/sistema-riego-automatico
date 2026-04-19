@@ -848,43 +848,116 @@
       manualSectorMask: 0
     };
 
-    const fakePrograms = [
-      {
-        id: 1,
-        horaInicio: "07:00",
-        dias: 0b0111110,           // L-V
-        retardoEntreSectores: 5,
-        ciclico: true,
-        sectores: [
-          { id: 1, orden: 1, tiempoRiego: 60  },
-          { id: 2, orden: 2, tiempoRiego: 90  },
-          { id: 3, orden: 3, tiempoRiego: 120 },
-          { id: 5, orden: 4, tiempoRiego: 45  }
-        ]
-      },
-      {
-        id: 2,
-        horaInicio: "19:30",
-        dias: 0b1100000,           // S-D
-        retardoEntreSectores: 10,
-        ciclico: false,
-        sectores: [
-          { id: 4, orden: 1, tiempoRiego: 180 },
-          { id: 6, orden: 2, tiempoRiego: 180 },
-          { id: 8, orden: 3, tiempoRiego: 90  }
-        ]
-      },
-      {
-        id: 3,
-        horaInicio: "12:00",
-        dias: 0b1111111,           // todos los días
-        retardoEntreSectores: 3,
-        ciclico: false,
-        sectores: [
-          { id: 7, orden: 1, tiempoRiego: 30 }
-        ]
+    const STORAGE_KEY = "riego.programas.v1";
+
+    const DEFAULT_SEED = {
+      programas: [
+        {
+          id: 1, horaInicio: "07:00", dias: 62,
+          retardoEntreSectores: 5, ciclico: true,
+          sectores: [
+            { id: 1, activo: true,  tiempoRiego: 60  },
+            { id: 2, activo: true,  tiempoRiego: 90  },
+            { id: 3, activo: true,  tiempoRiego: 120 },
+            { id: 4, activo: false, tiempoRiego: 60  },
+            { id: 5, activo: true,  tiempoRiego: 45  },
+            { id: 6, activo: false, tiempoRiego: 60  },
+            { id: 7, activo: false, tiempoRiego: 60  },
+            { id: 8, activo: false, tiempoRiego: 60  }
+          ]
+        },
+        {
+          id: 2, horaInicio: "19:30", dias: 96,
+          retardoEntreSectores: 10, ciclico: false,
+          sectores: [
+            { id: 1, activo: false, tiempoRiego: 60  },
+            { id: 2, activo: false, tiempoRiego: 60  },
+            { id: 3, activo: false, tiempoRiego: 60  },
+            { id: 4, activo: true,  tiempoRiego: 180 },
+            { id: 5, activo: false, tiempoRiego: 60  },
+            { id: 6, activo: true,  tiempoRiego: 180 },
+            { id: 7, activo: false, tiempoRiego: 60  },
+            { id: 8, activo: true,  tiempoRiego: 90  }
+          ]
+        },
+        {
+          id: 3, horaInicio: "12:00", dias: 127,
+          retardoEntreSectores: 3, ciclico: false,
+          sectores: [
+            { id: 1, activo: false, tiempoRiego: 60 },
+            { id: 2, activo: false, tiempoRiego: 60 },
+            { id: 3, activo: false, tiempoRiego: 60 },
+            { id: 4, activo: false, tiempoRiego: 60 },
+            { id: 5, activo: false, tiempoRiego: 60 },
+            { id: 6, activo: false, tiempoRiego: 60 },
+            { id: 7, activo: true,  tiempoRiego: 30 },
+            { id: 8, activo: false, tiempoRiego: 60 }
+          ]
+        }
+      ]
+    };
+
+    function fromStorageFormat(raw) {
+      const sectores = (raw.sectores || [])
+        .filter((s) => s.activo)
+        .map((s, idx) => ({
+          id: Number(s.id),
+          orden: idx + 1,
+          tiempoRiego: Number(s.tiempoRiego) || 0
+        }));
+      return {
+        id: Number(raw.id),
+        horaInicio: raw.horaInicio,
+        dias: Number(raw.dias) || 0,
+        retardoEntreSectores: Number(raw.retardoEntreSectores) || 0,
+        ciclico: !!raw.ciclico,
+        sectores
+      };
+    }
+
+    function toStorageFormat(prog) {
+      const byId = new Map(prog.sectores.map((s) => [s.id, s]));
+      const sectores = [];
+      for (let i = 1; i <= NUM_SECTORS; i++) {
+        const active = byId.get(i);
+        sectores.push({
+          id: i,
+          activo: !!active,
+          tiempoRiego: active ? active.tiempoRiego : 60
+        });
       }
-    ];
+      return {
+        id: prog.id,
+        horaInicio: prog.horaInicio,
+        dias: prog.dias,
+        retardoEntreSectores: prog.retardoEntreSectores,
+        ciclico: prog.ciclico,
+        sectores
+      };
+    }
+
+    const Api = {
+      async getProgramas() {
+        let raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) {
+          raw = JSON.stringify(DEFAULT_SEED);
+          localStorage.setItem(STORAGE_KEY, raw);
+        }
+        try {
+          const data = JSON.parse(raw);
+          return (data.programas || []).map(fromStorageFormat);
+        } catch (err) {
+          console.warn("Storage corrupto, reseeding:", err);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_SEED));
+          return DEFAULT_SEED.programas.map(fromStorageFormat);
+        }
+      },
+
+      async saveProgramas(list) {
+        const payload = { programas: list.map(toStorageFormat) };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+      }
+    };
 
     // --- RTC simulado: parte del reloj real del navegador ------------
     let fakeRTCOffsetMs = 0;
@@ -965,7 +1038,7 @@
         return;
       }
       // Avanza al próximo sector del programa activo
-      const prog = fakePrograms.find((p) => p.id === fakeState.programaActivo);
+      const prog = programs.find((p) => p.id === fakeState.programaActivo);
       if (!prog || !prog.sectores.length) {
         fakeState.estado = "IDLE";
         fakeState.sectorActivo = 0;
@@ -1219,7 +1292,7 @@
       };
     }
 
-    function saveProgram() {
+    async function saveProgram() {
       const prog = collectProgramFromForm();
       if (!prog.horaInicio) {
         toast("Indicá una hora de inicio", true);
@@ -1235,26 +1308,31 @@
       }
 
       if (prog.id) {
-        const idx = fakePrograms.findIndex((p) => p.id === prog.id);
-        if (idx >= 0) fakePrograms[idx] = prog;
+        const idx = programs.findIndex((p) => p.id === prog.id);
+        if (idx >= 0) programs[idx] = prog;
       } else {
-        prog.id = fakePrograms.length
-          ? Math.max(...fakePrograms.map((p) => p.id)) + 1
+        prog.id = programs.length
+          ? Math.max(...programs.map((p) => p.id)) + 1
           : 1;
-        fakePrograms.push(prog);
+        programs.push(prog);
       }
+      await persistPrograms();
       toast("Programa guardado");
       closeEditor();
       loadPrograms();
     }
 
-    function loadPrograms() {
-      programs = fakePrograms.slice();
+    async function loadPrograms() {
+      programs = await Api.getProgramas();
       renderPrograms(programs, fakeState.programaActivo || 0);
     }
 
+    async function persistPrograms() {
+      await Api.saveProgramas(programs);
+    }
+
     function runProgram(id) {
-      const p = fakePrograms.find((x) => x.id === id);
+      const p = programs.find((x) => x.id === id);
       if (!p || !p.sectores.length) {
         toast("Programa sin sectores", true);
         return;
@@ -1273,10 +1351,10 @@
       refreshStatus();
     }
 
-    function deleteProgram(id) {
+    async function deleteProgram(id) {
       if (!confirm(`¿Borrar el programa #${id}?`)) return;
-      const idx = fakePrograms.findIndex((p) => p.id === id);
-      if (idx >= 0) fakePrograms.splice(idx, 1);
+      const idx = programs.findIndex((p) => p.id === id);
+      if (idx >= 0) programs.splice(idx, 1);
       if (fakeState.programaActivo === id) {
         fakeState.estado = "IDLE";
         fakeState.programaActivo = 0;
@@ -1285,6 +1363,7 @@
         fakeState.tiempoRestante = 0;
         fakeState.bomba = false;
       }
+      await persistPrograms();
       toast("Programa borrado");
       loadPrograms();
       refreshStatus();
@@ -1381,7 +1460,7 @@
         const id = parseInt(btn.dataset.id, 10);
         const action = btn.dataset.action;
         if (action === "edit") {
-          const prog = fakePrograms.find((p) => p.id === id);
+          const prog = programs.find((p) => p.id === id);
           if (prog) openEditor(prog);
         } else if (action === "run") {
           runProgram(id);
@@ -1404,11 +1483,11 @@
       });
     }
 
-    function init() {
+    async function init() {
       buildSectorsGrid();
       buildSectorConfigList();
       wireEvents();
-      loadPrograms();
+      await loadPrograms();
       refreshStatus();
       refreshTime();
       setInterval(refreshStatus, POLL_INTERVAL_MS);

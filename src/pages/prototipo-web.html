@@ -19,8 +19,6 @@
       --danger-dark: #962d22;
       --warning: #d98b1f;
       --idle: #6c7a78;
-      --running: #2e8b57;
-      --stop: #c0392b;
       --shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
       --radius: 10px;
     }
@@ -28,12 +26,10 @@
     * { box-sizing: border-box; }
 
     html, body {
-      margin: 0;
-      padding: 0;
+      margin: 0; padding: 0;
       background: var(--bg);
       color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
-                   Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
       font-size: 15px;
       line-height: 1.4;
     }
@@ -49,125 +45,66 @@
       gap: 0.75rem;
     }
 
-    @media (max-width: 576px) {
-      header {
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        flex-wrap: nowrap;
-        text-align: center;
-      }
-    }
-
-    header h1 {
-      margin: 0;
-      font-size: 1.15rem;
-      font-weight: 600;
-      letter-spacing: 0.2px;
-    }
+    header h1 { margin: 0; font-size: 1.15rem; font-weight: 600; letter-spacing: 0.2px; }
 
     .header-time {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      background: rgba(255, 255, 255, 0.15);
-      padding: 0.35rem 0.75rem;
-      border-radius: 8px;
-      font-size: 0.95rem;
-      font-weight: 500;
-      cursor: pointer;
-      transition: background 0.15s;
+      display: flex; align-items: center; gap: 0.5rem;
+      background: rgba(255,255,255,0.15);
+      padding: 0.35rem 0.75rem; border-radius: 8px;
+      font-size: 0.95rem; font-weight: 500;
+      cursor: pointer; transition: background 0.15s;
     }
-
-    .header-time:hover {
-      background: rgba(255, 255, 255, 0.25);
-    }
-
-    .header-time .time-value {
-      font-weight: 600;
-      font-family: 'Courier New', monospace;
-    }
-
-    .header-time .pencil {
-      font-size: 0.9rem;
-      opacity: 0.7;
-      transition: opacity 0.15s;
-    }
-
-    .header-time:hover .pencil {
-      opacity: 1;
-    }
+    .header-time:hover { background: rgba(255,255,255,0.25); }
+    .header-time .time-value { font-weight: 600; font-family: 'Courier New', monospace; }
+    .header-time .pencil { font-size: 0.9rem; opacity: 0.7; transition: opacity 0.15s; }
+    .header-time:hover .pencil { opacity: 1; }
 
     .status-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      background: rgba(255, 255, 255, 0.15);
-      padding: 0.35rem 0.75rem;
-      border-radius: 999px;
-      font-size: 0.85rem;
-      font-weight: 600;
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      background: rgba(255,255,255,0.15);
+      padding: 0.35rem 0.75rem; border-radius: 999px;
+      font-size: 0.85rem; font-weight: 600;
     }
 
-    .status-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: #aaa;
-    }
-
+    .status-dot { width: 10px; height: 10px; border-radius: 50%; background: #aaa; }
     .status-dot.idle    { background: #cfd6d4; }
     .status-dot.running { background: #7ee2a8; animation: pulse 1.4s ease-in-out infinite; }
     .status-dot.stop    { background: #ff8070; }
 
     @keyframes pulse {
-      0%, 100% { opacity: 1;   transform: scale(1); }
+      0%, 100% { opacity: 1; transform: scale(1); }
       50%      { opacity: 0.5; transform: scale(1.3); }
     }
 
     .demo-banner {
-      background: var(--warning);
-      color: #fff;
-      text-align: center;
-      padding: 0.4rem 1rem;
-      font-size: 0.8rem;
-      font-weight: 600;
-      letter-spacing: 0.3px;
+      background: var(--warning); color: #fff;
+      text-align: center; padding: 0.4rem 1rem;
+      font-size: 0.8rem; font-weight: 600; letter-spacing: 0.3px;
     }
 
     main {
-      max-width: 1100px;
-      margin: 0 auto;
-      padding: 1.25rem;
-      display: grid;
-      gap: 1.25rem;
+      max-width: 1100px; margin: 0 auto; padding: 1.25rem;
+      display: grid; gap: 1.25rem;
     }
 
     .card {
-      background: var(--panel);
-      border: 1px solid var(--panel-border);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      padding: 1.25rem;
+      background: var(--panel); border: 1px solid var(--panel-border);
+      border-radius: var(--radius); box-shadow: var(--shadow); padding: 1.25rem;
     }
 
     .card h2 {
-      margin: 0 0 1rem 0;
-      font-size: 1rem;
-      font-weight: 600;
-      color: var(--text);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
+      margin: 0 0 1rem 0; font-size: 1rem; font-weight: 600;
+      color: var(--text); text-transform: uppercase; letter-spacing: 0.5px;
     }
 
-    /* --- Estado en tiempo real ----------------------------------------- */
-
+    /* --- Estado en tiempo real --- */
     .status-grid {
       display: grid;
       grid-template-columns: repeat(4, minmax(140px, 1fr));
       gap: 0.75rem;
     }
 
+<<<<<<< Updated upstream
     @media (max-width: 900px) {
       .status-grid {
         grid-template-columns: repeat(2, 1fr);
@@ -186,57 +123,28 @@
       padding: 0.75rem;
     }
 
+=======
+    .status-cell { background: var(--primary-soft); border-radius: 8px; padding: 0.75rem; }
+>>>>>>> Stashed changes
     .status-cell .label {
-      font-size: 0.7rem;
-      text-transform: uppercase;
-      color: var(--text-soft);
-      letter-spacing: 0.5px;
-      margin-bottom: 0.25rem;
+      font-size: 0.7rem; text-transform: uppercase;
+      color: var(--text-soft); letter-spacing: 0.5px; margin-bottom: 0.25rem;
     }
-
-    .status-cell .value {
-      font-size: 1.35rem;
-      font-weight: 600;
-      color: var(--text);
-    }
-
-    .status-cell .value.big {
-      font-size: 1.6rem;
-      color: var(--primary-dark);
-    }
+    .status-cell .value { font-size: 1.35rem; font-weight: 600; color: var(--text); }
+    .status-cell .value.big { font-size: 1.6rem; color: var(--primary-dark); }
 
     .pump-indicator {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      font-weight: 600;
-      cursor: default;
-      padding: 0.25rem 0.5rem;
-      border-radius: 6px;
-      transition: background 0.2s ease;
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      font-weight: 600; cursor: default;
+      padding: 0.25rem 0.5rem; border-radius: 6px;
       user-select: none;
     }
-
-    .pump-indicator:hover {
-      background: transparent;
-    }
-
-    .pump-indicator:active .dot {
-      transform: none;
-    }
-
     .pump-indicator .dot {
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      background: #ccc;
-      transition: transform 0.15s;
+      width: 12px; height: 12px; border-radius: 50%; background: #ccc;
     }
-
     .pump-indicator.on .dot { background: var(--primary); box-shadow: 0 0 6px var(--primary); }
 
-    /* --- Sectores ------------------------------------------------------ */
-
+    /* --- Sectores --- */
     .sectors-grid {
       display: grid;
       grid-template-columns: repeat(4, minmax(140px, 1fr));
@@ -256,280 +164,234 @@
     }
 
     .sector {
-      background: #f8faf9;
-      border: 1px solid var(--panel-border);
-      border-radius: 8px;
-      padding: 0.65rem;
-      text-align: center;
-      transition: all 0.2s ease;
-      cursor: pointer;
-      user-select: none;
+      background: #f8faf9; border: 1px solid var(--panel-border);
+      border-radius: 8px; padding: 0.65rem; text-align: center;
+      transition: all 0.2s ease; cursor: pointer; user-select: none;
     }
-
-    .sector:hover {
-      border-color: var(--primary);
-      background: #f0f5f3;
+    .sector:hover { border-color: var(--primary); background: #f0f5f3; }
+    .sector .name { font-size: 0.75rem; font-weight: 600; color: var(--text-soft); text-transform: uppercase; }
+    .sector .icon { font-size: 1.8rem; margin: 0.25rem 0; color: #c8d2d0; transition: transform 0.15s; }
+    .sector:active .icon { transform: scale(1.15); }
+    .sector .sector-timer {
+      font-size: 0.7rem; font-family: 'Courier New', monospace;
+      color: #a0b0ad; min-height: 1.1em; margin-top: 0.1rem;
     }
-
-    .sector .name {
-      font-size: 0.75rem;
-      font-weight: 600;
-      color: var(--text-soft);
-      text-transform: uppercase;
-    }
-
-    .sector .icon {
-      font-size: 1.8rem;
-      margin: 0.25rem 0;
-      color: #c8d2d0;
-    }
-
     .sector.active {
-      background: var(--primary);
-      border-color: var(--primary-dark);
-      color: #fff;
+      background: var(--primary); border-color: var(--primary-dark); color: #fff;
       box-shadow: 0 0 8px rgba(46, 139, 87, 0.4);
     }
+    .sector.active .name  { color: #e8f5ed; }
+    .sector.active .icon  { color: #fff; }
+    .sector.active .sector-timer { color: rgba(255,255,255,0.85); }
 
-    .sector .icon {
-      transition: transform 0.15s;
+    .sector.pending {
+      background: #fff8e6; border-color: var(--warning);
+      box-shadow: 0 0 8px rgba(217, 139, 31, 0.25);
+      animation: pulse-amber 1.2s ease-in-out infinite;
+    }
+    .sector.pending .name  { color: #8a5a10; }
+    .sector.pending .icon  { color: var(--warning); }
+    .sector.pending .sector-timer { color: #b07020; font-weight: 600; }
+
+    @keyframes pulse-amber {
+      0%, 100% { opacity: 1; }
+      50%      { opacity: 0.65; }
     }
 
-    .sector:active .icon {
-      transform: scale(1.15);
-    }
-
-    .sector.active .name { color: #e8f5ed; }
-    .sector.active .icon { color: #fff; }
-
-    /* --- Botones ------------------------------------------------------- */
-
+    /* --- Botones --- */
     .btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.4rem;
-      padding: 0.65rem 1.1rem;
-      border-radius: 8px;
-      border: 1px solid transparent;
-      background: var(--primary);
-      color: #fff;
-      font-size: 0.9rem;
-      font-weight: 600;
-      cursor: pointer;
-      text-decoration: none;
-      transition: background 0.15s, transform 0.05s;
+      display: inline-flex; align-items: center; justify-content: center;
+      gap: 0.4rem; padding: 0.65rem 1.1rem; border-radius: 8px;
+      border: 1px solid transparent; background: var(--primary); color: #fff;
+      font-size: 0.9rem; font-weight: 600; cursor: pointer;
+      text-decoration: none; transition: background 0.15s, transform 0.05s;
     }
-    .btn:hover   { background: var(--primary-dark); }
-    .btn:active  { transform: translateY(1px); }
-
-    .btn.secondary {
-      background: #fff;
-      color: var(--text);
-      border-color: var(--panel-border);
-    }
+    .btn:hover  { background: var(--primary-dark); }
+    .btn:active { transform: translateY(1px); }
+    .btn.secondary { background: #fff; color: var(--text); border-color: var(--panel-border); }
     .btn.secondary:hover { background: #f4f6f5; }
-
     .btn.danger       { background: var(--danger); }
     .btn.danger:hover { background: var(--danger-dark); }
+    .btn.small { padding: 0.4rem 0.7rem; font-size: 0.8rem; }
+    .btn-stop { width: 100%; padding: 1rem; font-size: 1.05rem; letter-spacing: 0.5px; text-transform: uppercase; }
 
-    .btn.small {
-      padding: 0.4rem 0.7rem;
-      font-size: 0.8rem;
-    }
-
-    .btn-stop {
-      width: 100%;
-      padding: 1rem;
-      font-size: 1.05rem;
-      letter-spacing: 0.5px;
-      text-transform: uppercase;
-    }
-
-    /* --- Programas ----------------------------------------------------- */
-
+    /* --- Programas --- */
     .programs-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 0.5rem;
-      margin-bottom: 0.75rem;
+      display: flex; justify-content: space-between; align-items: center;
+      flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.75rem;
     }
 
-    .programs-list {
-      display: grid;
-      gap: 0.75rem;
-    }
+    .programs-list { display: grid; gap: 0.75rem; }
 
     .program-item {
-      border: 1px solid var(--panel-border);
-      border-radius: 8px;
-      padding: 0.9rem;
-      background: #fcfdfd;
+      border: 1px solid var(--panel-border); border-radius: 8px;
+      padding: 0.9rem; background: #fcfdfd;
     }
-
-    .program-item.active {
-      border-color: var(--primary);
-      background: var(--primary-soft);
-    }
+    .program-item.active { border-color: var(--primary); background: var(--primary-soft); }
 
     .program-item-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      flex-wrap: wrap;
-      gap: 0.5rem;
+      display: flex; justify-content: space-between; align-items: flex-start;
+      flex-wrap: wrap; gap: 0.5rem;
     }
 
-    .program-title {
-      font-weight: 600;
-      font-size: 1rem;
-    }
-
+    .program-title { font-weight: 600; font-size: 1rem; }
     .program-meta {
-      font-size: 0.8rem;
+      font-size: 0.8rem; color: var(--text-soft); margin-top: 0.25rem;
+      display: flex; flex-wrap: wrap; gap: 0.75rem;
+    }
+    .program-meta span::before { content: "• "; color: var(--primary); }
+    .program-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+
+    /* --- Árbol de sectores en la lista de programas --- */
+    .program-tree {
+      margin-top: 0.75rem;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .tree-item { }
+
+    .tree-children {
+      margin-left: 20px;
+      padding-left: 14px;
+      border-left: 2px solid #cdd8d5;
+      margin-top: 5px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .tree-node-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 1px 0;
+      position: relative;
+    }
+
+    /* Línea horizontal conectora (solo para nodos no raíz) */
+    .tree-children .tree-node-row::before {
+      content: "";
+      position: absolute;
+      left: -16px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 12px;
+      height: 2px;
+      background: #cdd8d5;
+    }
+
+    .delay-badge {
+      font-size: 0.65rem;
+      font-family: 'Courier New', monospace;
       color: var(--text-soft);
-      margin-top: 0.25rem;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.75rem;
-    }
-
-    .program-meta span::before {
-      content: "• ";
-      color: var(--primary);
-    }
-
-    .program-actions {
-      display: flex;
-      gap: 0.4rem;
-      flex-wrap: wrap;
-    }
-
-    .program-sectors {
-      margin-top: 0.65rem;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.3rem;
+      background: #eef0ef;
+      border: 1px solid #d4dbd9;
+      border-radius: 4px;
+      padding: 0.05rem 0.3rem;
+      flex-shrink: 0;
+      white-space: nowrap;
     }
 
     .chip {
-      background: #fff;
-      border: 1px solid var(--panel-border);
-      border-radius: 999px;
-      padding: 0.2rem 0.6rem;
-      font-size: 0.75rem;
-      color: var(--text-soft);
+      background: #fff; border: 1px solid var(--panel-border);
+      border-radius: 999px; padding: 0.2rem 0.6rem;
+      font-size: 0.75rem; color: var(--text-soft);
+      transition: background 0.3s, border-color 0.3s, color 0.3s;
     }
-
     .program-item.active .chip { background: #fff; }
 
-    /* --- Formulario de programa --------------------------------------- */
+    .chip.chip-active {
+      background: #f0faf5;
+      border-color: var(--primary);
+      color: var(--primary-dark);
+      font-weight: 700;
+      box-shadow: 0 0 0 2px rgba(46, 139, 87, 0.15);
+    }
 
+    .chip.chip-done {
+      background: #f0f3f2;
+      border-color: #c8d4d0;
+      color: #9aaba7;
+    }
+
+    .chip.chip-pending {
+      background: #fff8e6;
+      border-color: var(--warning);
+      color: #8a5a10;
+      font-weight: 600;
+    }
+
+    /* --- Formulario de programa --- */
     .form-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
       gap: 0.85rem;
     }
 
-    .form-field {
-      display: flex;
-      flex-direction: column;
-      gap: 0.3rem;
-    }
-
+    .form-field { display: flex; flex-direction: column; gap: 0.3rem; }
     .form-field label {
-      font-size: 0.75rem;
-      text-transform: uppercase;
-      color: var(--text-soft);
-      font-weight: 600;
-      letter-spacing: 0.3px;
+      font-size: 0.75rem; text-transform: uppercase;
+      color: var(--text-soft); font-weight: 600; letter-spacing: 0.3px;
     }
-
     .form-field input[type="text"],
     .form-field input[type="time"],
     .form-field input[type="number"],
     .form-field select {
-      border: 1px solid var(--panel-border);
-      border-radius: 6px;
-      padding: 0.55rem 0.7rem;
-      font-size: 0.9rem;
-      background: #fff;
-      color: var(--text);
-      font-family: inherit;
+      border: 1px solid var(--panel-border); border-radius: 6px;
+      padding: 0.55rem 0.7rem; font-size: 0.9rem;
+      background: #fff; color: var(--text); font-family: inherit;
     }
-
     .form-field input:focus,
     .form-field select:focus {
-      outline: none;
-      border-color: var(--primary);
+      outline: none; border-color: var(--primary);
       box-shadow: 0 0 0 2px var(--primary-soft);
     }
 
-    .days-picker {
-      display: flex;
-      gap: 0.3rem;
-      flex-wrap: wrap;
-    }
-
+    .days-picker { display: flex; gap: 0.3rem; flex-wrap: wrap; }
     .day-toggle {
-      width: 34px;
-      height: 34px;
-      border-radius: 50%;
-      border: 1px solid var(--panel-border);
-      background: #fff;
-      color: var(--text-soft);
-      font-size: 0.75rem;
-      font-weight: 600;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      transition: all 0.15s;
+      width: 34px; height: 34px; border-radius: 50%;
+      border: 1px solid var(--panel-border); background: #fff;
+      color: var(--text-soft); font-size: 0.75rem; font-weight: 600;
+      cursor: pointer; display: inline-flex; align-items: center;
+      justify-content: center; transition: all 0.15s;
     }
+    .day-toggle.on { background: var(--primary); color: #fff; border-color: var(--primary); }
 
-    .day-toggle.on {
-      background: var(--primary);
-      color: #fff;
-      border-color: var(--primary);
-    }
-
-    .sector-config-list {
-      display: grid;
-      gap: 0.5rem;
-    }
+    .sector-config-list { display: grid; gap: 0.5rem; }
 
     .sector-config-row {
       display: grid;
-      grid-template-columns: auto 1fr auto auto;
+      grid-template-columns: auto 1fr auto auto auto;
       align-items: center;
-      gap: 0.6rem;
+      gap: 0.55rem;
       padding: 0.55rem 0.7rem;
       background: #f8faf9;
       border: 1px solid var(--panel-border);
       border-radius: 6px;
     }
 
-    .sector-config-row input[type="checkbox"] {
-      width: 18px;
-      height: 18px;
-      accent-color: var(--primary);
+    .sector-config-row .delay-wrapper {
+      display: flex; align-items: center; gap: 0.3rem;
     }
+    .sector-config-row input.delay-input {
+      width: 56px; border: 1px solid var(--panel-border);
+      border-radius: 6px; padding: 0.35rem 0.4rem;
+      font-size: 0.85rem; text-align: right;
+    }
+    .sector-config-row input.delay-input:disabled { opacity: 0.35; }
 
-    .sector-config-row .sector-name {
-      font-weight: 600;
-      font-size: 0.9rem;
-    }
+    .sector-config-row input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary); }
+    .sector-config-row .sector-name { font-weight: 600; font-size: 0.9rem; }
 
-    .sector-config-row input[type="number"] {
-      width: 72px;
-      border: 1px solid var(--panel-border);
-      border-radius: 6px;
-      padding: 0.35rem 0.5rem;
-      font-size: 0.85rem;
-      text-align: right;
+    .sector-config-row select.parent-select {
+      border: 1px solid var(--panel-border); border-radius: 6px;
+      padding: 0.3rem 0.35rem; font-size: 0.78rem;
+      background: #fff; color: var(--text); font-family: inherit;
+      max-width: 140px;
     }
+<<<<<<< Updated upstream
 
     .sector-config-row .unit {
       font-size: 0.75rem;
@@ -604,32 +466,67 @@
     .modal-body input[type="time"]:focus {
       outline: none;
       border-color: var(--primary);
+=======
+    .sector-config-row select.parent-select:disabled { opacity: 0.4; }
+    .sector-config-row select.parent-select:focus {
+      outline: none; border-color: var(--primary);
+>>>>>>> Stashed changes
       box-shadow: 0 0 0 2px var(--primary-soft);
     }
 
-    .modal-actions {
-      display: flex;
-      gap: 0.75rem;
-      justify-content: flex-end;
+    .sector-config-row input[type="number"] {
+      width: 72px; border: 1px solid var(--panel-border);
+      border-radius: 6px; padding: 0.35rem 0.5rem;
+      font-size: 0.85rem; text-align: right;
     }
-
-    .modal-actions .btn {
-      padding: 0.65rem 1.2rem;
-      font-size: 0.9rem;
-      min-width: 100px;
-    }
+    .sector-config-row .unit { font-size: 0.75rem; color: var(--text-soft); }
 
     .form-actions {
       display: flex;
       gap: 0.5rem;
-      margin-top: 1rem;
-      flex-wrap: wrap;
-      justify-content: flex-end;
+      padding-top: 1.5rem;
     }
 
-    /* --- Toast --------------------------------------------------------- */
+    .form-actions #btnCancel {
+      margin-left: auto;
+    }
 
+    /* --- Modal --- */
+    .modal {
+      display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5); z-index: 1000;
+      align-items: center; justify-content: center;
+    }
+    .modal.show { display: flex; }
+    .modal-content {
+      background: var(--panel); border-radius: var(--radius);
+      padding: 1.5rem; width: 90%; max-width: 450px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    }
+    .modal-header {
+      font-size: 1.35rem; font-weight: 600; color: var(--text);
+      margin-bottom: 1.5rem; text-align: center;
+    }
+    .modal-body { display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1.5rem; }
+    .datetime-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .modal-body .form-field { margin: 0; }
+    .modal-body input[type="date"],
+    .modal-body input[type="time"] {
+      border: 1px solid var(--panel-border); border-radius: 6px; padding: 0.75rem;
+      font-size: 1rem; background: #fff; color: var(--text);
+      font-family: inherit; width: 100%;
+    }
+    .modal-body input[type="date"]:focus,
+    .modal-body input[type="time"]:focus {
+      outline: none; border-color: var(--primary);
+      box-shadow: 0 0 0 2px var(--primary-soft);
+    }
+    .modal-actions { display: flex; gap: 0.75rem; justify-content: flex-end; }
+    .modal-actions .btn { padding: 0.65rem 1.2rem; font-size: 0.9rem; min-width: 100px; }
+
+    /* --- Toast --- */
     #toast {
+<<<<<<< Updated upstream
       position: fixed;
       bottom: 1rem;
       left: 50%;
@@ -643,42 +540,22 @@
       transition: transform 0.3s ease;
       z-index: 1000;
       max-width: 90%;
+=======
+      position: fixed; bottom: 1rem; left: 50%;
+      transform: translateX(-50%) translateY(120%);
+      background: var(--text); color: #fff;
+      padding: 0.75rem 1.25rem; border-radius: 8px;
+      font-size: 0.9rem; box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+      transition: transform 0.3s ease; z-index: 1000; max-width: 90%;
+>>>>>>> Stashed changes
     }
     #toast.show { transform: translateX(-50%) translateY(0); }
     #toast.error { background: var(--danger); }
 
-    /* --- Sección colapsable ------------------------------------------- */
 
-    .collapsible-header {
-      cursor: pointer;
-      user-select: none;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
+    .muted { color: var(--text-soft); font-size: 0.85rem; font-style: italic; }
 
-    .collapsible-header::after {
-      content: "▾";
-      color: var(--text-soft);
-      transition: transform 0.2s;
-    }
-
-    .card.collapsed .collapsible-header::after {
-      transform: rotate(-90deg);
-    }
-
-    .card.collapsed .collapsible-body {
-      display: none;
-    }
-
-    .muted {
-      color: var(--text-soft);
-      font-size: 0.85rem;
-      font-style: italic;
-    }
-
-    /* --- Mobile -------------------------------------------------------- */
-
+    /* --- Mobile --- */
     @media (max-width: 540px) {
       header h1 { font-size: 1rem; }
       main { padding: 0.9rem; gap: 0.9rem; }
@@ -686,18 +563,19 @@
       .sector-config-row {
         grid-template-columns: auto 1fr;
         grid-template-areas:
-          "check name"
-          "time  time";
+          "check  name"
+          "parent parent"
+          "delay  time";
       }
-      .sector-config-row input[type="checkbox"] { grid-area: check; }
-      .sector-config-row .sector-name           { grid-area: name; }
+      .sector-config-row input[type="checkbox"]  { grid-area: check; }
+      .sector-config-row .sector-name            { grid-area: name; }
+      .sector-config-row .parent-select          { grid-area: parent; max-width: 100%; }
+      .sector-config-row .delay-wrapper          { grid-area: delay; }
       .sector-config-row .time-wrapper {
         grid-area: time;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        justify-content: flex-end;
+        display: flex; align-items: center; gap: 0.5rem; justify-content: flex-end;
       }
+      .sector-config-row .unit { display: inline; }
     }
   </style>
 </head>
@@ -734,13 +612,13 @@
           <div class="value" id="activeSector">—</div>
         </div>
         <div class="status-cell">
-          <div class="label">Tiempo restante</div>
+          <div class="label">Tiempo máx. restante</div>
           <div class="value big" id="remainingTime">00:00</div>
         </div>
         <div class="status-cell">
           <div class="label">Bomba</div>
           <div class="value">
-            <span id="pumpIndicator" class="pump-indicator" title="La bomba sigue automaticamente a los sectores activos">
+            <span id="pumpIndicator" class="pump-indicator">
               <span class="dot"></span><span id="pumpLabel">Apagada</span>
             </span>
           </div>
@@ -749,7 +627,7 @@
 
       <div style="margin-top: 1rem;">
         <div class="label" style="font-size: 0.7rem; text-transform: uppercase; color: var(--text-soft); margin-bottom: 0.5rem;">
-          Sectores
+          Sectores (click para encender/apagar manualmente)
         </div>
         <div id="sectorsGrid" class="sectors-grid"></div>
       </div>
@@ -772,7 +650,7 @@
     </section>
 
     <!-- ============ Editor de programa ============ -->
-    <section id="editorCard" class="card collapsed">
+    <section id="editorCard" class="card" style="display:none">
       <h2 class="collapsible-header" id="editorToggle">
         <span id="editorTitle">Nuevo programa</span>
       </h2>
@@ -785,12 +663,6 @@
               <label for="startTime">Hora de inicio</label>
               <input type="time" id="startTime" value="07:00" required>
             </div>
-
-            <div class="form-field">
-              <label for="delayBetween">Retardo entre sectores (s)</label>
-              <input type="number" id="delayBetween" min="0" max="3600" value="5">
-            </div>
-
             <div class="form-field">
               <label for="cyclic">Repetición</label>
               <select id="cyclic">
@@ -814,7 +686,7 @@
           </div>
 
           <div class="form-field" style="margin-top: 1rem;">
-            <label>Sectores incluidos y tiempo de riego</label>
+            <label>Sectores — seleccioná y configurá el árbol de riego</label>
             <div id="sectorConfigList" class="sector-config-list"></div>
           </div>
 
@@ -844,7 +716,7 @@
         </div>
         <div class="modal-actions">
           <button type="button" id="btnTimeCancel" class="btn secondary">✕ Cancelar</button>
-          <button type="button" id="btnTimeSave" class="btn">✓ Guardar</button>
+          <button type="button" id="btnTimeSave"   class="btn">✓ Guardar</button>
         </div>
       </div>
     </div>
@@ -855,118 +727,97 @@
 
   <script>
     // ==================================================================
-    // PROTOTIPO — Sistema de Riego Automático
-    // ------------------------------------------------------------------
-    // Versión 100% standalone con datos hardcodeados. Pensada para
-    // validar la interfaz sin necesidad del firmware del ESP32.
+    // PROTOTIPO — Sistema de Riego Automático (árbol de sectores)
+    // Versión standalone con datos simulados.
+    // Modelo: cada programa define un árbol de nodos.
+    //   nodo: { sectorId, tiempoRiego, padre }
+    //   padre=null → raíz (arranca al inicio del programa)
+    //   padre=N    → se activa cuando el sector N termina
     // ==================================================================
 
     const NUM_SECTORS      = 8;
     const POLL_INTERVAL_MS = 1000;
+    const STORAGE_KEY      = "riego.programas.v3";
 
-    // --- Estado de la UI ---------------------------------------------
-    let programs         = [];
-    let editingId        = null;
-    let selectedDays     = 0; // bitmask: bit0=L … bit6=D
+    // --- Estado global ---
+    let programs     = [];
+    let editingId    = null;
+    let selectedDays = 0;
     let manualSectorMask = 0;
 
-    // --- Datos simulados ---------------------------------------------
+    // --- Estado de la simulación ---
     const fakeState = {
-      estado: "RUNNING",
-      programaActivo: 1,
-      sectorActivo: 3,
-      sectoresActivos: [3],
-      tiempoRestante: 95,
-      bomba: true,
+      estado: "IDLE",
+      programaActivo: 0,
+      sectoresActivos: [],      // [{ sectorId, tiempoRestante }]
+      pendingActivations: [],   // [{ sectorId, delay }]
+      completedSectors: [],     // sectorIds que ya terminaron en el ciclo actual
+      bomba: false,
       modoManual: false,
       manualSectorMask: 0
     };
 
-    const STORAGE_KEY = "riego.programas.v1";
-
+    // --- Seed con estructura de árbol ---
     const DEFAULT_SEED = {
       programas: [
         {
-          id: 1, horaInicio: "07:00", dias: 62,
-          retardoEntreSectores: 5, ciclico: true,
-          sectores: [
-            { id: 1, activo: true,  tiempoRiego: 60  },
-            { id: 2, activo: true,  tiempoRiego: 90  },
-            { id: 3, activo: true,  tiempoRiego: 120 },
-            { id: 4, activo: false, tiempoRiego: 60  },
-            { id: 5, activo: true,  tiempoRiego: 45  },
-            { id: 6, activo: false, tiempoRiego: 60  },
-            { id: 7, activo: false, tiempoRiego: 60  },
-            { id: 8, activo: false, tiempoRiego: 60  }
+          id: 1, horaInicio: "07:00", dias: 62, ciclico: true,
+          nodos: [
+            { sectorId: 1, tiempoRiego: 60,  retardo: 0, padre: null },
+            { sectorId: 2, tiempoRiego: 90,  retardo: 5, padre: 1    },
+            { sectorId: 3, tiempoRiego: 120, retardo: 8, padre: 1    },
+            { sectorId: 4, tiempoRiego: 60,  retardo: 3, padre: 2    },
+            { sectorId: 5, tiempoRiego: 45,  retardo: 3, padre: 3    }
           ]
         },
         {
-          id: 2, horaInicio: "19:30", dias: 96,
-          retardoEntreSectores: 10, ciclico: false,
-          sectores: [
-            { id: 1, activo: false, tiempoRiego: 60  },
-            { id: 2, activo: false, tiempoRiego: 60  },
-            { id: 3, activo: false, tiempoRiego: 60  },
-            { id: 4, activo: true,  tiempoRiego: 180 },
-            { id: 5, activo: false, tiempoRiego: 60  },
-            { id: 6, activo: true,  tiempoRiego: 180 },
-            { id: 7, activo: false, tiempoRiego: 60  },
-            { id: 8, activo: true,  tiempoRiego: 90  }
+          id: 2, horaInicio: "19:30", dias: 96, ciclico: false,
+          nodos: [
+            { sectorId: 4, tiempoRiego: 180, retardo: 0,  padre: null },
+            { sectorId: 6, tiempoRiego: 180, retardo: 0,  padre: null },
+            { sectorId: 7, tiempoRiego: 60,  retardo: 10, padre: 4    },
+            { sectorId: 8, tiempoRiego: 90,  retardo: 10, padre: 6    }
           ]
         },
         {
-          id: 3, horaInicio: "12:00", dias: 127,
-          retardoEntreSectores: 3, ciclico: false,
-          sectores: [
-            { id: 1, activo: false, tiempoRiego: 60 },
-            { id: 2, activo: false, tiempoRiego: 60 },
-            { id: 3, activo: false, tiempoRiego: 60 },
-            { id: 4, activo: false, tiempoRiego: 60 },
-            { id: 5, activo: false, tiempoRiego: 60 },
-            { id: 6, activo: false, tiempoRiego: 60 },
-            { id: 7, activo: true,  tiempoRiego: 30 },
-            { id: 8, activo: false, tiempoRiego: 60 }
+          id: 3, horaInicio: "12:00", dias: 127, ciclico: false,
+          nodos: [
+            { sectorId: 1, tiempoRiego: 30, retardo: 0, padre: null },
+            { sectorId: 2, tiempoRiego: 30, retardo: 0, padre: null },
+            { sectorId: 3, tiempoRiego: 30, retardo: 0, padre: null }
           ]
         }
       ]
     };
 
+    // --- Capa de persistencia ---
     function fromStorageFormat(raw) {
-      const sectores = (raw.sectores || [])
-        .filter((s) => s.activo)
-        .map((s, idx) => ({
-          id: Number(s.id),
-          orden: idx + 1,
-          tiempoRiego: Number(s.tiempoRiego) || 0
-        }));
       return {
         id: Number(raw.id),
-        horaInicio: raw.horaInicio,
+        horaInicio: raw.horaInicio || "07:00",
         dias: Number(raw.dias) || 0,
-        retardoEntreSectores: Number(raw.retardoEntreSectores) || 0,
         ciclico: !!raw.ciclico,
-        sectores
+        nodos: (raw.nodos || []).map((n) => ({
+          sectorId: Number(n.sectorId),
+          tiempoRiego: Number(n.tiempoRiego) || 60,
+          retardo: Number(n.retardo) || 0,
+          padre: n.padre != null ? Number(n.padre) : null
+        }))
       };
     }
 
     function toStorageFormat(prog) {
-      const byId = new Map(prog.sectores.map((s) => [s.id, s]));
-      const sectores = [];
-      for (let i = 1; i <= NUM_SECTORS; i++) {
-        const active = byId.get(i);
-        sectores.push({
-          id: i,
-          activo: !!active,
-          tiempoRiego: active ? active.tiempoRiego : 60
-        });
-      }
       return {
         id: prog.id,
         horaInicio: prog.horaInicio,
         dias: prog.dias,
-        retardoEntreSectores: prog.retardoEntreSectores,
         ciclico: prog.ciclico,
-        sectores
+        nodos: prog.nodos.map((n) => ({
+          sectorId: n.sectorId,
+          tiempoRiego: n.tiempoRiego,
+          retardo: n.retardo,
+          padre: n.padre
+        }))
       };
     }
 
@@ -993,24 +844,19 @@
       }
     };
 
-    // --- RTC simulado: parte del reloj real del navegador ------------
+    // --- RTC simulado ---
     let fakeRTCOffsetMs = 0;
 
     function getFakeRTC() {
       const now = new Date(Date.now() + fakeRTCOffsetMs);
       return {
-        year: now.getFullYear(),
-        month: now.getMonth() + 1,
-        day: now.getDate(),
-        hour: now.getHours(),
-        minute: now.getMinutes(),
-        second: now.getSeconds(),
-        dayOfWeek: now.getDay(),
-        running: true
+        year: now.getFullYear(), month: now.getMonth() + 1, day: now.getDate(),
+        hour: now.getHours(), minute: now.getMinutes(), second: now.getSeconds(),
+        dayOfWeek: now.getDay(), running: true
       };
     }
 
-    // --- Helpers ------------------------------------------------------
+    // --- Helpers ---
     const $  = (sel) => document.querySelector(sel);
     const $$ = (sel) => document.querySelectorAll(sel);
 
@@ -1040,21 +886,6 @@
       return `${h}:${min} ${d}/${m}/${y}`;
     }
 
-    function normalizeActiveSectors(data) {
-      if (Array.isArray(data.sectoresActivos)) {
-        return data.sectoresActivos
-          .map(Number)
-          .filter((id) => id >= 1 && id <= NUM_SECTORS);
-      }
-      const sectors = [];
-      if (data.sectorActivo) sectors.push(Number(data.sectorActivo));
-      return sectors;
-    }
-
-    function isManualSectorActive(sectorId) {
-      return (manualSectorMask & (1 << (sectorId - 1))) !== 0;
-    }
-
     function daysMaskToLabel(mask) {
       const labels = ["L", "M", "X", "J", "V", "S", "D"];
       const out = [];
@@ -1064,48 +895,110 @@
       return out.length ? out.join(" ") : "Sin días";
     }
 
-    // --- Simulación del avance del riego -----------------------------
-    function tickFakeIrrigation() {
-      if (fakeState.estado !== "RUNNING") return;
-      if (fakeState.tiempoRestante > 0) {
-        fakeState.tiempoRestante -= 1;
-        return;
-      }
-      // Avanza al próximo sector del programa activo
-      const prog = programs.find((p) => p.id === fakeState.programaActivo);
-      if (!prog || !prog.sectores.length) {
-        fakeState.estado = "IDLE";
-        fakeState.sectorActivo = 0;
-        fakeState.sectoresActivos = [];
-        fakeState.bomba = false;
-        return;
-      }
-      const currentIdx = prog.sectores.findIndex((s) => s.id === fakeState.sectorActivo);
-      const nextIdx = currentIdx + 1;
-      if (nextIdx >= prog.sectores.length) {
-        if (prog.ciclico) {
-          fakeState.sectorActivo = prog.sectores[0].id;
-          fakeState.sectoresActivos = [prog.sectores[0].id];
-          fakeState.tiempoRestante = prog.sectores[0].tiempoRiego;
-        } else {
-          fakeState.estado = "IDLE";
-          fakeState.programaActivo = 0;
-          fakeState.sectorActivo = 0;
-          fakeState.sectoresActivos = [];
-          fakeState.tiempoRestante = 0;
-          fakeState.bomba = false;
-        }
-      } else {
-        fakeState.sectorActivo = prog.sectores[nextIdx].id;
-        fakeState.sectoresActivos = [prog.sectores[nextIdx].id];
-        fakeState.tiempoRestante = prog.sectores[nextIdx].tiempoRiego;
-      }
+    function isManualSectorActive(id) {
+      return (manualSectorMask & (1 << (id - 1))) !== 0;
     }
 
-    // --- Render: Estado ----------------------------------------------
-    function renderStatus(data) {
-      const state = data.modoManual ? "MANUAL" : (data.estado || "IDLE");
+    function stopProgram() {
+      fakeState.estado = "IDLE";
+      fakeState.programaActivo = 0;
+      fakeState.sectoresActivos = [];
+      fakeState.pendingActivations = [];
+      fakeState.completedSectors = [];
+      fakeState.bomba = false;
+    }
 
+    // --- Simulación árbol ---
+    function tickFakeIrrigation() {
+      if (fakeState.estado !== "RUNNING") return;
+
+      const prog = programs.find((p) => p.id === fakeState.programaActivo);
+      if (!prog) { stopProgram(); return; }
+
+      // Decrementar activaciones pendientes (retardo entre sectores)
+      const toActivateNow = [];
+      fakeState.pendingActivations = fakeState.pendingActivations
+        .map((p) => ({ sectorId: p.sectorId, delay: p.delay - 1 }))
+        .filter((p) => {
+          if (p.delay <= 0) { toActivateNow.push(p.sectorId); return false; }
+          return true;
+        });
+
+      toActivateNow.forEach((sectorId) => {
+        if (!fakeState.sectoresActivos.find((a) => a.sectorId === sectorId)) {
+          const node = prog.nodos.find((n) => n.sectorId === sectorId);
+          if (node) {
+            fakeState.sectoresActivos.push({ sectorId, tiempoRestante: node.tiempoRiego });
+          }
+        }
+      });
+
+      // Decrementar sectores activos y detectar los que terminan
+      const finished = [];
+      fakeState.sectoresActivos = fakeState.sectoresActivos
+        .map((active) => {
+          if (active.tiempoRestante <= 1) { finished.push(active.sectorId); return null; }
+          return { sectorId: active.sectorId, tiempoRestante: active.tiempoRestante - 1 };
+        })
+        .filter(Boolean);
+
+      // Registrar sectores que terminaron
+      finished.forEach((id) => {
+        if (!fakeState.completedSectors.includes(id)) fakeState.completedSectors.push(id);
+      });
+
+      // Encolar hijos de los sectores que terminaron
+      finished.forEach((parentId) => {
+        const children = prog.nodos.filter((n) => n.padre === parentId);
+        children.forEach((child) => {
+          const delay = child.retardo || 0;
+          if (delay > 0) {
+            fakeState.pendingActivations.push({ sectorId: child.sectorId, delay });
+          } else {
+            if (!fakeState.sectoresActivos.find((a) => a.sectorId === child.sectorId)) {
+              fakeState.sectoresActivos.push({
+                sectorId: child.sectorId,
+                tiempoRestante: child.tiempoRiego
+              });
+            }
+          }
+        });
+      });
+
+      // Verificar fin de programa
+      if (fakeState.sectoresActivos.length === 0 && fakeState.pendingActivations.length === 0) {
+        if (prog.ciclico) {
+          startRootSectors(prog);
+        } else {
+          stopProgram();
+        }
+      }
+
+      fakeState.bomba = fakeState.sectoresActivos.length > 0 || fakeState.pendingActivations.length > 0;
+    }
+
+    function startRootSectors(prog) {
+      fakeState.completedSectors = [];
+      const roots = prog.nodos.filter((n) => n.padre === null);
+      fakeState.sectoresActivos = roots.map((n) => ({
+        sectorId: n.sectorId,
+        tiempoRestante: n.tiempoRiego
+      }));
+      fakeState.pendingActivations = [];
+      fakeState.bomba = roots.length > 0;
+    }
+
+    // --- Render: Estado ---
+    function renderStatus() {
+      const manualIds = [];
+      for (let i = 1; i <= NUM_SECTORS; i++) {
+        if (isManualSectorActive(i)) manualIds.push(i);
+      }
+
+      const programIds = fakeState.sectoresActivos.map((a) => a.sectorId);
+      const allActiveIds = [...new Set([...programIds, ...manualIds])];
+
+      const state = fakeState.modoManual ? "MANUAL" : (fakeState.estado || "IDLE");
       const statusMap = {
         IDLE:        { label: "Inactivo",     cls: "idle"    },
         MANUAL:      { label: "Manual",       cls: "running" },
@@ -1116,29 +1009,50 @@
       $("#statusLabel").textContent = s.label;
       $("#statusDot").className = "status-dot " + s.cls;
 
-      const activeSectors = normalizeActiveSectors(data);
-      const allActive = activeSectors.slice();
-      for (let i = 1; i <= NUM_SECTORS; i++) {
-        if (isManualSectorActive(i) && !allActive.includes(i)) {
-          allActive.push(i);
-        }
-      }
+      const pendingIds = fakeState.pendingActivations.map((p) => p.sectorId);
 
-      $("#activeProgram").textContent =
-        data.programaActivo ? `#${data.programaActivo}` : "—";
-      $("#activeSector").textContent =
-        allActive.length ? allActive.map((id) => `S${id}`).join(", ") : "—";
-      $("#remainingTime").textContent = formatTime(data.tiempoRestante);
+      $("#activeProgram").textContent = fakeState.programaActivo ? `#${fakeState.programaActivo}` : "—";
 
-      const pumpOn = !!data.bomba || manualSectorMask !== 0;
-      const pump = $("#pumpIndicator");
-      pump.classList.toggle("on", pumpOn);
+      const activeLabels  = allActiveIds.map((id) => `S${id}`);
+      const pendingLabels = pendingIds
+        .filter((id) => !allActiveIds.includes(id))
+        .map((id) => `S${id}⏱`);
+      const allLabels = [...activeLabels, ...pendingLabels];
+      $("#activeSector").textContent = allLabels.length ? allLabels.join(", ") : "—";
+
+      const maxRemaining = fakeState.sectoresActivos.length > 0
+        ? Math.max(...fakeState.sectoresActivos.map((a) => a.tiempoRestante))
+        : 0;
+      $("#remainingTime").textContent = formatTime(maxRemaining);
+
+      const pumpOn = fakeState.bomba || manualSectorMask !== 0;
+      $("#pumpIndicator").classList.toggle("on", pumpOn);
       $("#pumpLabel").textContent = pumpOn ? "Encendida" : "Apagada";
 
       $$(".sector").forEach((el) => {
-        const id = parseInt(el.dataset.id, 10);
-        el.classList.toggle("active", allActive.includes(id));
+        const id        = parseInt(el.dataset.id, 10);
+        const isActive  = allActiveIds.includes(id);
+        const pendingInfo = fakeState.pendingActivations.find((p) => p.sectorId === id);
+        const isPending = !!pendingInfo && !isActive;
+
+        el.classList.toggle("active",  isActive);
+        el.classList.toggle("pending", isPending);
+
+        const timerEl = el.querySelector(".sector-timer");
+        if (timerEl) {
+          if (isActive) {
+            const info = fakeState.sectoresActivos.find((a) => a.sectorId === id);
+            timerEl.textContent = info ? formatTime(info.tiempoRestante) : "";
+          } else if (isPending) {
+            timerEl.textContent = `⏱ ${pendingInfo.delay}s`;
+          } else {
+            timerEl.textContent = "";
+          }
+        }
       });
+
+      // Actualizar chips del árbol en la lista de programas
+      renderPrograms(programs, fakeState.programaActivo || 0);
     }
 
     function buildSectorsGrid() {
@@ -1151,6 +1065,7 @@
         el.innerHTML = `
           <div class="name">Sector ${i}</div>
           <div class="icon">◉</div>
+          <div class="sector-timer"></div>
         `;
         el.addEventListener("click", () => toggleSectorManual(i));
         grid.appendChild(el);
@@ -1163,17 +1078,12 @@
         manualSectorMask &= ~mask;
       } else {
         manualSectorMask |= mask;
-        // Activar manualmente detiene el programa en curso
+        stopProgram();
         fakeState.estado = "IDLE";
-        fakeState.programaActivo = 0;
-        fakeState.sectorActivo = 0;
-        fakeState.sectoresActivos = [];
-        fakeState.tiempoRestante = 0;
-        fakeState.bomba = false;
       }
       fakeState.modoManual = manualSectorMask !== 0;
       fakeState.manualSectorMask = manualSectorMask;
-      refreshStatus();
+      renderStatus();
       toast(
         (manualSectorMask & mask)
           ? `Sector ${sectorId} encendido manualmente`
@@ -1181,7 +1091,44 @@
       );
     }
 
-    // --- Render: Programas -------------------------------------------
+    // --- Render: árbol visual en lista de programas ---
+    function buildTreeHtml(nodos, progId, padre = null) {
+      const children = nodos.filter((n) => n.padre === padre);
+      if (!children.length) return "";
+
+      const isActiveProg = fakeState.programaActivo === progId && fakeState.estado === "RUNNING";
+
+      return children.map((node) => {
+        let chipClass = "chip";
+        if (isActiveProg) {
+          const isRunning = fakeState.sectoresActivos.some((a) => a.sectorId === node.sectorId);
+          const isPending = fakeState.pendingActivations.some((p) => p.sectorId === node.sectorId);
+          const isDone    = fakeState.completedSectors.includes(node.sectorId);
+          if (isRunning)      chipClass = "chip chip-active";
+          else if (isPending) chipClass = "chip chip-pending";
+          else if (isDone)    chipClass = "chip chip-done";
+        }
+
+        const delayBadge = (node.padre !== null && node.retardo > 0)
+          ? `<span class="delay-badge">⏱ ${node.retardo}s</span>`
+          : "";
+
+        const subTree = buildTreeHtml(nodos, progId, node.sectorId);
+        const childrenContainer = subTree
+          ? `<div class="tree-children">${subTree}</div>`
+          : "";
+
+        return `
+          <div class="tree-item">
+            <div class="tree-node-row">
+              ${delayBadge}<span class="${chipClass}">S${node.sectorId} · ${formatTime(node.tiempoRiego)}</span>
+            </div>
+            ${childrenContainer}
+          </div>
+        `;
+      }).join("");
+    }
+
     function renderPrograms(list, activeId) {
       const container = $("#programsList");
       if (!list.length) {
@@ -1193,14 +1140,7 @@
         const item = document.createElement("div");
         item.className = "program-item" + (p.id === activeId ? " active" : "");
 
-        const sectorChips = p.sectores
-          .slice()
-          .sort((a, b) => a.orden - b.orden)
-          .map(
-            (s) =>
-              `<span class="chip">S${s.id} · ${formatTime(s.tiempoRiego)}</span>`
-          )
-          .join("");
+        const treeHtml = buildTreeHtml(p.nodos, p.id);
 
         item.innerHTML = `
           <div class="program-item-header">
@@ -1208,7 +1148,6 @@
               <div class="program-title">Programa #${p.id} · ${p.horaInicio}</div>
               <div class="program-meta">
                 <span>${daysMaskToLabel(p.dias)}</span>
-                <span>Retardo ${p.retardoEntreSectores}s</span>
                 <span>${p.ciclico ? "Cíclico" : "Ejecución única"}</span>
               </div>
             </div>
@@ -1218,13 +1157,13 @@
               <button class="btn small danger"    data-action="delete" data-id="${p.id}">Borrar</button>
             </div>
           </div>
-          <div class="program-sectors">${sectorChips}</div>
+          <div class="program-tree">${treeHtml}</div>
         `;
         container.appendChild(item);
       });
     }
 
-    // --- Editor de programas -----------------------------------------
+    // --- Editor de programas ---
     function buildSectorConfigList() {
       const list = $("#sectorConfigList");
       list.innerHTML = "";
@@ -1234,66 +1173,133 @@
         row.innerHTML = `
           <input type="checkbox" id="sec_${i}_enabled" data-sector="${i}">
           <label class="sector-name" for="sec_${i}_enabled">Sector ${i}</label>
+          <select class="parent-select" id="sec_${i}_parent" disabled title="Este sector arranca cuando el padre termina">
+            <option value="">Al inicio (raíz)</option>
+          </select>
+          <div class="delay-wrapper">
+            <input type="number" class="delay-input" id="sec_${i}_delay" min="0" max="3600" value="0" disabled title="Segundos de espera después de que el padre termina">
+            <span class="unit">s espera</span>
+          </div>
           <div class="time-wrapper">
-            <input type="number" id="sec_${i}_time" min="0" max="3600" value="60" disabled>
-            <span class="unit">seg</span>
+            <input type="number" id="sec_${i}_time" min="1" max="3600" value="60" disabled>
+            <span class="unit">s riego</span>
           </div>
         `;
         list.appendChild(row);
 
-        row.querySelector('input[type="checkbox"]').addEventListener("change", (e) => {
-          const t = $(`#sec_${i}_time`);
-          t.disabled = !e.target.checked;
+        const cb  = $(`#sec_${i}_enabled`);
+        const sel = $(`#sec_${i}_parent`);
+        const t   = $(`#sec_${i}_time`);
+        const d   = $(`#sec_${i}_delay`);
+
+        cb.addEventListener("change", (e) => {
+          const checked = e.target.checked;
+          t.disabled = !checked;
+          sel.disabled = !checked;
+          if (!checked) {
+            for (let j = 1; j <= NUM_SECTORS; j++) {
+              if (j === i) continue;
+              const jSel = $(`#sec_${j}_parent`);
+              if (jSel && jSel.value === String(i)) jSel.value = "";
+            }
+            d.disabled = true;
+            d.value = 0;
+          }
+          updateParentSelectors();
+        });
+
+        sel.addEventListener("change", () => {
+          const hasParent = !!sel.value;
+          d.disabled = !hasParent;
+          if (!hasParent) d.value = 0;
         });
       }
     }
 
+    function updateParentSelectors() {
+      const enabled = [];
+      for (let i = 1; i <= NUM_SECTORS; i++) {
+        if ($(`#sec_${i}_enabled`).checked) enabled.push(i);
+      }
+
+      for (let i = 1; i <= NUM_SECTORS; i++) {
+        const sel = $(`#sec_${i}_parent`);
+        if (!sel) continue;
+        const prev = sel.value;
+        sel.innerHTML = '<option value="">Al inicio (raíz)</option>';
+        enabled.filter((id) => id !== i).forEach((id) => {
+          const opt = document.createElement("option");
+          opt.value = String(id);
+          opt.textContent = `Sector ${id}`;
+          sel.appendChild(opt);
+        });
+        // Restaurar selección anterior si sigue siendo válida
+        if (prev && enabled.includes(parseInt(prev))) {
+          sel.value = prev;
+        } else {
+          sel.value = "";
+        }
+      }
+    }
+
     function openEditor(program) {
-      $("#editorCard").classList.remove("collapsed");
-      $("#editorCard").scrollIntoView({ behavior: "smooth", block: "start" });
+      const card = $("#editorCard");
+      card.style.display = "";
+      card.scrollIntoView({ behavior: "smooth", block: "start" });
+
+      // Reset
+      for (let i = 1; i <= NUM_SECTORS; i++) {
+        $(`#sec_${i}_enabled`).checked = false;
+        $(`#sec_${i}_time`).value    = 60;
+        $(`#sec_${i}_time`).disabled = true;
+        $(`#sec_${i}_delay`).value   = 0;
+        $(`#sec_${i}_delay`).disabled = true;
+        const sel = $(`#sec_${i}_parent`);
+        if (sel) { sel.value = ""; sel.disabled = true; }
+      }
 
       if (program) {
         editingId = program.id;
         $("#editorTitle").textContent = `Editar programa #${program.id}`;
-        $("#programId").value          = program.id;
-        $("#startTime").value          = program.horaInicio;
-        $("#delayBetween").value       = program.retardoEntreSectores;
-        $("#cyclic").value             = program.ciclico ? "true" : "false";
-        selectedDays                   = program.dias;
+        $("#programId").value = program.id;
+        $("#startTime").value = program.horaInicio;
+        $("#cyclic").value    = program.ciclico ? "true" : "false";
+        selectedDays = program.dias;
         updateDaysUI();
-        for (let i = 1; i <= NUM_SECTORS; i++) {
-          $(`#sec_${i}_enabled`).checked = false;
-          $(`#sec_${i}_time`).value = 60;
-          $(`#sec_${i}_time`).disabled = true;
-        }
-        program.sectores.forEach((s) => {
-          const cb = $(`#sec_${s.id}_enabled`);
-          const ti = $(`#sec_${s.id}_time`);
-          if (cb && ti) {
-            cb.checked = true;
-            ti.disabled = false;
-            ti.value = s.tiempoRiego;
+
+        program.nodos.forEach((n) => {
+          $(`#sec_${n.sectorId}_enabled`).checked = true;
+          $(`#sec_${n.sectorId}_time`).disabled   = false;
+          $(`#sec_${n.sectorId}_time`).value       = n.tiempoRiego;
+          const sel = $(`#sec_${n.sectorId}_parent`);
+          if (sel) sel.disabled = false;
+        });
+
+        updateParentSelectors();
+
+        // Asignar padres y retardos después de poblar el dropdown
+        program.nodos.forEach((n) => {
+          const sel = $(`#sec_${n.sectorId}_parent`);
+          if (sel) sel.value = n.padre != null ? String(n.padre) : "";
+          const d = $(`#sec_${n.sectorId}_delay`);
+          if (d) {
+            d.value    = n.retardo || 0;
+            d.disabled = n.padre === null;
           }
         });
       } else {
         editingId = null;
         $("#editorTitle").textContent = "Nuevo programa";
-        $("#programId").value    = "";
-        $("#startTime").value    = "07:00";
-        $("#delayBetween").value = 5;
-        $("#cyclic").value       = "false";
+        $("#programId").value = "";
+        $("#startTime").value = "07:00";
+        $("#cyclic").value    = "false";
         selectedDays = 0;
         updateDaysUI();
-        for (let i = 1; i <= NUM_SECTORS; i++) {
-          $(`#sec_${i}_enabled`).checked = false;
-          $(`#sec_${i}_time`).value = 60;
-          $(`#sec_${i}_time`).disabled = true;
-        }
       }
     }
 
     function closeEditor() {
-      $("#editorCard").classList.add("collapsed");
+      $("#editorCard").style.display = "none";
       editingId = null;
     }
 
@@ -1305,51 +1311,55 @@
     }
 
     function collectProgramFromForm() {
-      const sectores = [];
-      let orden = 1;
+      const nodos = [];
       for (let i = 1; i <= NUM_SECTORS; i++) {
-        if ($(`#sec_${i}_enabled`).checked) {
-          sectores.push({
-            id: i,
-            orden: orden++,
-            tiempoRiego: parseInt($(`#sec_${i}_time`).value, 10) || 0
-          });
-        }
+        if (!$(`#sec_${i}_enabled`).checked) continue;
+        const padreVal = $(`#sec_${i}_parent`).value;
+        const padre    = padreVal ? parseInt(padreVal, 10) : null;
+        nodos.push({
+          sectorId: i,
+          tiempoRiego: parseInt($(`#sec_${i}_time`).value, 10) || 0,
+          retardo: padre !== null ? (parseInt($(`#sec_${i}_delay`).value, 10) || 0) : 0,
+          padre
+        });
       }
       return {
-        id: editingId || null,
-        horaInicio:           $("#startTime").value,
-        dias:                 selectedDays,
-        retardoEntreSectores: parseInt($("#delayBetween").value, 10) || 0,
-        ciclico:              $("#cyclic").value === "true",
-        sectores
+        id:        editingId || null,
+        horaInicio: $("#startTime").value,
+        dias:       selectedDays,
+        ciclico:    $("#cyclic").value === "true",
+        nodos
       };
     }
 
     async function saveProgram() {
       const prog = collectProgramFromForm();
-      if (!prog.horaInicio) {
-        toast("Indicá una hora de inicio", true);
+      if (!prog.horaInicio) { toast("Indicá una hora de inicio", true); return; }
+      if (!prog.dias)        { toast("Elegí al menos un día", true); return; }
+      if (!prog.nodos.length){ toast("Agregá al menos un sector", true); return; }
+
+      const roots = prog.nodos.filter((n) => n.padre === null);
+      if (!roots.length) {
+        toast("Al menos un sector debe ser raíz (padre: Al inicio)", true);
         return;
       }
-      if (!prog.dias) {
-        toast("Elegí al menos un día", true);
-        return;
-      }
-      if (!prog.sectores.length) {
-        toast("Agregá al menos un sector", true);
-        return;
+
+      const sectorIds = new Set(prog.nodos.map((n) => n.sectorId));
+      for (const nodo of prog.nodos) {
+        if (nodo.padre !== null && !sectorIds.has(nodo.padre)) {
+          toast(`El padre del sector ${nodo.sectorId} no está en el programa`, true);
+          return;
+        }
       }
 
       if (prog.id) {
         const idx = programs.findIndex((p) => p.id === prog.id);
         if (idx >= 0) programs[idx] = prog;
       } else {
-        prog.id = programs.length
-          ? Math.max(...programs.map((p) => p.id)) + 1
-          : 1;
+        prog.id = programs.length ? Math.max(...programs.map((p) => p.id)) + 1 : 1;
         programs.push(prog);
       }
+
       await persistPrograms();
       toast("Programa guardado");
       closeEditor();
@@ -1367,108 +1377,81 @@
 
     function runProgram(id) {
       const p = programs.find((x) => x.id === id);
-      if (!p || !p.sectores.length) {
-        toast("Programa sin sectores", true);
-        return;
-      }
+      if (!p || !p.nodos.length) { toast("Programa sin sectores", true); return; }
+
       manualSectorMask = 0;
-      fakeState.estado = "RUNNING";
-      fakeState.programaActivo = id;
-      fakeState.sectorActivo = p.sectores[0].id;
-      fakeState.sectoresActivos = [p.sectores[0].id];
-      fakeState.tiempoRestante = p.sectores[0].tiempoRiego;
-      fakeState.bomba = true;
       fakeState.modoManual = false;
       fakeState.manualSectorMask = 0;
+      fakeState.estado = "RUNNING";
+      fakeState.programaActivo = id;
+      startRootSectors(p);
+
       toast(`Ejecutando programa #${id}`);
       loadPrograms();
-      refreshStatus();
+      renderStatus();
     }
 
     async function deleteProgram(id) {
       if (!confirm(`¿Borrar el programa #${id}?`)) return;
       const idx = programs.findIndex((p) => p.id === id);
       if (idx >= 0) programs.splice(idx, 1);
-      if (fakeState.programaActivo === id) {
-        fakeState.estado = "IDLE";
-        fakeState.programaActivo = 0;
-        fakeState.sectorActivo = 0;
-        fakeState.sectoresActivos = [];
-        fakeState.tiempoRestante = 0;
-        fakeState.bomba = false;
-      }
+      if (fakeState.programaActivo === id) stopProgram();
       await persistPrograms();
       toast("Programa borrado");
       loadPrograms();
-      refreshStatus();
+      renderStatus();
     }
 
     function manualStop() {
-      if (!confirm("¿Confirmás la parada manual inmediata?")) return;
       manualSectorMask = 0;
+      stopProgram();
       fakeState.estado = "MANUAL_STOP";
-      fakeState.programaActivo = 0;
-      fakeState.sectorActivo = 0;
-      fakeState.sectoresActivos = [];
-      fakeState.tiempoRestante = 0;
-      fakeState.bomba = false;
       fakeState.modoManual = false;
       fakeState.manualSectorMask = 0;
       toast("Sistema detenido");
-      refreshStatus();
+      renderStatus();
     }
 
-    // --- Time editor -------------------------------------------------
+    // --- RTC editor ---
     function openTimeEditor(rtcData) {
       if (!rtcData) return;
-      const dateStr = String(rtcData.year).padStart(4, '0') + '-' +
-                      String(rtcData.month).padStart(2, '0') + '-' +
-                      String(rtcData.day).padStart(2, '0');
-      const timeStr = String(rtcData.hour).padStart(2, '0') + ':' +
-                      String(rtcData.minute).padStart(2, '0') + ':' +
-                      String(rtcData.second).padStart(2, '0');
+      const dateStr = String(rtcData.year).padStart(4, "0") + "-" +
+                      String(rtcData.month).padStart(2, "0") + "-" +
+                      String(rtcData.day).padStart(2, "0");
+      const timeStr = String(rtcData.hour).padStart(2, "0") + ":" +
+                      String(rtcData.minute).padStart(2, "0") + ":" +
+                      String(rtcData.second).padStart(2, "0");
       $("#timeEditorDate").value = dateStr;
       $("#timeEditorTime").value = timeStr;
       $("#timeEditorModal").classList.add("show");
     }
 
-    function closeTimeEditor() {
-      $("#timeEditorModal").classList.remove("show");
-    }
+    function closeTimeEditor() { $("#timeEditorModal").classList.remove("show"); }
 
     function saveRTCTime() {
       const dateVal = $("#timeEditorDate").value;
       const timeVal = $("#timeEditorTime").value;
-      if (!dateVal || !timeVal) {
-        toast("Por favor selecciona fecha y hora", true);
-        return;
-      }
-      const [year, month, day] = dateVal.split('-').map(Number);
-      const parts = timeVal.split(':').map(Number);
-      const hour = parts[0];
-      const minute = parts[1];
-      const second = parts[2] || 0;
-
-      const desired = new Date(year, month - 1, day, hour, minute, second).getTime();
+      if (!dateVal || !timeVal) { toast("Por favor seleccioná fecha y hora", true); return; }
+      const [year, month, day] = dateVal.split("-").map(Number);
+      const parts = timeVal.split(":").map(Number);
+      const desired = new Date(year, month - 1, day, parts[0], parts[1], parts[2] || 0).getTime();
       fakeRTCOffsetMs = desired - Date.now();
-
-      toast("✓ Hora configurada correctamente");
+      toast("✓ Hora configurada");
       closeTimeEditor();
       refreshTime();
     }
 
     function refreshTime() {
-      const rtc = getFakeRTC();
-      $("#timeValue").textContent = formatDateTime(rtc);
+      $("#timeValue").textContent = formatDateTime(getFakeRTC());
     }
 
-    // --- Polling ------------------------------------------------------
+    // --- Polling ---
     function refreshStatus() {
       tickFakeIrrigation();
-      renderStatus(fakeState);
+      renderStatus();
     }
 
-    // --- Bootstrap ----------------------------------------------------
+    // --- Bootstrap ---
     function wireEvents() {
       $$("#daysPicker .day-toggle").forEach((btn) => {
         btn.addEventListener("click", () => {
@@ -1481,17 +1464,12 @@
       $("#btnSaveProg").addEventListener("click", saveProgram);
       $("#btnCancel").addEventListener("click", closeEditor);
       $("#btnNewProgram").addEventListener("click", () => openEditor(null));
-
-      $("#editorToggle").addEventListener("click", () => {
-        $("#editorCard").classList.toggle("collapsed");
-      });
-
       $("#btnStop").addEventListener("click", manualStop);
 
       $("#programsList").addEventListener("click", (e) => {
         const btn = e.target.closest("button[data-action]");
         if (!btn) return;
-        const id = parseInt(btn.dataset.id, 10);
+        const id     = parseInt(btn.dataset.id, 10);
         const action = btn.dataset.action;
         if (action === "edit") {
           const prog = programs.find((p) => p.id === id);
@@ -1503,17 +1481,11 @@
         }
       });
 
-      $("#headerTime").addEventListener("click", () => {
-        openTimeEditor(getFakeRTC());
-      });
-
+      $("#headerTime").addEventListener("click", () => openTimeEditor(getFakeRTC()));
       $("#btnTimeCancel").addEventListener("click", closeTimeEditor);
       $("#btnTimeSave").addEventListener("click", saveRTCTime);
-
       $("#timeEditorModal").addEventListener("click", (e) => {
-        if (e.target === $("#timeEditorModal")) {
-          closeTimeEditor();
-        }
+        if (e.target === $("#timeEditorModal")) closeTimeEditor();
       });
     }
 
@@ -1522,10 +1494,10 @@
       buildSectorConfigList();
       wireEvents();
       await loadPrograms();
-      refreshStatus();
+      renderStatus();
       refreshTime();
       setInterval(refreshStatus, POLL_INTERVAL_MS);
-      setInterval(refreshTime,  POLL_INTERVAL_MS);
+      setInterval(refreshTime,   POLL_INTERVAL_MS);
     }
 
     document.addEventListener("DOMContentLoaded", init);

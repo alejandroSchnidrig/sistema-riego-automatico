@@ -49,6 +49,16 @@
       gap: 0.75rem;
     }
 
+    @media (max-width: 576px) {
+      header {
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        flex-wrap: nowrap;
+        text-align: center;
+      }
+    }
+
     header h1 {
       margin: 0;
       font-size: 1.15rem;
@@ -154,8 +164,20 @@
 
     .status-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      grid-template-columns: repeat(4, minmax(140px, 1fr));
       gap: 0.75rem;
+    }
+
+    @media (max-width: 900px) {
+      .status-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 400px) {
+      .status-grid {
+        grid-template-columns: 1fr;
+      }
     }
 
     .status-cell {
@@ -217,8 +239,20 @@
 
     .sectors-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
-      gap: 0.65rem;
+      grid-template-columns: repeat(4, minmax(140px, 1fr));
+      gap: 0.75rem;
+    }
+
+    @media (max-width: 900px) {
+      .sectors-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 400px) {
+      .sectors-grid {
+        grid-template-columns: 1fr;
+      }
     }
 
     .sector {
@@ -525,7 +559,7 @@
       border-radius: var(--radius);
       padding: 1.5rem;
       width: 90%;
-      max-width: 450px;
+      max-width: 650px;
       box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
     }
 
@@ -599,7 +633,7 @@
       position: fixed;
       bottom: 1rem;
       left: 50%;
-      transform: translateX(-50%) translateY(120%);
+      transform: translateX(-50%) translateY(200%);
       background: var(--text);
       color: #fff;
       padding: 0.75rem 1.25rem;
@@ -800,7 +834,7 @@
           <div class="datetime-row">
             <div class="form-field">
               <label for="timeEditorDate" style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-soft);">Fecha</label>
-              <input type="date" id="timeEditorDate" value="2024-01-01">
+              <input type="date" id="timeEditorDate" value="2024-01-01" min="1900-01-01" max="2099-12-31">
             </div>
             <div class="form-field">
               <label for="timeEditorTime" style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-soft);">Hora</label>

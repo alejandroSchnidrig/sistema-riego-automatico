@@ -1,8 +1,8 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <WebServer.h>
-#include <DS1302.h>
 #include "config/Config.h"
+#include "scheduler/RTCManager.h"
 #include "domain/IrrigationSystem.h"
 #include "web/JsonHelpers.h"
 #include "pages/index_html.h"
@@ -28,7 +28,7 @@
 */
 
 WebServer        server(80);
-DS1302           rtc(Config::RTC_RST, Config::RTC_DAT, Config::RTC_CLK);
+RTCManager       rtcManager(Config::RTC_RST, Config::RTC_DAT, Config::RTC_CLK);
 IrrigationSystem irrigationSystem;
 
 unsigned long lastStatusPrint = 0;
@@ -119,85 +119,8 @@ String buildOkJson(bool ok, const String& extra = "") {
 }
 
 // ============================================================
-// Funciones auxiliares del RTC DS1302
-// ============================================================
-
-String twoDigits(uint8_t value) {
-  return value < 10 ? "0" + String(value) : String(value);
-}
-
-String formatRTCDate(const Time& t) {
-  return String(t.yr) + "/" + twoDigits(t.mon) + "/" + twoDigits(t.date);
-}
-
-String formatRTCTime(const Time& t) {
-  return twoDigits(t.hr) + ":" + twoDigits(t.min) + ":" + twoDigits(t.sec);
-}
-
-// Calcula el día de la semana a partir de una fecha (algoritmo de Tomohiko Sakamoto)
-Time::Day calculateDayOfWeek(uint16_t year, uint8_t month, uint8_t day) {
-  static const int monthTable[] = {0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4};
-  int y = year;
-  if (month < 3) y -= 1;
-  int dow = (y + y / 4 - y / 100 + y / 400 + monthTable[month - 1] + day) % 7;
-  return static_cast<Time::Day>(dow + 1);
-}
-
-bool isLeapYear(uint16_t year) {
-  return (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
-}
-
-uint8_t daysInMonth(uint16_t year, uint8_t month) {
-  static const uint8_t daysPerMonth[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
-  if (month < 1 || month > 12) return 0;
-  if (month == 2 && isLeapYear(year)) return 29;
-  return daysPerMonth[month - 1];
-}
-
-bool isValidDateTime(uint16_t year, uint8_t month, uint8_t day,
-                     uint8_t hour, uint8_t minute, uint8_t second) {
-  if (year   < 2000 || year > 2099)                  return false;
-  if (month  < 1    || month > 12)                   return false;
-  if (day    < 1    || day > daysInMonth(year, month)) return false;
-  if (hour   > 23)                                   return false;
-  if (minute > 59)                                   return false;
-  if (second > 59)                                   return false;
-  return true;
-}
-
-// Convierte una fecha al índice de bit del bitmask de días (lun=0 … dom=6)
-uint8_t dayMaskBitFromDate(uint16_t year, uint8_t month, uint8_t day) {
-  const uint8_t dow = (uint8_t)calculateDayOfWeek(year, month, day);
-  switch (dow) {
-    case 2: return 0;   // Lunes
-    case 3: return 1;   // Martes
-    case 4: return 2;   // Miércoles
-    case 5: return 3;   // Jueves
-    case 6: return 4;   // Viernes
-    case 7: return 5;   // Sábado
-    case 1: return 6;   // Domingo
-    default: return 255;
-  }
-}
-
-// ============================================================
 // Parser de programas — se mueve a ApiHandler en Fase C3
 // ============================================================
-
-bool parseHourMinute(const char* value, uint8_t& hour, uint8_t& minute) {
-  if (value == nullptr    ||
-      strlen(value) != 5  ||
-      !isDigit(value[0])  ||
-      !isDigit(value[1])  ||
-      value[2] != ':'     ||
-      !isDigit(value[3])  ||
-      !isDigit(value[4])) {
-    return false;
-  }
-  hour   = (uint8_t)((value[0] - '0') * 10 + (value[1] - '0'));
-  minute = (uint8_t)((value[3] - '0') * 10 + (value[4] - '0'));
-  return hour < 24 && minute < 60;
-}
 
 bool parseProgramFromJson(const String& programJson, Program& outProgram) {
   outProgram.reset();
@@ -210,7 +133,7 @@ bool parseProgramFromJson(const String& programJson, Program& outProgram) {
   String hora;
   uint8_t startHour = 0, startMinute = 0;
   if (!extractStringField(programJson, "horaInicio", hora) ||
-      !parseHourMinute(hora.c_str(), startHour, startMinute)) {
+      !RTCManager::parseHourMinute(hora.c_str(), startHour, startMinute)) {
     return false;
   }
   outProgram.setStartTime(hora.c_str());
@@ -280,13 +203,13 @@ bool parseProgramFromJson(const String& programJson, Program& outProgram) {
 
 bool shouldStartProgramNow(const Program& program, const Time& now) {
   if (!program.isValid() || program.getSectorCount() == 0) return false;
-  if (!isValidDateTime(now.yr, now.mon, now.date, now.hr, now.min, now.sec)) return false;
+  if (!rtcManager.isValid(now)) return false;
 
-  const uint8_t dayBit = dayMaskBitFromDate(now.yr, now.mon, now.date);
+  const uint8_t dayBit = RTCManager::dayMaskBitFromDate(now.yr, now.mon, now.date);
   if (dayBit > 6 || (program.getDays() & (1U << dayBit)) == 0) return false;
 
   uint8_t programHour = 0, programMinute = 0;
-  if (!parseHourMinute(program.getStartTime(), programHour, programMinute)) return false;
+  if (!RTCManager::parseHourMinute(program.getStartTime(), programHour, programMinute)) return false;
 
   return programHour == now.hr && programMinute == now.min;
 }
@@ -308,8 +231,8 @@ bool isSameScheduleMinute(const Time& now) {
 }
 
 void checkScheduledPrograms() {
-  const Time now = rtc.time();
-  if (!isValidDateTime(now.yr, now.mon, now.date, now.hr, now.min, now.sec)) return;
+  const Time now = rtcManager.now();
+  if (!rtcManager.isValid(now)) return;
   if (isSameScheduleMinute(now)) return;
 
   rememberScheduleMinute(now);
@@ -335,7 +258,7 @@ String getRequestBody() {
 }
 
 String buildRTCJson() {
-  Time now = rtc.time();
+  Time now = rtcManager.now();
   String json = "{";
   json += "\"year\":"   + String(now.yr)   + ",";
   json += "\"month\":"  + String(now.mon)  + ",";
@@ -478,24 +401,11 @@ void handleRTC() {
     int minute = server.arg("minute").toInt();
     int second = server.arg("second").toInt();
 
-    if (!isValidDateTime((uint16_t)year, (uint8_t)month, (uint8_t)day,
-                         (uint8_t)hour,  (uint8_t)minute, (uint8_t)second)) {
+    if (!rtcManager.setTime((uint16_t)year, (uint8_t)month, (uint8_t)day,
+                             (uint8_t)hour,  (uint8_t)minute, (uint8_t)second)) {
       server.send(400, "application/json", buildOkJson(false, "\"error\":\"fecha/hora invalida\""));
       return;
     }
-
-    Time::Day dow     = calculateDayOfWeek((uint16_t)year, (uint8_t)month, (uint8_t)day);
-    Time      newTime((uint16_t)year, (uint8_t)month, (uint8_t)day,
-                      (uint8_t)hour,  (uint8_t)minute, (uint8_t)second, dow);
-
-    rtc.writeProtect(false);
-    delay(10);
-    rtc.halt(false);
-    delay(10);
-    rtc.time(newTime);
-    delay(50);
-    rtc.halt(false);
-    rtc.writeProtect(true);
 
     server.send(200, "application/json", buildOkJson(true, "\"rtc\":" + buildRTCJson()));
   }
@@ -513,11 +423,11 @@ void printPeriodicStatus() {
   Serial.println();
   Serial.println("===== ESTADO DEL SISTEMA =====");
 
-  Time rtcNow = rtc.time();
+  Time rtcNow = rtcManager.now();
   Serial.print("Hora RTC       : ");
-  Serial.print(formatRTCDate(rtcNow));
+  Serial.print(RTCManager::formatDate(rtcNow));
   Serial.print(" ");
-  Serial.println(formatRTCTime(rtcNow));
+  Serial.println(RTCManager::formatTime(rtcNow));
 
   const SystemStateSnapshot snap = irrigationSystem.getStateSnapshot();
   Serial.print("Estado         : ");
@@ -570,50 +480,7 @@ void setup() {
 
   // Inicializar RTC DS1302
   Serial.println("\n\nInicializando RTC...");
-  rtc.writeProtect(false);
-  rtc.halt(false);
-  delay(50);
-
-  Time now = rtc.time();
-  Serial.print("Lectura RTC: ");
-  Serial.print(formatRTCDate(now));
-  Serial.print(" ");
-  Serial.println(formatRTCTime(now));
-
-  if (!isValidDateTime(now.yr, now.mon, now.date, now.hr, now.min, now.sec)) {
-    Serial.println("RTC con datos invalidos, intentando inicializar...");
-
-    bool initOk = false;
-    const Time defaultTime(2024, 1, 1, 12, 0, 0, calculateDayOfWeek(2024, 1, 1));
-
-    for (int attempt = 0; attempt < 5; attempt++) {
-      Serial.print("Intento ");
-      Serial.println(attempt + 1);
-      rtc.halt(false);
-      delay(20);
-      rtc.time(defaultTime);
-      delay(100);
-
-      Time verify = rtc.time();
-      Serial.print("  Verificacion: ");
-      Serial.print(formatRTCDate(verify));
-      Serial.print(" ");
-      Serial.println(formatRTCTime(verify));
-
-      if (isValidDateTime(verify.yr, verify.mon, verify.date,
-                          verify.hr,  verify.min,  verify.sec)) {
-        Serial.println("RTC inicializado correctamente.");
-        initOk = true;
-        break;
-      }
-    }
-
-    if (!initOk) Serial.println("ADVERTENCIA: El RTC sigue reportando datos invalidos.");
-  } else {
-    Serial.println("RTC con datos validos, no se requiere inicializacion.");
-  }
-
-  rtc.writeProtect(true);
+  rtcManager.begin();
 
   irrigationSystem.seedDefaultPrograms();
 

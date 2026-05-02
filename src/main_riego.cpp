@@ -3,9 +3,7 @@
 #include <WebServer.h>
 #include <DS1302.h>
 #include "config/Config.h"
-#include "domain/Sector.h"
-#include "domain/Pump.h"
-#include "domain/Program.h"
+#include "domain/IrrigationSystem.h"
 #include "web/JsonHelpers.h"
 #include "pages/index_html.h"
 
@@ -29,58 +27,11 @@
   Compilar con PlatformIO: pio run --target upload
 */
 
-WebServer server(80);
+WebServer        server(80);
+DS1302           rtc(Config::RTC_RST, Config::RTC_DAT, Config::RTC_CLK);
+IrrigationSystem irrigationSystem;
 
-// Módulo RTC DS1302 — constructor recibe (RST, DAT, CLK) según la librería arduino-ds1302
-DS1302 rtc(Config::RTC_RST, Config::RTC_DAT, Config::RTC_CLK);
-
-// Una instancia de Sector por zona de riego (índice 0 = sector 1, ..., índice 7 = sector 8).
-// begin() se llama en setup() porque pinMode() no está disponible antes de eso.
-Pump   pump(Config::PIN_BOMBA);
-Sector sectors[Config::NUM_SECTORES] = {
-  Sector(1, Config::PINES_SECTORES[0]),
-  Sector(2, Config::PINES_SECTORES[1]),
-  Sector(3, Config::PINES_SECTORES[2]),
-  Sector(4, Config::PINES_SECTORES[3]),
-  Sector(5, Config::PINES_SECTORES[4]),
-  Sector(6, Config::PINES_SECTORES[5]),
-  Sector(7, Config::PINES_SECTORES[6]),
-  Sector(8, Config::PINES_SECTORES[7])
-};
-
-// ============================================================
-// Enumeraciones y estructuras de dominio
-// ============================================================
-
-// Estados posibles del sistema
-enum SystemState {
-  STATE_IDLE,          // sin programa en ejecución
-  STATE_RUNNING,       // programa en curso
-  STATE_MANUAL_STOP    // detenido manualmente por el usuario
-};
-
-// ============================================================
-// Variables de estado global
-// ============================================================
-
-Program  programs[Config::MAX_PROGRAMAS];
-uint16_t nextProgramId = 3;  // IDs 1 y 2 son los programas semilla
-
-SystemState systemState      = STATE_IDLE;
-uint16_t    activeProgramId  = 0;
-uint8_t     activeSectorId   = 0;
-uint32_t    remainingTimeSec = 0;
-
-// Máscara de control manual: bit0=sector1 … bit7=sector8
-uint16_t manualSectorMask = 0;
-
-// Variables de ejecución del paso en curso
-int           runningProgramIndex   = -1;
-int           runningStepIndex      = -1;
-bool          waitingBetweenSectors = false;
-unsigned long stepStartMs           = 0;
-unsigned long delayStartMs          = 0;
-unsigned long lastStatusPrint       = 0;
+unsigned long lastStatusPrint = 0;
 
 // Último minuto procesado por el scheduler (evita disparar el mismo programa dos veces)
 uint16_t lastScheduleYear   = 0;
@@ -90,84 +41,7 @@ uint8_t  lastScheduleHour   = 255;
 uint8_t  lastScheduleMinute = 255;
 
 // ============================================================
-// Funciones de hardware
-// ============================================================
-
-// Enciende o apaga la bomba de agua
-void setPump(bool on) {
-  if (on) pump.on();
-  else    pump.off();
-}
-
-// ============================================================
-// Operaciones sobre máscaras de sectores
-// ============================================================
-
-// Convierte un ID de sector (1-8) en su bit correspondiente en la máscara
-uint16_t sectorIdToMask(uint8_t sectorId) {
-  if (sectorId < 1 || sectorId > Config::NUM_SECTORES) return 0;
-  return (uint16_t)1U << (sectorId - 1);
-}
-
-// Devuelve el ID del primer sector activo en la máscara (0 si ninguno)
-uint8_t firstSectorFromMask(uint16_t sectorMask) {
-  for (uint8_t i = 1; i <= Config::NUM_SECTORES; i++) {
-    if ((sectorMask & sectorIdToMask(i)) != 0) return i;
-  }
-  return 0;
-}
-
-// Combina los sectores del programa en curso y los sectores en modo manual
-uint16_t getOutputSectorMask() {
-  return manualSectorMask | sectorIdToMask(activeSectorId);
-}
-
-// Devuelve true si el sector indicado está activo (programa o manual)
-bool isSectorActive(uint8_t sectorId) {
-  return (getOutputSectorMask() & sectorIdToMask(sectorId)) != 0;
-}
-
-// Aplica la máscara de sectores a los objetos Sector (activa o desactiva cada uno)
-void setSectorHardware(uint16_t sectorMask) {
-  for (uint8_t i = 0; i < Config::NUM_SECTORES; i++) {
-    if ((sectorMask & sectorIdToMask(i + 1)) != 0) {
-      sectors[i].activate();
-    } else {
-      sectors[i].deactivate();
-    }
-  }
-}
-
-// Borra todos los sobreescrituras manuales para ceder el control al programa automático
-void clearManualOverrides() {
-  manualSectorMask = 0;
-}
-
-// Aplica el estado combinado (programa + manual) a los pines de hardware y la bomba
-void applyOutputsFromState() {
-  const uint16_t sectorMask = getOutputSectorMask();
-  setSectorHardware(sectorMask);
-  setPump(sectorMask != 0);  // la bomba sigue automáticamente a los sectores
-}
-
-// Devuelve true si hay sectores activos en modo manual
-bool isManualControlActive() {
-  return manualSectorMask != 0;
-}
-
-// Primer sector activo combinando programa y manual
-uint8_t getEffectiveSectorId() {
-  return firstSectorFromMask(getOutputSectorMask());
-}
-
-// Primer sector activo solo por control manual
-uint8_t getFirstManualSectorId() {
-  return firstSectorFromMask(manualSectorMask);
-}
-
-// ============================================================
-// Serialización JSON — helpers locales
-// (buildSectorArrayJson, boolToJson, escapeJson → web/JsonHelpers)
+// Helpers de serialización / debug
 // ============================================================
 
 // Formatea la máscara de sectores como texto legible para el monitor serial
@@ -175,7 +49,7 @@ String formatSectorMaskForSerial(uint16_t sectorMask) {
   if (sectorMask == 0) return "ninguno";
   String text;
   for (uint8_t i = 1; i <= Config::NUM_SECTORES; i++) {
-    if ((sectorMask & sectorIdToMask(i)) == 0) continue;
+    if ((sectorMask & ((uint16_t)1U << (i - 1))) == 0) continue;
     if (text.length() > 0) text += ", ";
     text += "S";
     text += String(i);
@@ -183,282 +57,19 @@ String formatSectorMaskForSerial(uint16_t sectorMask) {
   return text;
 }
 
-// Convierte el enum SystemState a string para JSON y serial
-const char* stateToString(SystemState state) {
-  switch (state) {
-    case STATE_RUNNING:     return "RUNNING";
-    case STATE_MANUAL_STOP: return "MANUAL_STOP";
-    case STATE_IDLE:
-    default:                return "IDLE";
-  }
-}
-
-// ============================================================
-// Parser JSON hand-rolled — helpers locales
-// (extract*, boolToJson, escapeJson → web/JsonHelpers)
-// ============================================================
-
-// Devuelve el cuerpo crudo del request HTTP actual
-String getRequestBody() {
-  if (server.hasArg("plain")) return server.arg("plain");
-  return "";
-}
-
-// ============================================================
-// Operaciones sobre programas
-// ============================================================
-
-// Valida y parsea una hora en formato "HH:MM"
-bool parseHourMinute(const char* value, uint8_t& hour, uint8_t& minute) {
-  if (value == nullptr    ||
-      strlen(value) != 5  ||
-      !isDigit(value[0])  ||
-      !isDigit(value[1])  ||
-      value[2] != ':'     ||
-      !isDigit(value[3])  ||
-      !isDigit(value[4])) {
-    return false;
-  }
-
-  hour   = (uint8_t)((value[0] - '0') * 10 + (value[1] - '0'));
-  minute = (uint8_t)((value[3] - '0') * 10 + (value[4] - '0'));
-  return hour < 24 && minute < 60;
-}
-
-// Parsea un programa completo desde su representación JSON
-bool parseProgramFromJson(const String& programJson, Program& outProgram) {
-  outProgram.reset();
-  outProgram.setValid(true);
-
-  // ID: null o ausente significa "crear nuevo"
-  int id = 0;
-  extractNullableId(programJson, id);
-  outProgram.setId((uint16_t)id);
-
-  // Hora de inicio obligatoria en formato "HH:MM"
-  String hora;
-  uint8_t startHour = 0, startMinute = 0;
-  if (!extractStringField(programJson, "horaInicio", hora) ||
-      !parseHourMinute(hora.c_str(), startHour, startMinute)) {
-    return false;
-  }
-  outProgram.setStartTime(hora.c_str());
-
-  // Días de ejecución como bitmask (0–127)
-  int dias = 0;
-  if (!extractIntField(programJson, "dias", dias) || dias < 0 || dias > 0x7F) return false;
-  outProgram.setDays((uint8_t)dias);
-
-  // Retardo en segundos entre un sector y el siguiente
-  int retardo = 0;
-  if (!extractIntField(programJson, "retardoEntreSectores", retardo) ||
-      retardo < 0 || retardo > 65535) {
-    return false;
-  }
-  outProgram.setSectorDelay((uint16_t)retardo);
-
-  // ¿El programa se repite al terminar el último sector?
-  bool ciclico = false;
-  if (!extractBoolField(programJson, "ciclico", ciclico)) return false;
-  outProgram.setCyclic(ciclico);
-
-  // Lista de sectores del programa
-  String sectoresArray;
-  if (!extractArrayField(programJson, "sectores", sectoresArray)) return false;
-
-  int pos = 0;
-  while (pos < (int)sectoresArray.length() &&
-         outProgram.getSectorCount() < Config::NUM_SECTORES) {
-    int objStart = sectoresArray.indexOf('{', pos);
-    if (objStart < 0) break;
-
-    // Encontrar el cierre del objeto balanceando llaves
-    int depth = 0, objEnd = -1;
-    for (int i = objStart; i < (int)sectoresArray.length(); i++) {
-      if      (sectoresArray[i] == '{') depth++;
-      else if (sectoresArray[i] == '}') {
-        depth--;
-        if (depth == 0) { objEnd = i; break; }
-      }
-    }
-    if (objEnd < 0) break;
-
-    String item = sectoresArray.substring(objStart, objEnd + 1);
-    int sectorId = 0, orden = 0, tiempo = 0;
-
-    if (extractIntField(item, "id",          sectorId) &&
-        extractIntField(item, "orden",        orden)    &&
-        extractIntField(item, "tiempoRiego",  tiempo)   &&
-        sectorId >= 1 && sectorId <= (int)Config::NUM_SECTORES &&
-        orden    >= 1 && orden    <= (int)Config::NUM_SECTORES &&
-        tiempo   > 0) {
-      ProgramNode node;
-      node.id          = (uint8_t)sectorId;
-      node.order       = (uint8_t)orden;
-      node.irrigationTime = (uint32_t)tiempo;
-      outProgram.addNode(node);
-    }
-
-    pos = objEnd + 1;
-  }
-
-  if (outProgram.getSectorCount() == 0) return false;
-
-  outProgram.sortNodesByOrder();
-  return true;
-}
-
-// Busca un programa por ID y retorna su índice (-1 si no existe)
-int findProgramIndexById(uint16_t id) {
-  for (uint8_t i = 0; i < Config::MAX_PROGRAMAS; i++) {
-    if (programs[i].isValid() && programs[i].getId() == id) return i;
-  }
-  return -1;
-}
-
-// Retorna el primer slot libre del arreglo de programas (-1 si está lleno)
-int findFreeProgramSlot() {
-  for (uint8_t i = 0; i < Config::MAX_PROGRAMAS; i++) {
-    if (!programs[i].isValid()) return i;
-  }
-  return -1;
-}
-
-// ============================================================
-// Motor de ejecución de programas
-// ============================================================
-
-// Detiene la ejecución en curso y limpia el estado de runtime
-void stopRuntime(SystemState newState) {
-  systemState           = newState;
-  activeProgramId       = 0;
-  activeSectorId        = 0;
-  remainingTimeSec      = 0;
-  runningProgramIndex   = -1;
-  runningStepIndex      = -1;
-  waitingBetweenSectors = false;
-  stepStartMs           = 0;
-  delayStartMs          = 0;
-  applyOutputsFromState();
-}
-
-// Inicia un paso específico del programa (activa el sector correspondiente)
-void startStep(int programIndex, int stepIndex) {
-  if (programIndex < 0 || !programs[programIndex].isValid()) {
-    stopRuntime(STATE_IDLE);
-    return;
-  }
-
-  Program& p = programs[programIndex];
-  if (stepIndex < 0 || stepIndex >= p.getSectorCount()) {
-    stopRuntime(STATE_IDLE);
-    return;
-  }
-
-  runningProgramIndex   = programIndex;
-  runningStepIndex      = stepIndex;
-  waitingBetweenSectors = false;
-  systemState           = STATE_RUNNING;
-  activeProgramId       = p.getId();
-  activeSectorId        = p.getNode(stepIndex).id;
-  remainingTimeSec      = p.getNode(stepIndex).irrigationTime;
-  stepStartMs           = millis();
-
-  applyOutputsFromState();
-}
-
-// Inicia la ejecución de un programa por su ID (retorna false si no existe)
-bool startProgramById(uint16_t id) {
-  int index = findProgramIndexById(id);
-  if (index < 0) return false;
-
-  Program& p = programs[index];
-  if (p.getSectorCount() == 0) return false;
-
-  clearManualOverrides();
-  startStep(index, 0);
-  return true;
-}
-
-// Actualiza el estado del programa en ejecución — debe llamarse en cada iteración del loop
-void updateRuntime() {
-  if (systemState != STATE_RUNNING || runningProgramIndex < 0) return;
-
-  Program& p        = programs[runningProgramIndex];
-  unsigned long now = millis();
-
-  // Fase de espera entre sectores (retardo configurado)
-  if (waitingBetweenSectors) {
-    remainingTimeSec = 0;
-    if (now - delayStartMs >= (unsigned long)p.getSectorDelay() * 1000UL) {
-      int nextStep = runningStepIndex + 1;
-      if (nextStep >= p.getSectorCount()) {
-        p.isCyclic() ? startStep(runningProgramIndex, 0) : stopRuntime(STATE_IDLE);
-      } else {
-        startStep(runningProgramIndex, nextStep);
-      }
-    }
-    return;
-  }
-
-  // Fase de riego activo: verificar si se agotó el tiempo del sector actual
-  uint32_t      stepDurationSec = p.getNode(runningStepIndex).irrigationTime;
-  unsigned long elapsedMs       = now - stepStartMs;
-  uint32_t      elapsedSec      = (uint32_t)(elapsedMs / 1000UL);
-
-  if (elapsedSec >= stepDurationSec) {
-    // Sector terminado: apagar y decidir qué sigue
-    activeSectorId = 0;
-    applyOutputsFromState();
-
-    int nextStep = runningStepIndex + 1;
-
-    if (nextStep >= p.getSectorCount()) {
-      // Era el último sector del programa
-      if (p.isCyclic()) {
-        if (p.getSectorDelay() > 0) {
-          waitingBetweenSectors = true;
-          delayStartMs          = now;
-        } else {
-          startStep(runningProgramIndex, 0);
-        }
-      } else {
-        stopRuntime(STATE_IDLE);
-      }
-    } else {
-      // Quedan más sectores
-      if (p.getSectorDelay() > 0) {
-        waitingBetweenSectors = true;
-        delayStartMs          = now;
-        remainingTimeSec      = 0;
-      } else {
-        startStep(runningProgramIndex, nextStep);
-      }
-    }
-    return;
-  }
-
-  // Actualizar tiempo restante del sector en curso
-  remainingTimeSec = stepDurationSec - elapsedSec;
-}
-
-// ============================================================
-// Constructores de respuestas JSON
-// ============================================================
-
 // Construye el JSON de estado para GET /estado
 String buildEstadoJson() {
-  const uint16_t activeSectorMask = getOutputSectorMask();
+  const SystemStateSnapshot snap = irrigationSystem.getStateSnapshot();
   String json = "{";
-  json += "\"estado\":\""          + String(stateToString(systemState))    + "\",";
-  json += "\"programaActivo\":"    + String(activeProgramId)               + ",";
-  json += "\"sectorActivo\":"      + String(getEffectiveSectorId())         + ",";
-  json += "\"sectoresActivos\":"   + buildSectorArrayJson(activeSectorMask) + ",";
-  json += "\"tiempoRestante\":"    + String(remainingTimeSec)              + ",";
-  json += "\"bomba\":"             + boolToJson(pump.isOn())               + ",";
-  json += "\"modoManual\":"        + boolToJson(isManualControlActive())   + ",";
-  json += "\"manualSectorMask\":"  + String(manualSectorMask)              + ",";
-  json += "\"manualSectorId\":"    + String(getFirstManualSectorId())      + ",";
+  json += "\"estado\":\""         + String(snap.stateName)                      + "\",";
+  json += "\"programaActivo\":"   + String(snap.activeProgramId)                + ",";
+  json += "\"sectorActivo\":"     + String(snap.activeSectorId)                 + ",";
+  json += "\"sectoresActivos\":"  + buildSectorArrayJson(snap.activeSectorMask) + ",";
+  json += "\"tiempoRestante\":"   + String(snap.remainingTimeSec)               + ",";
+  json += "\"bomba\":"            + boolToJson(snap.pumpOn)                     + ",";
+  json += "\"modoManual\":"       + boolToJson(snap.manualActive)               + ",";
+  json += "\"manualSectorMask\":" + String(snap.manualSectorMask)               + ",";
+  json += "\"manualSectorId\":"   + String(snap.firstManualSectorId)            + ",";
   json += "\"manualPumpOn\":false";
   json += "}";
   return json;
@@ -470,24 +81,24 @@ String buildProgramasJson() {
   bool firstProgram = true;
 
   for (uint8_t i = 0; i < Config::MAX_PROGRAMAS; i++) {
-    if (!programs[i].isValid()) continue;
+    const Program& p = irrigationSystem.programAt(i);
+    if (!p.isValid()) continue;
     if (!firstProgram) json += ",";
     firstProgram = false;
 
-    Program& p = programs[i];
     json += "{";
-    json += "\"id\":"                   + String(p.getId())                              + ",";
+    json += "\"id\":"                   + String(p.getId())                             + ",";
     json += "\"horaInicio\":\""         + escapeJson(String(p.getStartTime()))          + "\",";
-    json += "\"dias\":"                 + String(p.getDays())                            + ",";
-    json += "\"retardoEntreSectores\":" + String(p.getSectorDelay())            + ",";
+    json += "\"dias\":"                 + String(p.getDays())                           + ",";
+    json += "\"retardoEntreSectores\":" + String(p.getSectorDelay())                    + ",";
     json += "\"ciclico\":"              + boolToJson(p.isCyclic())                      + ",";
     json += "\"sectores\":[";
 
     for (uint8_t s = 0; s < p.getSectorCount(); s++) {
       if (s > 0) json += ",";
       json += "{";
-      json += "\"id\":"          + String(p.getNode(s).id)         + ",";
-      json += "\"orden\":"       + String(p.getNode(s).order)      + ",";
+      json += "\"id\":"          + String(p.getNode(s).id)            + ",";
+      json += "\"orden\":"       + String(p.getNode(s).order)         + ",";
       json += "\"tiempoRiego\":" + String(p.getNode(s).irrigationTime);
       json += "}";
     }
@@ -511,17 +122,14 @@ String buildOkJson(bool ok, const String& extra = "") {
 // Funciones auxiliares del RTC DS1302
 // ============================================================
 
-// Agrega cero a la izquierda si el número tiene un solo dígito
 String twoDigits(uint8_t value) {
   return value < 10 ? "0" + String(value) : String(value);
 }
 
-// Formatea la fecha del RTC como "AAAA/MM/DD"
 String formatRTCDate(const Time& t) {
   return String(t.yr) + "/" + twoDigits(t.mon) + "/" + twoDigits(t.date);
 }
 
-// Formatea la hora del RTC como "HH:MM:SS"
 String formatRTCTime(const Time& t) {
   return twoDigits(t.hr) + ":" + twoDigits(t.min) + ":" + twoDigits(t.sec);
 }
@@ -546,15 +154,14 @@ uint8_t daysInMonth(uint16_t year, uint8_t month) {
   return daysPerMonth[month - 1];
 }
 
-// Valida que los campos de fecha/hora estén en rangos correctos
 bool isValidDateTime(uint16_t year, uint8_t month, uint8_t day,
                      uint8_t hour, uint8_t minute, uint8_t second) {
-  if (year   < 2000 || year > 2099)              return false;
-  if (month  < 1    || month > 12)               return false;
+  if (year   < 2000 || year > 2099)                  return false;
+  if (month  < 1    || month > 12)                   return false;
   if (day    < 1    || day > daysInMonth(year, month)) return false;
-  if (hour   > 23)                               return false;
-  if (minute > 59)                               return false;
-  if (second > 59)                               return false;
+  if (hour   > 23)                                   return false;
+  if (minute > 59)                                   return false;
+  if (second > 59)                                   return false;
   return true;
 }
 
@@ -574,15 +181,107 @@ uint8_t dayMaskBitFromDate(uint16_t year, uint8_t month, uint8_t day) {
 }
 
 // ============================================================
-// Scheduler — verifica si debe iniciarse algún programa
+// Parser de programas — se mueve a ApiHandler en Fase C3
 // ============================================================
 
-// Devuelve true si el programa debe iniciarse en el minuto actual del RTC
+bool parseHourMinute(const char* value, uint8_t& hour, uint8_t& minute) {
+  if (value == nullptr    ||
+      strlen(value) != 5  ||
+      !isDigit(value[0])  ||
+      !isDigit(value[1])  ||
+      value[2] != ':'     ||
+      !isDigit(value[3])  ||
+      !isDigit(value[4])) {
+    return false;
+  }
+  hour   = (uint8_t)((value[0] - '0') * 10 + (value[1] - '0'));
+  minute = (uint8_t)((value[3] - '0') * 10 + (value[4] - '0'));
+  return hour < 24 && minute < 60;
+}
+
+bool parseProgramFromJson(const String& programJson, Program& outProgram) {
+  outProgram.reset();
+  outProgram.setValid(true);
+
+  int id = 0;
+  extractNullableId(programJson, id);
+  outProgram.setId((uint16_t)id);
+
+  String hora;
+  uint8_t startHour = 0, startMinute = 0;
+  if (!extractStringField(programJson, "horaInicio", hora) ||
+      !parseHourMinute(hora.c_str(), startHour, startMinute)) {
+    return false;
+  }
+  outProgram.setStartTime(hora.c_str());
+
+  int dias = 0;
+  if (!extractIntField(programJson, "dias", dias) || dias < 0 || dias > 0x7F) return false;
+  outProgram.setDays((uint8_t)dias);
+
+  int retardo = 0;
+  if (!extractIntField(programJson, "retardoEntreSectores", retardo) ||
+      retardo < 0 || retardo > 65535) {
+    return false;
+  }
+  outProgram.setSectorDelay((uint16_t)retardo);
+
+  bool ciclico = false;
+  if (!extractBoolField(programJson, "ciclico", ciclico)) return false;
+  outProgram.setCyclic(ciclico);
+
+  String sectoresArray;
+  if (!extractArrayField(programJson, "sectores", sectoresArray)) return false;
+
+  int pos = 0;
+  while (pos < (int)sectoresArray.length() &&
+         outProgram.getSectorCount() < Config::NUM_SECTORES) {
+    int objStart = sectoresArray.indexOf('{', pos);
+    if (objStart < 0) break;
+
+    int depth = 0, objEnd = -1;
+    for (int i = objStart; i < (int)sectoresArray.length(); i++) {
+      if      (sectoresArray[i] == '{') depth++;
+      else if (sectoresArray[i] == '}') {
+        depth--;
+        if (depth == 0) { objEnd = i; break; }
+      }
+    }
+    if (objEnd < 0) break;
+
+    String item = sectoresArray.substring(objStart, objEnd + 1);
+    int sectorId = 0, orden = 0, tiempo = 0;
+
+    if (extractIntField(item, "id",          sectorId) &&
+        extractIntField(item, "orden",        orden)    &&
+        extractIntField(item, "tiempoRiego",  tiempo)   &&
+        sectorId >= 1 && sectorId <= (int)Config::NUM_SECTORES &&
+        orden    >= 1 && orden    <= (int)Config::NUM_SECTORES &&
+        tiempo   > 0) {
+      ProgramNode node;
+      node.id           = (uint8_t)sectorId;
+      node.order        = (uint8_t)orden;
+      node.irrigationTime = (uint32_t)tiempo;
+      outProgram.addNode(node);
+    }
+
+    pos = objEnd + 1;
+  }
+
+  if (outProgram.getSectorCount() == 0) return false;
+
+  outProgram.sortNodesByOrder();
+  return true;
+}
+
+// ============================================================
+// Scheduler — se mueve a Scheduler class en Fase C2
+// ============================================================
+
 bool shouldStartProgramNow(const Program& program, const Time& now) {
   if (!program.isValid() || program.getSectorCount() == 0) return false;
   if (!isValidDateTime(now.yr, now.mon, now.date, now.hr, now.min, now.sec)) return false;
 
-  // Verificar que el día de la semana esté habilitado en la máscara del programa
   const uint8_t dayBit = dayMaskBitFromDate(now.yr, now.mon, now.date);
   if (dayBit > 6 || (program.getDays() & (1U << dayBit)) == 0) return false;
 
@@ -592,7 +291,6 @@ bool shouldStartProgramNow(const Program& program, const Time& now) {
   return programHour == now.hr && programMinute == now.min;
 }
 
-// Almacena el minuto actual para no disparar el mismo programa dos veces
 void rememberScheduleMinute(const Time& now) {
   lastScheduleYear   = now.yr;
   lastScheduleMonth  = now.mon;
@@ -601,7 +299,6 @@ void rememberScheduleMinute(const Time& now) {
   lastScheduleMinute = now.min;
 }
 
-// Devuelve true si este minuto ya fue procesado por el scheduler
 bool isSameScheduleMinute(const Time& now) {
   return now.yr   == lastScheduleYear   &&
          now.mon  == lastScheduleMonth  &&
@@ -610,7 +307,6 @@ bool isSameScheduleMinute(const Time& now) {
          now.min  == lastScheduleMinute;
 }
 
-// Consulta el RTC y lanza el primer programa cuya hora/día coincida con el momento actual
 void checkScheduledPrograms() {
   const Time now = rtc.time();
   if (!isValidDateTime(now.yr, now.mon, now.date, now.hr, now.min, now.sec)) return;
@@ -618,12 +314,12 @@ void checkScheduledPrograms() {
 
   rememberScheduleMinute(now);
 
-  // No iniciar si ya hay un programa corriendo o hay control manual activo
-  if (systemState == STATE_RUNNING || isManualControlActive()) return;
+  if (irrigationSystem.isRunning() || irrigationSystem.isManualControlActive()) return;
 
   for (uint8_t i = 0; i < Config::MAX_PROGRAMAS; i++) {
-    if (shouldStartProgramNow(programs[i], now)) {
-      startProgramById(programs[i].getId());
+    const Program& p = irrigationSystem.programAt(i);
+    if (shouldStartProgramNow(p, now)) {
+      irrigationSystem.startProgramById(p.getId());
       return;
     }
   }
@@ -633,7 +329,11 @@ void checkScheduledPrograms() {
 // Handlers HTTP
 // ============================================================
 
-// Construye el JSON del RTC para GET /rtc
+String getRequestBody() {
+  if (server.hasArg("plain")) return server.arg("plain");
+  return "";
+}
+
 String buildRTCJson() {
   Time now = rtc.time();
   String json = "{";
@@ -647,22 +347,18 @@ String buildRTCJson() {
   return json;
 }
 
-// Sirve la interfaz web principal (SPA)
 void handleRoot() {
   server.send_P(200, "text/html; charset=utf-8", INDEX_HTML);
 }
 
-// GET /estado — retorna el estado actual del sistema
 void handleEstado() {
   server.send(200, "application/json", buildEstadoJson());
 }
 
-// GET /programas — retorna todos los programas almacenados
 void handleProgramas() {
   server.send(200, "application/json", buildProgramasJson());
 }
 
-// GET /control?type=sector&id=N&state=0|1 — toggle manual de un sector
 void handleControl() {
   if (!server.hasArg("type")) {
     server.send(400, "application/json", buildOkJson(false, "\"error\":\"falta type\""));
@@ -682,20 +378,10 @@ void handleControl() {
       server.send(400, "application/json", buildOkJson(false, "\"error\":\"id invalido\""));
       return;
     }
-
-    if (state) {
-      // Activar modo manual en este sector: detiene cualquier programa automático
-      manualSectorMask |= sectorIdToMask((uint8_t)id);
-      stopRuntime(STATE_IDLE);
-    } else {
-      // Desactivar modo manual en este sector
-      manualSectorMask &= (uint16_t)~sectorIdToMask((uint8_t)id);
-      applyOutputsFromState();
-    }
+    irrigationSystem.setManualSector((uint8_t)id, state != 0);
     server.send(200, "application/json", buildOkJson(true));
 
   } else if (type == "pump") {
-    // La bomba no tiene control independiente: sigue automáticamente a los sectores
     server.send(409, "application/json",
                 buildOkJson(false, "\"error\":\"La bomba sigue automaticamente a los sectores activos\""));
   } else {
@@ -703,14 +389,11 @@ void handleControl() {
   }
 }
 
-// POST /parada — detiene toda ejecución y limpia el modo manual
 void handleParada() {
-  clearManualOverrides();
-  stopRuntime(STATE_MANUAL_STOP);
+  irrigationSystem.stop();
   server.send(200, "application/json", buildOkJson(true));
 }
 
-// POST /configuracion — crea/actualiza/borra/ejecuta programas
 void handleConfiguracion() {
   String body = getRequestBody();
   if (body.length() == 0) {
@@ -718,37 +401,31 @@ void handleConfiguracion() {
     return;
   }
 
-  // Acción: ejecutar un programa por ID
   if (body.indexOf("\"ejecutar\"") >= 0) {
     int runId = 0;
     if (!extractIntField(body, "ejecutar", runId) || runId <= 0) {
       server.send(400, "application/json", buildOkJson(false, "\"error\":\"ejecutar invalido\""));
       return;
     }
-    bool ok = startProgramById((uint16_t)runId);
+    bool ok = irrigationSystem.startProgramById((uint16_t)runId);
     server.send(ok ? 200 : 404, "application/json", buildOkJson(ok));
     return;
   }
 
-  // Acción: borrar un programa por ID
   if (body.indexOf("\"borrar\"") >= 0) {
     int deleteId = 0;
     if (!extractIntField(body, "borrar", deleteId) || deleteId <= 0) {
       server.send(400, "application/json", buildOkJson(false, "\"error\":\"borrar invalido\""));
       return;
     }
-    int idx = findProgramIndexById((uint16_t)deleteId);
-    if (idx < 0) {
+    if (!irrigationSystem.deleteProgram((uint16_t)deleteId)) {
       server.send(404, "application/json", buildOkJson(false, "\"error\":\"programa no encontrado\""));
       return;
     }
-    if (activeProgramId == (uint16_t)deleteId) stopRuntime(STATE_IDLE);
-    programs[idx].setValid(false);
     server.send(200, "application/json", buildOkJson(true));
     return;
   }
 
-  // Acción: guardar (crear o actualizar) un programa
   if (body.indexOf("\"programa\"") >= 0) {
     String programJson;
     if (!extractObjectField(body, "programa", programJson)) {
@@ -760,83 +437,27 @@ void handleConfiguracion() {
       server.send(400, "application/json", buildOkJson(false, "\"error\":\"no se pudo parsear programa\""));
       return;
     }
-
-    // Slot existente (edición) o slot libre (creación)
-    int slot = (parsed.getId() > 0) ? findProgramIndexById(parsed.getId()) : -1;
-    if (slot < 0) {
-      slot = findFreeProgramSlot();
-      if (slot < 0) {
-        server.send(507, "application/json",
-                    buildOkJson(false, "\"error\":\"sin espacio para mas programas\""));
-        return;
-      }
-      parsed.setId(nextProgramId++);
+    uint16_t assignedId = irrigationSystem.saveProgram(parsed);
+    if (assignedId == 0) {
+      server.send(507, "application/json",
+                  buildOkJson(false, "\"error\":\"sin espacio para mas programas\""));
+      return;
     }
-
-    parsed.setValid(true);
-    programs[slot] = parsed;
-    server.send(200, "application/json", buildOkJson(true, "\"id\":" + String(parsed.getId())));
+    server.send(200, "application/json", buildOkJson(true, "\"id\":" + String(assignedId)));
     return;
   }
 
   server.send(400, "application/json", buildOkJson(false, "\"error\":\"accion no reconocida\""));
 }
 
-// Responde 204 sin contenido para solicitudes de favicon
 void handleFavicon() {
   server.send(204, "text/plain", "");
 }
 
-// Ruta no encontrada: sirve la SPA para que el router del cliente maneje la navegación
 void handleNotFound() {
   server.send_P(200, "text/html; charset=utf-8", INDEX_HTML);
 }
 
-// Imprime el estado del sistema por Serial periódicamente
-void printPeriodicStatus() {
-  unsigned long now = millis();
-  if (now - lastStatusPrint < Config::INTERVALO_ESTADO_SERIAL_MS) return;
-  lastStatusPrint = now;
-
-  Serial.println();
-  Serial.println("===== ESTADO DEL SISTEMA =====");
-
-  Time rtcNow = rtc.time();
-  Serial.print("Hora RTC       : ");
-  Serial.print(formatRTCDate(rtcNow));
-  Serial.print(" ");
-  Serial.println(formatRTCTime(rtcNow));
-
-  Serial.print("Estado         : ");
-  Serial.println(isManualControlActive() ? "MANUAL" : stateToString(systemState));
-  Serial.print("Programa activo: ");
-  Serial.println(activeProgramId);
-  Serial.print("Sectores activos: ");
-  Serial.println(formatSectorMaskForSerial(getOutputSectorMask()));
-  Serial.print("Tiempo restante: ");
-  Serial.print(remainingTimeSec);
-  Serial.println(" s");
-  Serial.print("Bomba (GPIO");
-  Serial.print(pump.getPin());
-  Serial.print("): ");
-  Serial.println(pump.isOn() ? "ON" : "OFF");
-  Serial.print("Modo manual    : ");
-  Serial.println(isManualControlActive() ? "SI" : "NO");
-
-  for (uint8_t i = 1; i <= Config::NUM_SECTORES; i++) {
-    Serial.print("- Sector ");
-    Serial.print(i);
-    Serial.print(" (GPIO");
-    Serial.print(sectors[i - 1].getPin());
-    Serial.print("): ");
-    Serial.println(isSectorActive(i) ? "ACTIVO" : "inactivo");
-  }
-
-  Serial.println("==============================");
-}
-
-// GET /rtc  — retorna la hora actual del RTC
-// POST /rtc — establece la hora del RTC mediante parámetros de query string
 void handleRTC() {
   if (server.method() == HTTP_GET) {
     server.send(200, "application/json", buildRTCJson());
@@ -867,7 +488,6 @@ void handleRTC() {
     Time      newTime((uint16_t)year, (uint8_t)month, (uint8_t)day,
                       (uint8_t)hour,  (uint8_t)minute, (uint8_t)second, dow);
 
-    // Secuencia de escritura del DS1302: desproteger → desactivar halt → escribir
     rtc.writeProtect(false);
     delay(10);
     rtc.halt(false);
@@ -882,58 +502,71 @@ void handleRTC() {
 }
 
 // ============================================================
-// Inicialización
+// Estado periódico por serial
 // ============================================================
 
-// Carga dos programas de demostración en memoria (en Fase F se reemplaza por LittleFS)
-void seedDefaultPrograms() {
-  for (uint8_t i = 0; i < Config::MAX_PROGRAMAS; i++) {
-    programs[i] = Program();
+void printPeriodicStatus() {
+  unsigned long now = millis();
+  if (now - lastStatusPrint < Config::INTERVALO_ESTADO_SERIAL_MS) return;
+  lastStatusPrint = now;
+
+  Serial.println();
+  Serial.println("===== ESTADO DEL SISTEMA =====");
+
+  Time rtcNow = rtc.time();
+  Serial.print("Hora RTC       : ");
+  Serial.print(formatRTCDate(rtcNow));
+  Serial.print(" ");
+  Serial.println(formatRTCTime(rtcNow));
+
+  const SystemStateSnapshot snap = irrigationSystem.getStateSnapshot();
+  Serial.print("Estado         : ");
+  Serial.println(irrigationSystem.isManualControlActive() ? "MANUAL" : snap.stateName);
+  Serial.print("Programa activo: ");
+  Serial.println(snap.activeProgramId);
+  Serial.print("Sectores activos: ");
+  Serial.println(formatSectorMaskForSerial(snap.activeSectorMask));
+  Serial.print("Tiempo restante: ");
+  Serial.print(snap.remainingTimeSec);
+  Serial.println(" s");
+  Serial.print("Bomba (GPIO");
+  Serial.print(irrigationSystem.getPumpPin());
+  Serial.print("): ");
+  Serial.println(snap.pumpOn ? "ON" : "OFF");
+  Serial.print("Modo manual    : ");
+  Serial.println(snap.manualActive ? "SI" : "NO");
+
+  for (uint8_t i = 1; i <= Config::NUM_SECTORES; i++) {
+    Serial.print("- Sector ");
+    Serial.print(i);
+    Serial.print(" (GPIO");
+    Serial.print(irrigationSystem.getSectorPin(i));
+    Serial.print("): ");
+    Serial.println(irrigationSystem.isSectorActive(i) ? "ACTIVO" : "inactivo");
   }
 
-  // Programa 1: lunes a viernes a las 07:00, cíclico, 4 sectores
-  programs[0].setValid(true);
-  programs[0].setId(1);
-  programs[0].setStartTime("07:00");
-  programs[0].setDays(0b0111110);  // lun=bit0 … vie=bit4
-  programs[0].setSectorDelay(5);
-  programs[0].setCyclic(true);
-  programs[0].addNode({1, 1,  60});
-  programs[0].addNode({2, 2,  90});
-  programs[0].addNode({3, 3, 120});
-  programs[0].addNode({5, 4,  45});
-
-  // Programa 2: sábado y domingo a las 19:30, no cíclico, 3 sectores
-  programs[1].setValid(true);
-  programs[1].setId(2);
-  programs[1].setStartTime("19:30");
-  programs[1].setDays(0b1100000);  // sáb=bit5, dom=bit6
-  programs[1].setSectorDelay(10);
-  programs[1].setCyclic(false);
-  programs[1].addNode({4, 1, 180});
-  programs[1].addNode({6, 2, 180});
-  programs[1].addNode({8, 3,  90});
+  Serial.println("==============================");
 }
 
-// Configura GPIO, RTC, Wi-Fi y servidor HTTP
+// ============================================================
+// Inicialización y loop principal
+// ============================================================
+
 void setup() {
   Serial.begin(115200);
   delay(300);
 
-  // Inicializar sectores: configura cada GPIO como salida y cierra la válvula
-  for (uint8_t i = 0; i < Config::NUM_SECTORES; i++) {
-    sectors[i].begin();
+  irrigationSystem.begin();
 
-    // GPIO34-39 son entrada-only en el ESP32 y no pueden manejar cargas
-    if (sectors[i].getPin() >= 34 && sectors[i].getPin() <= 39) {
+  // Advertencia sobre pines de solo entrada en ESP32
+  for (uint8_t i = 1; i <= Config::NUM_SECTORES; i++) {
+    uint8_t pin = irrigationSystem.getSectorPin(i);
+    if (pin >= 34 && pin <= 39) {
       Serial.print("ADVERTENCIA: GPIO");
-      Serial.print(sectors[i].getPin());
+      Serial.print(pin);
       Serial.println(" es solo entrada y no puede manejar una salida.");
     }
   }
-
-  // Inicializar bomba: configura el GPIO como salida y la apaga
-  pump.begin();
 
   // Inicializar RTC DS1302
   Serial.println("\n\nInicializando RTC...");
@@ -982,8 +615,7 @@ void setup() {
 
   rtc.writeProtect(true);
 
-  seedDefaultPrograms();
-  stopRuntime(STATE_IDLE);
+  irrigationSystem.seedDefaultPrograms();
 
   // Levantar el Access Point Wi-Fi
   WiFi.mode(WIFI_AP);
@@ -1006,11 +638,11 @@ void setup() {
   Serial.print(", RST: GPIO");
   Serial.println(Config::RTC_RST);
   Serial.print("Pin bomba  : GPIO");
-  Serial.println(pump.getPin());
+  Serial.println(irrigationSystem.getPumpPin());
   Serial.print("Pines sectores (1-8):");
-  for (uint8_t i = 0; i < Config::NUM_SECTORES; i++) {
+  for (uint8_t i = 1; i <= Config::NUM_SECTORES; i++) {
     Serial.print(" GPIO");
-    Serial.print(sectors[i].getPin());
+    Serial.print(irrigationSystem.getSectorPin(i));
   }
   Serial.println();
   Serial.println("==================================");
@@ -1032,10 +664,9 @@ void setup() {
   lastStatusPrint = millis();
 }
 
-// Loop principal: atiende HTTP, verifica el scheduler y actualiza el runtime
 void loop() {
   server.handleClient();
   checkScheduledPrograms();
-  updateRuntime();
+  irrigationSystem.tick();
   printPeriodicStatus();
 }

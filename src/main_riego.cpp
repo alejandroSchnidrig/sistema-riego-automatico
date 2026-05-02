@@ -3,6 +3,7 @@
 #include <WebServer.h>
 #include <DS1302.h>
 #include "config/Config.h"
+#include "web/JsonHelpers.h"
 #include "pages/index_html.h"
 
 /*
@@ -165,22 +166,9 @@ uint8_t getFirstManualSectorId() {
 }
 
 // ============================================================
-// Serialización JSON — helpers
+// Serialización JSON — helpers locales
+// (buildSectorArrayJson, boolToJson, escapeJson → web/JsonHelpers)
 // ============================================================
-
-// Construye un arreglo JSON con los IDs de sectores activos en la máscara
-String buildSectorArrayJson(uint16_t sectorMask) {
-  String json = "[";
-  bool first = true;
-  for (uint8_t i = 1; i <= Config::NUM_SECTORES; i++) {
-    if ((sectorMask & sectorIdToMask(i)) == 0) continue;
-    if (!first) json += ",";
-    first = false;
-    json += String(i);
-  }
-  json += "]";
-  return json;
-}
 
 // Formatea la máscara de sectores como texto legible para el monitor serial
 String formatSectorMaskForSerial(uint16_t sectorMask) {
@@ -205,190 +193,15 @@ const char* stateToString(SystemState state) {
   }
 }
 
-// Serializa un booleano como literal JSON
-String boolToJson(bool value) {
-  return value ? "true" : "false";
-}
-
-// Escapa caracteres especiales para incrustar en un string JSON
-String escapeJson(const String& input) {
-  String out;
-  out.reserve(input.length() + 8);
-  for (size_t i = 0; i < input.length(); i++) {
-    char c = input[i];
-    if      (c == '"')  out += "\\\"";
-    else if (c == '\\') out += "\\\\";
-    else if (c == '\n') out += "\\n";
-    else if (c == '\r') out += "\\r";
-    else                out += c;
-  }
-  return out;
-}
-
 // ============================================================
-// Parser JSON hand-rolled
-// (decisión de diseño: no se usa ArduinoJson en este sprint)
+// Parser JSON hand-rolled — helpers locales
+// (extract*, boolToJson, escapeJson → web/JsonHelpers)
 // ============================================================
 
 // Devuelve el cuerpo crudo del request HTTP actual
 String getRequestBody() {
   if (server.hasArg("plain")) return server.arg("plain");
   return "";
-}
-
-// Parsea un entero a partir de startPos en src; actualiza endPos al carácter siguiente
-bool extractIntAt(const String& src, int startPos, int& value, int& endPos) {
-  int i = startPos;
-  // Saltear espacios en blanco
-  while (i < (int)src.length() &&
-         (src[i] == ' ' || src[i] == '\t' || src[i] == '\n' || src[i] == '\r')) {
-    i++;
-  }
-
-  bool negative = false;
-  if (i < (int)src.length() && src[i] == '-') {
-    negative = true;
-    i++;
-  }
-
-  if (i >= (int)src.length() || !isDigit(src[i])) return false;
-
-  long result = 0;
-  while (i < (int)src.length() && isDigit(src[i])) {
-    result = result * 10 + (src[i] - '0');
-    i++;
-  }
-
-  value  = negative ? (int)-result : (int)result;
-  endPos = i;
-  return true;
-}
-
-// Extrae el valor entero de un campo JSON por clave
-bool extractIntField(const String& json, const String& key, int& out) {
-  String pattern = "\"" + key + "\"";
-  int pos = json.indexOf(pattern);
-  if (pos < 0) return false;
-
-  pos = json.indexOf(':', pos);
-  if (pos < 0) return false;
-  pos++;
-
-  int endPos = pos;
-  return extractIntAt(json, pos, out, endPos);
-}
-
-// Extrae el valor booleano de un campo JSON por clave
-bool extractBoolField(const String& json, const String& key, bool& out) {
-  String pattern = "\"" + key + "\"";
-  int pos = json.indexOf(pattern);
-  if (pos < 0) return false;
-
-  pos = json.indexOf(':', pos);
-  if (pos < 0) return false;
-  pos++;
-
-  // Saltear espacios
-  while (pos < (int)json.length() &&
-         (json[pos] == ' ' || json[pos] == '\t' || json[pos] == '\n' || json[pos] == '\r')) {
-    pos++;
-  }
-
-  if (json.startsWith("true",  pos)) { out = true;  return true; }
-  if (json.startsWith("false", pos)) { out = false; return true; }
-  return false;
-}
-
-// Extrae el valor string de un campo JSON por clave
-bool extractStringField(const String& json, const String& key, String& out) {
-  String pattern = "\"" + key + "\"";
-  int pos = json.indexOf(pattern);
-  if (pos < 0) return false;
-
-  pos = json.indexOf(':', pos);
-  if (pos < 0) return false;
-  pos++;
-
-  while (pos < (int)json.length() &&
-         (json[pos] == ' ' || json[pos] == '\t' || json[pos] == '\n' || json[pos] == '\r')) {
-    pos++;
-  }
-
-  if (pos >= (int)json.length() || json[pos] != '"') return false;
-
-  pos++;
-  int end = json.indexOf('"', pos);
-  if (end < 0) return false;
-
-  out = json.substring(pos, end);
-  return true;
-}
-
-// Extrae el campo "id" que puede ser null o estar ausente (retorna 0 en ese caso)
-bool extractNullableId(const String& json, int& out) {
-  String pattern = "\"id\"";
-  int pos = json.indexOf(pattern);
-  if (pos < 0) { out = 0; return true; }
-
-  pos = json.indexOf(':', pos);
-  if (pos < 0) return false;
-  pos++;
-
-  while (pos < (int)json.length() &&
-         (json[pos] == ' ' || json[pos] == '\t' || json[pos] == '\n' || json[pos] == '\r')) {
-    pos++;
-  }
-
-  if (json.startsWith("null", pos)) { out = 0; return true; }
-
-  int endPos = pos;
-  return extractIntAt(json, pos, out, endPos);
-}
-
-// Extrae un objeto JSON anidado por clave (busca el {} balanceado)
-bool extractObjectField(const String& json, const String& key, String& out) {
-  String pattern = "\"" + key + "\"";
-  int pos = json.indexOf(pattern);
-  if (pos < 0) return false;
-
-  pos = json.indexOf(':', pos);
-  if (pos < 0) return false;
-
-  int start = json.indexOf('{', pos);
-  if (start < 0) return false;
-
-  int depth = 0;
-  for (int i = start; i < (int)json.length(); i++) {
-    if      (json[i] == '{') depth++;
-    else if (json[i] == '}') {
-      depth--;
-      if (depth == 0) { out = json.substring(start, i + 1); return true; }
-    }
-  }
-  return false;
-}
-
-// Extrae un arreglo JSON por clave (busca el [] balanceado)
-bool extractArrayField(const String& json, const String& key, String& out) {
-  String pattern = "\"" + key + "\"";
-  int pos = json.indexOf(pattern);
-  if (pos < 0) return false;
-
-  pos = json.indexOf(':', pos);
-  if (pos < 0) return false;
-
-  int start = json.indexOf('[', pos);
-  if (start < 0) return false;
-
-  int depth = 0;
-  for (int i = start; i < (int)json.length(); i++) {
-    if      (json[i] == '[') depth++;
-    else if (json[i] == ']') {
-      depth--;
-      if (depth == 0) { out = json.substring(start, i + 1); return true; }
-    }
-  }
-  return false;
 }
 
 // ============================================================

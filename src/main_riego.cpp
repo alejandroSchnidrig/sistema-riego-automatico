@@ -3,6 +3,7 @@
 #include <WebServer.h>
 #include <DS1302.h>
 #include "config/Config.h"
+#include "domain/Valve.h"
 #include "web/JsonHelpers.h"
 #include "pages/index_html.h"
 
@@ -30,6 +31,19 @@ WebServer server(80);
 
 // Módulo RTC DS1302 — constructor recibe (RST, DAT, CLK) según la librería arduino-ds1302
 DS1302 rtc(Config::RTC_RST, Config::RTC_DAT, Config::RTC_CLK);
+
+// Una instancia de Valve por sector (índice 0 = sector 1, ..., índice 7 = sector 8).
+// begin() se llama en setup() porque pinMode() no está disponible antes de eso.
+Valve valves[Config::NUM_SECTORES] = {
+  Valve(Config::PINES_SECTORES[0], 1),
+  Valve(Config::PINES_SECTORES[1], 2),
+  Valve(Config::PINES_SECTORES[2], 3),
+  Valve(Config::PINES_SECTORES[3], 4),
+  Valve(Config::PINES_SECTORES[4], 5),
+  Valve(Config::PINES_SECTORES[5], 6),
+  Valve(Config::PINES_SECTORES[6], 7),
+  Valve(Config::PINES_SECTORES[7], 8)
+};
 
 // ============================================================
 // Enumeraciones y estructuras de dominio
@@ -130,11 +144,14 @@ bool isSectorActive(uint8_t sectorId) {
   return (getOutputSectorMask() & sectorIdToMask(sectorId)) != 0;
 }
 
-// Escribe la máscara de sectores directamente en los pines GPIO
+// Aplica la máscara de sectores a los objetos Valve (abre o cierra cada uno)
 void setSectorHardware(uint16_t sectorMask) {
   for (uint8_t i = 0; i < Config::NUM_SECTORES; i++) {
-    digitalWrite(Config::PINES_SECTORES[i],
-                 (sectorMask & sectorIdToMask(i + 1)) != 0 ? HIGH : LOW);
+    if ((sectorMask & sectorIdToMask(i + 1)) != 0) {
+      valves[i].open();
+    } else {
+      valves[i].close();
+    }
   }
 }
 
@@ -838,7 +855,7 @@ void printPeriodicStatus() {
     Serial.print("- Sector ");
     Serial.print(i);
     Serial.print(" (GPIO");
-    Serial.print(Config::PINES_SECTORES[i - 1]);
+    Serial.print(valves[i - 1].getPin());
     Serial.print("): ");
     Serial.println(isSectorActive(i) ? "ACTIVO" : "inactivo");
   }
@@ -931,15 +948,14 @@ void setup() {
   Serial.begin(115200);
   delay(300);
 
-  // Configurar pines de sectores como salidas (todos apagados al inicio)
+  // Inicializar válvulas: configura cada GPIO como salida y cierra la válvula
   for (uint8_t i = 0; i < Config::NUM_SECTORES; i++) {
-    pinMode(Config::PINES_SECTORES[i], OUTPUT);
-    digitalWrite(Config::PINES_SECTORES[i], LOW);
+    valves[i].begin();
 
     // GPIO34-39 son entrada-only en el ESP32 y no pueden manejar cargas
-    if (Config::PINES_SECTORES[i] >= 34 && Config::PINES_SECTORES[i] <= 39) {
+    if (valves[i].getPin() >= 34 && valves[i].getPin() <= 39) {
       Serial.print("ADVERTENCIA: GPIO");
-      Serial.print(Config::PINES_SECTORES[i]);
+      Serial.print(valves[i].getPin());
       Serial.println(" es solo entrada y no puede manejar una salida.");
     }
   }
@@ -1023,7 +1039,7 @@ void setup() {
   Serial.print("Pines sectores (1-8):");
   for (uint8_t i = 0; i < Config::NUM_SECTORES; i++) {
     Serial.print(" GPIO");
-    Serial.print(Config::PINES_SECTORES[i]);
+    Serial.print(valves[i].getPin());
   }
   Serial.println();
   Serial.println("==================================");

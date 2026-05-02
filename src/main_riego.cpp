@@ -5,6 +5,7 @@
 #include "config/Config.h"
 #include "domain/Sector.h"
 #include "domain/Pump.h"
+#include "domain/Program.h"
 #include "web/JsonHelpers.h"
 #include "pages/index_html.h"
 
@@ -56,25 +57,6 @@ enum SystemState {
   STATE_IDLE,          // sin programa en ejecución
   STATE_RUNNING,       // programa en curso
   STATE_MANUAL_STOP    // detenido manualmente por el usuario
-};
-
-// Un paso de ejecución dentro de un programa (modelo lineal — se reemplaza en Fase D)
-struct SectorStep {
-  uint8_t  id;           // ID del sector (1-8)
-  uint8_t  orden;        // posición en la secuencia del programa
-  uint32_t tiempoRiego;  // duración de riego en segundos
-};
-
-// Programa de riego: lista ordenada de sectores con configuración de horario
-struct Program {
-  bool       valid;                              // slot ocupado en el arreglo
-  uint16_t   id;
-  char       horaInicio[6];                      // "HH:MM\0"
-  uint8_t    dias;                               // bitmask: lun=bit0 … dom=bit6
-  uint16_t   retardoEntreSectores;               // segundos de pausa entre sectores
-  bool       ciclico;                            // ¿vuelve a empezar al terminar?
-  uint8_t    sectorCount;
-  SectorStep sectores[Config::NUM_SECTORES];     // lista de pasos ordenados
 };
 
 // ============================================================
@@ -226,19 +208,6 @@ String getRequestBody() {
 // Operaciones sobre programas
 // ============================================================
 
-// Ordena los sectores de un programa por su campo `orden` (burbuja simple)
-void sortProgramSectors(Program& program) {
-  for (uint8_t i = 0; i < program.sectorCount; i++) {
-    for (uint8_t j = i + 1; j < program.sectorCount; j++) {
-      if (program.sectores[j].orden < program.sectores[i].orden) {
-        SectorStep tmp      = program.sectores[i];
-        program.sectores[i] = program.sectores[j];
-        program.sectores[j] = tmp;
-      }
-    }
-  }
-}
-
 // Valida y parsea una hora en formato "HH:MM"
 bool parseHourMinute(const char* value, uint8_t& hour, uint8_t& minute) {
   if (value == nullptr    ||
@@ -258,13 +227,13 @@ bool parseHourMinute(const char* value, uint8_t& hour, uint8_t& minute) {
 
 // Parsea un programa completo desde su representación JSON
 bool parseProgramFromJson(const String& programJson, Program& outProgram) {
-  memset(&outProgram, 0, sizeof(outProgram));
-  outProgram.valid = true;
+  outProgram.reset();
+  outProgram.setValid(true);
 
   // ID: null o ausente significa "crear nuevo"
   int id = 0;
   extractNullableId(programJson, id);
-  outProgram.id = (uint16_t)id;
+  outProgram.setId((uint16_t)id);
 
   // Hora de inicio obligatoria en formato "HH:MM"
   String hora;
@@ -273,12 +242,12 @@ bool parseProgramFromJson(const String& programJson, Program& outProgram) {
       !parseHourMinute(hora.c_str(), startHour, startMinute)) {
     return false;
   }
-  hora.toCharArray(outProgram.horaInicio, sizeof(outProgram.horaInicio));
+  outProgram.setStartTime(hora.c_str());
 
   // Días de ejecución como bitmask (0–127)
   int dias = 0;
   if (!extractIntField(programJson, "dias", dias) || dias < 0 || dias > 0x7F) return false;
-  outProgram.dias = (uint8_t)dias;
+  outProgram.setDays((uint8_t)dias);
 
   // Retardo en segundos entre un sector y el siguiente
   int retardo = 0;
@@ -286,19 +255,20 @@ bool parseProgramFromJson(const String& programJson, Program& outProgram) {
       retardo < 0 || retardo > 65535) {
     return false;
   }
-  outProgram.retardoEntreSectores = (uint16_t)retardo;
+  outProgram.setSectorDelay((uint16_t)retardo);
 
   // ¿El programa se repite al terminar el último sector?
   bool ciclico = false;
   if (!extractBoolField(programJson, "ciclico", ciclico)) return false;
-  outProgram.ciclico = ciclico;
+  outProgram.setCyclic(ciclico);
 
   // Lista de sectores del programa
   String sectoresArray;
   if (!extractArrayField(programJson, "sectores", sectoresArray)) return false;
 
   int pos = 0;
-  while (pos < (int)sectoresArray.length() && outProgram.sectorCount < Config::NUM_SECTORES) {
+  while (pos < (int)sectoresArray.length() &&
+         outProgram.getSectorCount() < Config::NUM_SECTORES) {
     int objStart = sectoresArray.indexOf('{', pos);
     if (objStart < 0) break;
 
@@ -322,25 +292,26 @@ bool parseProgramFromJson(const String& programJson, Program& outProgram) {
         sectorId >= 1 && sectorId <= (int)Config::NUM_SECTORES &&
         orden    >= 1 && orden    <= (int)Config::NUM_SECTORES &&
         tiempo   > 0) {
-      SectorStep& s  = outProgram.sectores[outProgram.sectorCount++];
-      s.id           = (uint8_t)sectorId;
-      s.orden        = (uint8_t)orden;
-      s.tiempoRiego  = (uint32_t)tiempo;
+      ProgramNode node;
+      node.id          = (uint8_t)sectorId;
+      node.order       = (uint8_t)orden;
+      node.irrigationTime = (uint32_t)tiempo;
+      outProgram.addNode(node);
     }
 
     pos = objEnd + 1;
   }
 
-  if (outProgram.sectorCount == 0) return false;
+  if (outProgram.getSectorCount() == 0) return false;
 
-  sortProgramSectors(outProgram);
+  outProgram.sortNodesByOrder();
   return true;
 }
 
 // Busca un programa por ID y retorna su índice (-1 si no existe)
 int findProgramIndexById(uint16_t id) {
   for (uint8_t i = 0; i < Config::MAX_PROGRAMAS; i++) {
-    if (programs[i].valid && programs[i].id == id) return i;
+    if (programs[i].isValid() && programs[i].getId() == id) return i;
   }
   return -1;
 }
@@ -348,7 +319,7 @@ int findProgramIndexById(uint16_t id) {
 // Retorna el primer slot libre del arreglo de programas (-1 si está lleno)
 int findFreeProgramSlot() {
   for (uint8_t i = 0; i < Config::MAX_PROGRAMAS; i++) {
-    if (!programs[i].valid) return i;
+    if (!programs[i].isValid()) return i;
   }
   return -1;
 }
@@ -373,13 +344,13 @@ void stopRuntime(SystemState newState) {
 
 // Inicia un paso específico del programa (activa el sector correspondiente)
 void startStep(int programIndex, int stepIndex) {
-  if (programIndex < 0 || !programs[programIndex].valid) {
+  if (programIndex < 0 || !programs[programIndex].isValid()) {
     stopRuntime(STATE_IDLE);
     return;
   }
 
   Program& p = programs[programIndex];
-  if (stepIndex < 0 || stepIndex >= p.sectorCount) {
+  if (stepIndex < 0 || stepIndex >= p.getSectorCount()) {
     stopRuntime(STATE_IDLE);
     return;
   }
@@ -388,9 +359,9 @@ void startStep(int programIndex, int stepIndex) {
   runningStepIndex      = stepIndex;
   waitingBetweenSectors = false;
   systemState           = STATE_RUNNING;
-  activeProgramId       = p.id;
-  activeSectorId        = p.sectores[stepIndex].id;
-  remainingTimeSec      = p.sectores[stepIndex].tiempoRiego;
+  activeProgramId       = p.getId();
+  activeSectorId        = p.getNode(stepIndex).id;
+  remainingTimeSec      = p.getNode(stepIndex).irrigationTime;
   stepStartMs           = millis();
 
   applyOutputsFromState();
@@ -402,7 +373,7 @@ bool startProgramById(uint16_t id) {
   if (index < 0) return false;
 
   Program& p = programs[index];
-  if (p.sectorCount == 0) return false;
+  if (p.getSectorCount() == 0) return false;
 
   clearManualOverrides();
   startStep(index, 0);
@@ -419,10 +390,10 @@ void updateRuntime() {
   // Fase de espera entre sectores (retardo configurado)
   if (waitingBetweenSectors) {
     remainingTimeSec = 0;
-    if (now - delayStartMs >= (unsigned long)p.retardoEntreSectores * 1000UL) {
+    if (now - delayStartMs >= (unsigned long)p.getSectorDelay() * 1000UL) {
       int nextStep = runningStepIndex + 1;
-      if (nextStep >= p.sectorCount) {
-        p.ciclico ? startStep(runningProgramIndex, 0) : stopRuntime(STATE_IDLE);
+      if (nextStep >= p.getSectorCount()) {
+        p.isCyclic() ? startStep(runningProgramIndex, 0) : stopRuntime(STATE_IDLE);
       } else {
         startStep(runningProgramIndex, nextStep);
       }
@@ -431,7 +402,7 @@ void updateRuntime() {
   }
 
   // Fase de riego activo: verificar si se agotó el tiempo del sector actual
-  uint32_t      stepDurationSec = p.sectores[runningStepIndex].tiempoRiego;
+  uint32_t      stepDurationSec = p.getNode(runningStepIndex).irrigationTime;
   unsigned long elapsedMs       = now - stepStartMs;
   uint32_t      elapsedSec      = (uint32_t)(elapsedMs / 1000UL);
 
@@ -442,10 +413,10 @@ void updateRuntime() {
 
     int nextStep = runningStepIndex + 1;
 
-    if (nextStep >= p.sectorCount) {
+    if (nextStep >= p.getSectorCount()) {
       // Era el último sector del programa
-      if (p.ciclico) {
-        if (p.retardoEntreSectores > 0) {
+      if (p.isCyclic()) {
+        if (p.getSectorDelay() > 0) {
           waitingBetweenSectors = true;
           delayStartMs          = now;
         } else {
@@ -456,7 +427,7 @@ void updateRuntime() {
       }
     } else {
       // Quedan más sectores
-      if (p.retardoEntreSectores > 0) {
+      if (p.getSectorDelay() > 0) {
         waitingBetweenSectors = true;
         delayStartMs          = now;
         remainingTimeSec      = 0;
@@ -499,25 +470,25 @@ String buildProgramasJson() {
   bool firstProgram = true;
 
   for (uint8_t i = 0; i < Config::MAX_PROGRAMAS; i++) {
-    if (!programs[i].valid) continue;
+    if (!programs[i].isValid()) continue;
     if (!firstProgram) json += ",";
     firstProgram = false;
 
     Program& p = programs[i];
     json += "{";
-    json += "\"id\":"                   + String(p.id)                              + ",";
-    json += "\"horaInicio\":\""         + escapeJson(String(p.horaInicio))          + "\",";
-    json += "\"dias\":"                 + String(p.dias)                            + ",";
-    json += "\"retardoEntreSectores\":" + String(p.retardoEntreSectores)            + ",";
-    json += "\"ciclico\":"              + boolToJson(p.ciclico)                     + ",";
+    json += "\"id\":"                   + String(p.getId())                              + ",";
+    json += "\"horaInicio\":\""         + escapeJson(String(p.getStartTime()))          + "\",";
+    json += "\"dias\":"                 + String(p.getDays())                            + ",";
+    json += "\"retardoEntreSectores\":" + String(p.getSectorDelay())            + ",";
+    json += "\"ciclico\":"              + boolToJson(p.isCyclic())                      + ",";
     json += "\"sectores\":[";
 
-    for (uint8_t s = 0; s < p.sectorCount; s++) {
+    for (uint8_t s = 0; s < p.getSectorCount(); s++) {
       if (s > 0) json += ",";
       json += "{";
-      json += "\"id\":"          + String(p.sectores[s].id)         + ",";
-      json += "\"orden\":"       + String(p.sectores[s].orden)      + ",";
-      json += "\"tiempoRiego\":" + String(p.sectores[s].tiempoRiego);
+      json += "\"id\":"          + String(p.getNode(s).id)         + ",";
+      json += "\"orden\":"       + String(p.getNode(s).order)      + ",";
+      json += "\"tiempoRiego\":" + String(p.getNode(s).irrigationTime);
       json += "}";
     }
 
@@ -608,15 +579,15 @@ uint8_t dayMaskBitFromDate(uint16_t year, uint8_t month, uint8_t day) {
 
 // Devuelve true si el programa debe iniciarse en el minuto actual del RTC
 bool shouldStartProgramNow(const Program& program, const Time& now) {
-  if (!program.valid || program.sectorCount == 0) return false;
+  if (!program.isValid() || program.getSectorCount() == 0) return false;
   if (!isValidDateTime(now.yr, now.mon, now.date, now.hr, now.min, now.sec)) return false;
 
   // Verificar que el día de la semana esté habilitado en la máscara del programa
   const uint8_t dayBit = dayMaskBitFromDate(now.yr, now.mon, now.date);
-  if (dayBit > 6 || (program.dias & (1U << dayBit)) == 0) return false;
+  if (dayBit > 6 || (program.getDays() & (1U << dayBit)) == 0) return false;
 
   uint8_t programHour = 0, programMinute = 0;
-  if (!parseHourMinute(program.horaInicio, programHour, programMinute)) return false;
+  if (!parseHourMinute(program.getStartTime(), programHour, programMinute)) return false;
 
   return programHour == now.hr && programMinute == now.min;
 }
@@ -652,7 +623,7 @@ void checkScheduledPrograms() {
 
   for (uint8_t i = 0; i < Config::MAX_PROGRAMAS; i++) {
     if (shouldStartProgramNow(programs[i], now)) {
-      startProgramById(programs[i].id);
+      startProgramById(programs[i].getId());
       return;
     }
   }
@@ -772,7 +743,7 @@ void handleConfiguracion() {
       return;
     }
     if (activeProgramId == (uint16_t)deleteId) stopRuntime(STATE_IDLE);
-    programs[idx].valid = false;
+    programs[idx].setValid(false);
     server.send(200, "application/json", buildOkJson(true));
     return;
   }
@@ -791,7 +762,7 @@ void handleConfiguracion() {
     }
 
     // Slot existente (edición) o slot libre (creación)
-    int slot = (parsed.id > 0) ? findProgramIndexById(parsed.id) : -1;
+    int slot = (parsed.getId() > 0) ? findProgramIndexById(parsed.getId()) : -1;
     if (slot < 0) {
       slot = findFreeProgramSlot();
       if (slot < 0) {
@@ -799,12 +770,12 @@ void handleConfiguracion() {
                     buildOkJson(false, "\"error\":\"sin espacio para mas programas\""));
         return;
       }
-      parsed.id = nextProgramId++;
+      parsed.setId(nextProgramId++);
     }
 
-    parsed.valid  = true;
+    parsed.setValid(true);
     programs[slot] = parsed;
-    server.send(200, "application/json", buildOkJson(true, "\"id\":" + String(parsed.id)));
+    server.send(200, "application/json", buildOkJson(true, "\"id\":" + String(parsed.getId())));
     return;
   }
 
@@ -916,32 +887,32 @@ void handleRTC() {
 
 // Carga dos programas de demostración en memoria (en Fase F se reemplaza por LittleFS)
 void seedDefaultPrograms() {
-  memset(programs, 0, sizeof(programs));
+  for (uint8_t i = 0; i < Config::MAX_PROGRAMAS; i++) {
+    programs[i] = Program();
+  }
 
   // Programa 1: lunes a viernes a las 07:00, cíclico, 4 sectores
-  programs[0].valid                = true;
-  programs[0].id                   = 1;
-  strncpy(programs[0].horaInicio, "07:00", sizeof(programs[0].horaInicio));
-  programs[0].dias                 = 0b0111110;  // lun=bit0 … vie=bit4
-  programs[0].retardoEntreSectores = 5;
-  programs[0].ciclico              = true;
-  programs[0].sectorCount          = 4;
-  programs[0].sectores[0]          = {1, 1,  60};
-  programs[0].sectores[1]          = {2, 2,  90};
-  programs[0].sectores[2]          = {3, 3, 120};
-  programs[0].sectores[3]          = {5, 4,  45};
+  programs[0].setValid(true);
+  programs[0].setId(1);
+  programs[0].setStartTime("07:00");
+  programs[0].setDays(0b0111110);  // lun=bit0 … vie=bit4
+  programs[0].setSectorDelay(5);
+  programs[0].setCyclic(true);
+  programs[0].addNode({1, 1,  60});
+  programs[0].addNode({2, 2,  90});
+  programs[0].addNode({3, 3, 120});
+  programs[0].addNode({5, 4,  45});
 
   // Programa 2: sábado y domingo a las 19:30, no cíclico, 3 sectores
-  programs[1].valid                = true;
-  programs[1].id                   = 2;
-  strncpy(programs[1].horaInicio, "19:30", sizeof(programs[1].horaInicio));
-  programs[1].dias                 = 0b1100000;  // sáb=bit5, dom=bit6
-  programs[1].retardoEntreSectores = 10;
-  programs[1].ciclico              = false;
-  programs[1].sectorCount          = 3;
-  programs[1].sectores[0]          = {4, 1, 180};
-  programs[1].sectores[1]          = {6, 2, 180};
-  programs[1].sectores[2]          = {8, 3,  90};
+  programs[1].setValid(true);
+  programs[1].setId(2);
+  programs[1].setStartTime("19:30");
+  programs[1].setDays(0b1100000);  // sáb=bit5, dom=bit6
+  programs[1].setSectorDelay(10);
+  programs[1].setCyclic(false);
+  programs[1].addNode({4, 1, 180});
+  programs[1].addNode({6, 2, 180});
+  programs[1].addNode({8, 3,  90});
 }
 
 // Configura GPIO, RTC, Wi-Fi y servidor HTTP

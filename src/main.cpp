@@ -25,6 +25,8 @@
   Compilar con PlatformIO: pio run --target upload
 */
 
+// El orden de declaración importa: irrigationSystem y rtcManager deben construirse
+// antes que scheduler y httpServer, que los reciben por referencia.
 RTCManager       rtcManager(Config::RTC_RST, Config::RTC_DAT, Config::RTC_CLK);
 IrrigationSystem irrigationSystem;
 Scheduler        scheduler(irrigationSystem, rtcManager);

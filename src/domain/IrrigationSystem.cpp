@@ -13,7 +13,7 @@ IrrigationSystem::IrrigationSystem()
       Sector(8, Config::PINES_SECTORES[7])
     },
     _pump(Config::PIN_BOMBA),
-    _nextProgramId(3),
+    _nextProgramId(3), // los programas semilla ocupan IDs 1 y 2; los IDs del usuario empiezan en 3
     _state(SystemState::IDLE),
     _activeProgramId(0),
     _activeSectorId(0),
@@ -82,6 +82,7 @@ void IrrigationSystem::tick() {
   Program& p        = _programs[_runningProgramIndex];
   unsigned long now = millis();
 
+  // Fase 1: pausa inter-sector — espera el retardo antes de pasar al siguiente paso.
   if (_waitingBetweenSectors) {
     _remainingTimeSec = 0;
     if (now - _delayStartMs >= (unsigned long)p.getSectorDelay() * 1000UL) {
@@ -95,6 +96,7 @@ void IrrigationSystem::tick() {
     return;
   }
 
+  // Fase 2: ejecución del paso actual — riega el sector durante irrigationTime segundos.
   uint32_t      stepDurationSec = p.getNode(_runningStepIndex).irrigationTime;
   unsigned long elapsedMs       = now - _stepStartMs;
   uint32_t      elapsedSec      = (uint32_t)(elapsedMs / 1000UL);
@@ -159,10 +161,10 @@ void IrrigationSystem::clearManualOverrides() {
 void IrrigationSystem::setManualSector(uint8_t sectorId, bool on) {
   if (on) {
     _manualSectorMask |= sectorIdToMask(sectorId);
-    stopRuntime(SystemState::IDLE);
+    stopRuntime(SystemState::IDLE); // activar manual detiene el programa en curso
   } else {
     _manualSectorMask &= (uint16_t)~sectorIdToMask(sectorId);
-    applyOutputsFromState();
+    applyOutputsFromState(); // desactivar solo refresca salidas, no toca el estado del programa
   }
 }
 
@@ -211,6 +213,7 @@ bool IrrigationSystem::isSectorActive(uint8_t sectorId) const {
 }
 
 uint16_t IrrigationSystem::getOutputSectorMask() const {
+  // OR permite que manual y programático coexistan sin pisarse
   return _manualSectorMask | sectorIdToMask(_activeSectorId);
 }
 
@@ -322,7 +325,7 @@ void IrrigationSystem::setSectorHardware(uint16_t sectorMask) {
 
 uint16_t IrrigationSystem::sectorIdToMask(uint8_t sectorId) {
   if (sectorId < 1 || sectorId > Config::NUM_SECTORES) return 0;
-  return (uint16_t)1U << (sectorId - 1);
+  return (uint16_t)1U << (sectorId - 1); // sector 1 → bit 0, sector 8 → bit 7
 }
 
 uint8_t IrrigationSystem::firstSectorFromMask(uint16_t mask) {

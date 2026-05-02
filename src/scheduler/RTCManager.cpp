@@ -70,6 +70,7 @@ bool RTCManager::setTime(uint16_t year, uint8_t month, uint8_t day,
   Time::Day dow     = calculateDayOfWeek(year, month, day);
   Time      newTime(year, month, day, hour, minute, second, dow);
 
+  // Secuencia requerida por el DS1302: deshabilitar write-protect, limpiar halt, escribir, limpiar halt, re-habilitar write-protect
   _rtc.writeProtect(false);
   delay(10);
   _rtc.halt(false);
@@ -102,6 +103,7 @@ String RTCManager::formatTime(const Time& t) {
 // ============================================================
 
 uint8_t RTCManager::dayMaskBitFromDate(uint16_t year, uint8_t month, uint8_t day) {
+  // El DS1302 numera: Domingo=1, Lunes=2 … Sábado=7. Se convierte al bitmask interno (lun=bit0 … dom=bit6).
   const uint8_t dow = (uint8_t)calculateDayOfWeek(year, month, day);
   switch (dow) {
     case 2: return 0;   // Lunes
@@ -139,6 +141,7 @@ String RTCManager::twoDigits(uint8_t value) {
 }
 
 Time::Day RTCManager::calculateDayOfWeek(uint16_t year, uint8_t month, uint8_t day) {
+  // Algoritmo de Tomohiko Sakamoto — devuelve 0=Dom … 6=Sáb; se ajusta a Time::Day sumando 1.
   static const int monthTable[] = {0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4};
   int y = year;
   if (month < 3) y -= 1;

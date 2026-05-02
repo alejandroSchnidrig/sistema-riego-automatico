@@ -39,8 +39,8 @@ public:
 private:
   bool        _valid;
   uint16_t    _id;
-  char        _startTime[6];
-  uint8_t     _days;
+  char        _startTime[6]; // formato "HH:MM\0"
+  uint8_t     _days;          // bitmask: bit0=lunes … bit6=domingo
   uint16_t    _sectorDelay;
   bool        _cyclic;
   uint8_t     _sectorCount;

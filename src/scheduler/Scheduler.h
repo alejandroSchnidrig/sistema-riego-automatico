@@ -16,8 +16,8 @@ private:
   uint16_t _lastYear;
   uint8_t  _lastMonth;
   uint8_t  _lastDay;
-  uint8_t  _lastHour;
-  uint8_t  _lastMinute;
+  uint8_t  _lastHour;    // 255 = centinela; fuerza evaluación en el primer tick
+  uint8_t  _lastMinute;  // 255 = centinela; uint8_t no puede valer 255 en tiempo real
 
   bool shouldStartProgramNow(const Program& program, const Time& now) const;
   void rememberMinute(const Time& now);

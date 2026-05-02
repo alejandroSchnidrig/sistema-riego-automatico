@@ -7,16 +7,17 @@
 
 enum class SystemState { IDLE, RUNNING, MANUAL_STOP };
 
+// DTO inmutable que ApiHandler serializa a JSON; no contiene referencias al estado interno.
 struct SystemStateSnapshot {
   const char* stateName;
   uint16_t    activeProgramId;
   uint8_t     activeSectorId;
-  uint16_t    activeSectorMask;
+  uint16_t    activeSectorMask;    // máscara combinada: manual | programático
   uint32_t    remainingTimeSec;
   bool        pumpOn;
   bool        manualActive;
   uint16_t    manualSectorMask;
-  uint8_t     firstManualSectorId;
+  uint8_t     firstManualSectorId; // primer bit encendido de manualSectorMask (para UI)
 };
 
 class IrrigationSystem {

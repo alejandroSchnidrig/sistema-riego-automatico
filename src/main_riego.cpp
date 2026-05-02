@@ -3,7 +3,7 @@
 #include <WebServer.h>
 #include <DS1302.h>
 #include "config/Config.h"
-#include "domain/Valve.h"
+#include "domain/Sector.h"
 #include "domain/Pump.h"
 #include "web/JsonHelpers.h"
 #include "pages/index_html.h"
@@ -33,18 +33,18 @@ WebServer server(80);
 // Módulo RTC DS1302 — constructor recibe (RST, DAT, CLK) según la librería arduino-ds1302
 DS1302 rtc(Config::RTC_RST, Config::RTC_DAT, Config::RTC_CLK);
 
-// Una instancia de Valve por sector (índice 0 = sector 1, ..., índice 7 = sector 8).
+// Una instancia de Sector por zona de riego (índice 0 = sector 1, ..., índice 7 = sector 8).
 // begin() se llama en setup() porque pinMode() no está disponible antes de eso.
-Pump  pump(Config::PIN_BOMBA);
-Valve valves[Config::NUM_SECTORES] = {
-  Valve(Config::PINES_SECTORES[0], 1),
-  Valve(Config::PINES_SECTORES[1], 2),
-  Valve(Config::PINES_SECTORES[2], 3),
-  Valve(Config::PINES_SECTORES[3], 4),
-  Valve(Config::PINES_SECTORES[4], 5),
-  Valve(Config::PINES_SECTORES[5], 6),
-  Valve(Config::PINES_SECTORES[6], 7),
-  Valve(Config::PINES_SECTORES[7], 8)
+Pump   pump(Config::PIN_BOMBA);
+Sector sectors[Config::NUM_SECTORES] = {
+  Sector(1, Config::PINES_SECTORES[0]),
+  Sector(2, Config::PINES_SECTORES[1]),
+  Sector(3, Config::PINES_SECTORES[2]),
+  Sector(4, Config::PINES_SECTORES[3]),
+  Sector(5, Config::PINES_SECTORES[4]),
+  Sector(6, Config::PINES_SECTORES[5]),
+  Sector(7, Config::PINES_SECTORES[6]),
+  Sector(8, Config::PINES_SECTORES[7])
 };
 
 // ============================================================
@@ -145,13 +145,13 @@ bool isSectorActive(uint8_t sectorId) {
   return (getOutputSectorMask() & sectorIdToMask(sectorId)) != 0;
 }
 
-// Aplica la máscara de sectores a los objetos Valve (abre o cierra cada uno)
+// Aplica la máscara de sectores a los objetos Sector (activa o desactiva cada uno)
 void setSectorHardware(uint16_t sectorMask) {
   for (uint8_t i = 0; i < Config::NUM_SECTORES; i++) {
     if ((sectorMask & sectorIdToMask(i + 1)) != 0) {
-      valves[i].open();
+      sectors[i].activate();
     } else {
-      valves[i].close();
+      sectors[i].deactivate();
     }
   }
 }
@@ -856,7 +856,7 @@ void printPeriodicStatus() {
     Serial.print("- Sector ");
     Serial.print(i);
     Serial.print(" (GPIO");
-    Serial.print(valves[i - 1].getPin());
+    Serial.print(sectors[i - 1].getPin());
     Serial.print("): ");
     Serial.println(isSectorActive(i) ? "ACTIVO" : "inactivo");
   }
@@ -949,14 +949,14 @@ void setup() {
   Serial.begin(115200);
   delay(300);
 
-  // Inicializar válvulas: configura cada GPIO como salida y cierra la válvula
+  // Inicializar sectores: configura cada GPIO como salida y cierra la válvula
   for (uint8_t i = 0; i < Config::NUM_SECTORES; i++) {
-    valves[i].begin();
+    sectors[i].begin();
 
     // GPIO34-39 son entrada-only en el ESP32 y no pueden manejar cargas
-    if (valves[i].getPin() >= 34 && valves[i].getPin() <= 39) {
+    if (sectors[i].getPin() >= 34 && sectors[i].getPin() <= 39) {
       Serial.print("ADVERTENCIA: GPIO");
-      Serial.print(valves[i].getPin());
+      Serial.print(sectors[i].getPin());
       Serial.println(" es solo entrada y no puede manejar una salida.");
     }
   }
@@ -1039,7 +1039,7 @@ void setup() {
   Serial.print("Pines sectores (1-8):");
   for (uint8_t i = 0; i < Config::NUM_SECTORES; i++) {
     Serial.print(" GPIO");
-    Serial.print(valves[i].getPin());
+    Serial.print(sectors[i].getPin());
   }
   Serial.println();
   Serial.println("==================================");

@@ -4,6 +4,7 @@
 #include <DS1302.h>
 #include "config/Config.h"
 #include "domain/Valve.h"
+#include "domain/Pump.h"
 #include "web/JsonHelpers.h"
 #include "pages/index_html.h"
 
@@ -34,6 +35,7 @@ DS1302 rtc(Config::RTC_RST, Config::RTC_DAT, Config::RTC_CLK);
 
 // Una instancia de Valve por sector (índice 0 = sector 1, ..., índice 7 = sector 8).
 // begin() se llama en setup() porque pinMode() no está disponible antes de eso.
+Pump  pump(Config::PIN_BOMBA);
 Valve valves[Config::NUM_SECTORES] = {
   Valve(Config::PINES_SECTORES[0], 1),
   Valve(Config::PINES_SECTORES[1], 2),
@@ -86,7 +88,6 @@ SystemState systemState      = STATE_IDLE;
 uint16_t    activeProgramId  = 0;
 uint8_t     activeSectorId   = 0;
 uint32_t    remainingTimeSec = 0;
-bool        pumpOn           = false;
 
 // Máscara de control manual: bit0=sector1 … bit7=sector8
 uint16_t manualSectorMask = 0;
@@ -112,8 +113,8 @@ uint8_t  lastScheduleMinute = 255;
 
 // Enciende o apaga la bomba de agua
 void setPump(bool on) {
-  pumpOn = on;
-  digitalWrite(Config::PIN_BOMBA, on ? HIGH : LOW);
+  if (on) pump.on();
+  else    pump.off();
 }
 
 // ============================================================
@@ -483,7 +484,7 @@ String buildEstadoJson() {
   json += "\"sectorActivo\":"      + String(getEffectiveSectorId())         + ",";
   json += "\"sectoresActivos\":"   + buildSectorArrayJson(activeSectorMask) + ",";
   json += "\"tiempoRestante\":"    + String(remainingTimeSec)              + ",";
-  json += "\"bomba\":"             + boolToJson(pumpOn)                    + ",";
+  json += "\"bomba\":"             + boolToJson(pump.isOn())               + ",";
   json += "\"modoManual\":"        + boolToJson(isManualControlActive())   + ",";
   json += "\"manualSectorMask\":"  + String(manualSectorMask)              + ",";
   json += "\"manualSectorId\":"    + String(getFirstManualSectorId())      + ",";
@@ -845,9 +846,9 @@ void printPeriodicStatus() {
   Serial.print(remainingTimeSec);
   Serial.println(" s");
   Serial.print("Bomba (GPIO");
-  Serial.print(Config::PIN_BOMBA);
+  Serial.print(pump.getPin());
   Serial.print("): ");
-  Serial.println(pumpOn ? "ON" : "OFF");
+  Serial.println(pump.isOn() ? "ON" : "OFF");
   Serial.print("Modo manual    : ");
   Serial.println(isManualControlActive() ? "SI" : "NO");
 
@@ -960,9 +961,8 @@ void setup() {
     }
   }
 
-  // Configurar pin de la bomba como salida
-  pinMode(Config::PIN_BOMBA, OUTPUT);
-  digitalWrite(Config::PIN_BOMBA, LOW);
+  // Inicializar bomba: configura el GPIO como salida y la apaga
+  pump.begin();
 
   // Inicializar RTC DS1302
   Serial.println("\n\nInicializando RTC...");
@@ -1035,7 +1035,7 @@ void setup() {
   Serial.print(", RST: GPIO");
   Serial.println(Config::RTC_RST);
   Serial.print("Pin bomba  : GPIO");
-  Serial.println(Config::PIN_BOMBA);
+  Serial.println(pump.getPin());
   Serial.print("Pines sectores (1-8):");
   for (uint8_t i = 0; i < Config::NUM_SECTORES; i++) {
     Serial.print(" GPIO");

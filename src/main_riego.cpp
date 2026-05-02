@@ -3,6 +3,7 @@
 #include <WebServer.h>
 #include "config/Config.h"
 #include "scheduler/RTCManager.h"
+#include "scheduler/Scheduler.h"
 #include "domain/IrrigationSystem.h"
 #include "web/JsonHelpers.h"
 #include "pages/index_html.h"
@@ -30,15 +31,9 @@
 WebServer        server(80);
 RTCManager       rtcManager(Config::RTC_RST, Config::RTC_DAT, Config::RTC_CLK);
 IrrigationSystem irrigationSystem;
+Scheduler        scheduler(irrigationSystem, rtcManager);
 
 unsigned long lastStatusPrint = 0;
-
-// Último minuto procesado por el scheduler (evita disparar el mismo programa dos veces)
-uint16_t lastScheduleYear   = 0;
-uint8_t  lastScheduleMonth  = 0;
-uint8_t  lastScheduleDay    = 0;
-uint8_t  lastScheduleHour   = 255;
-uint8_t  lastScheduleMinute = 255;
 
 // ============================================================
 // Helpers de serialización / debug
@@ -197,56 +192,6 @@ bool parseProgramFromJson(const String& programJson, Program& outProgram) {
   return true;
 }
 
-// ============================================================
-// Scheduler — se mueve a Scheduler class en Fase C2
-// ============================================================
-
-bool shouldStartProgramNow(const Program& program, const Time& now) {
-  if (!program.isValid() || program.getSectorCount() == 0) return false;
-  if (!rtcManager.isValid(now)) return false;
-
-  const uint8_t dayBit = RTCManager::dayMaskBitFromDate(now.yr, now.mon, now.date);
-  if (dayBit > 6 || (program.getDays() & (1U << dayBit)) == 0) return false;
-
-  uint8_t programHour = 0, programMinute = 0;
-  if (!RTCManager::parseHourMinute(program.getStartTime(), programHour, programMinute)) return false;
-
-  return programHour == now.hr && programMinute == now.min;
-}
-
-void rememberScheduleMinute(const Time& now) {
-  lastScheduleYear   = now.yr;
-  lastScheduleMonth  = now.mon;
-  lastScheduleDay    = now.date;
-  lastScheduleHour   = now.hr;
-  lastScheduleMinute = now.min;
-}
-
-bool isSameScheduleMinute(const Time& now) {
-  return now.yr   == lastScheduleYear   &&
-         now.mon  == lastScheduleMonth  &&
-         now.date == lastScheduleDay    &&
-         now.hr   == lastScheduleHour   &&
-         now.min  == lastScheduleMinute;
-}
-
-void checkScheduledPrograms() {
-  const Time now = rtcManager.now();
-  if (!rtcManager.isValid(now)) return;
-  if (isSameScheduleMinute(now)) return;
-
-  rememberScheduleMinute(now);
-
-  if (irrigationSystem.isRunning() || irrigationSystem.isManualControlActive()) return;
-
-  for (uint8_t i = 0; i < Config::MAX_PROGRAMAS; i++) {
-    const Program& p = irrigationSystem.programAt(i);
-    if (shouldStartProgramNow(p, now)) {
-      irrigationSystem.startProgramById(p.getId());
-      return;
-    }
-  }
-}
 
 // ============================================================
 // Handlers HTTP
@@ -533,7 +478,7 @@ void setup() {
 
 void loop() {
   server.handleClient();
-  checkScheduledPrograms();
+  scheduler.tick();
   irrigationSystem.tick();
   printPeriodicStatus();
 }

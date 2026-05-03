@@ -3,6 +3,7 @@
 #include "scheduler/RTCManager.h"
 #include "scheduler/Scheduler.h"
 #include "domain/IrrigationSystem.h"
+#include "storage/StorageManager.h"
 #include "web/WebServer.h"
 
 /*
@@ -29,8 +30,9 @@
 // antes que scheduler y httpServer, que los reciben por referencia.
 RTCManager       rtcManager(Config::RTC_RST, Config::RTC_DAT, Config::RTC_CLK);
 IrrigationSystem irrigationSystem;
+StorageManager   storageManager;
 Scheduler        scheduler(irrigationSystem, rtcManager);
-HttpServer       httpServer(irrigationSystem, rtcManager);
+HttpServer       httpServer(irrigationSystem, rtcManager, storageManager);
 
 unsigned long lastStatusPrint = 0;
 
@@ -123,7 +125,12 @@ void setup() {
   Serial.println("\n\nInicializando RTC...");
   rtcManager.begin();
 
-  irrigationSystem.seedDefaultPrograms();
+  // Persistencia: cargar programas guardados o sembrar defaults si es el primer arranque
+  storageManager.begin();
+  if (!storageManager.loadPrograms(irrigationSystem)) {
+    irrigationSystem.seedDefaultPrograms();
+    storageManager.savePrograms(irrigationSystem);
+  }
 
   // Levantar el Access Point Wi-Fi y registrar rutas
   httpServer.begin();

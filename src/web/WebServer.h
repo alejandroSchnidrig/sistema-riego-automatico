@@ -4,13 +4,14 @@
 #include "ApiHandler.h"
 #include "../domain/IrrigationSystem.h"
 #include "../scheduler/RTCManager.h"
+#include "../storage/StorageManager.h"
 
 // HttpServer evita colisión de nombres con la clase WebServer del ESP32.
 // Encapsula el servidor HTTP (puerto 80), el Access Point Wi-Fi y el registro
 // de rutas. Delega cada request al ApiHandler.
 class HttpServer {
 public:
-  HttpServer(IrrigationSystem& sys, RTCManager& rtc);
+  HttpServer(IrrigationSystem& sys, RTCManager& rtc, StorageManager& storage);
   void begin();
   void handleClient();
 

@@ -2,11 +2,13 @@
 #include <WebServer.h>
 #include "../domain/IrrigationSystem.h"
 #include "../scheduler/RTCManager.h"
+#include "../storage/StorageManager.h"
 #include "../domain/Program.h"
 
 class ApiHandler {
 public:
-  ApiHandler(IrrigationSystem& sys, RTCManager& rtc, WebServer& server);
+  ApiHandler(IrrigationSystem& sys, RTCManager& rtc,
+             StorageManager& storage, WebServer& server);
 
   void handleRoot();
   void handleStatus();
@@ -21,6 +23,7 @@ public:
 private:
   IrrigationSystem& _sys;
   RTCManager&       _rtc;
+  StorageManager&   _storage;
   WebServer&        _server;
 
   String buildStatusJson() const;

@@ -1,9 +1,9 @@
 #include "WebServer.h"
 #include "../config/Config.h"
 
-HttpServer::HttpServer(IrrigationSystem& sys, RTCManager& rtc)
+HttpServer::HttpServer(IrrigationSystem& sys, RTCManager& rtc, StorageManager& storage)
   : _server(80),
-    _api(sys, rtc, _server)
+    _api(sys, rtc, storage, _server)
 {}
 
 void HttpServer::begin() {

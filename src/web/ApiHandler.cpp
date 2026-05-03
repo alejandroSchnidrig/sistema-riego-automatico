@@ -3,8 +3,9 @@
 #include "../pages/index_html.h"
 #include "../config/Config.h"
 
-ApiHandler::ApiHandler(IrrigationSystem& sys, RTCManager& rtc, WebServer& server)
-  : _sys(sys), _rtc(rtc), _server(server)
+ApiHandler::ApiHandler(IrrigationSystem& sys, RTCManager& rtc,
+                       StorageManager& storage, WebServer& server)
+  : _sys(sys), _rtc(rtc), _storage(storage), _server(server)
 {}
 
 // ============================================================
@@ -86,6 +87,7 @@ void ApiHandler::handleConfig() {
       _server.send(404, "application/json", buildOkJson(false, "\"error\":\"programa no encontrado\""));
       return;
     }
+    _storage.savePrograms(_sys);
     _server.send(200, "application/json", buildOkJson(true));
     return;
   }
@@ -108,6 +110,7 @@ void ApiHandler::handleConfig() {
                    buildOkJson(false, "\"error\":\"sin espacio para mas programas\""));
       return;
     }
+    _storage.savePrograms(_sys);
     _server.send(200, "application/json", buildOkJson(true, "\"id\":" + String(assignedId)));
     return;
   }

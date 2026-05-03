@@ -19,6 +19,10 @@ public:
   // Retorna false si no se pudo abrir el archivo para escritura.
   bool savePrograms(const IrrigationSystem& sys);
 
+  // Devuelve el contenido crudo de /config.json como String.
+  // Retorna string vacío si el archivo no existe o no se puede leer.
+  String readRaw();
+
 private:
   static bool   parseOneProgram(const String& json, Program& out);
   static String buildConfigJson(const IrrigationSystem& sys);

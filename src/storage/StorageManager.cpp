@@ -98,6 +98,19 @@ bool StorageManager::savePrograms(const IrrigationSystem& sys) {
 }
 
 // ============================================================
+// Debug
+// ============================================================
+
+String StorageManager::readRaw() {
+  if (!LittleFS.exists(CONFIG_PATH)) return "";
+  File f = LittleFS.open(CONFIG_PATH, "r");
+  if (!f) return "";
+  String content = f.readString();
+  f.close();
+  return content;
+}
+
+// ============================================================
 // Privados
 // ============================================================
 

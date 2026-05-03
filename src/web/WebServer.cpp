@@ -31,6 +31,7 @@ void HttpServer::begin() {
   _server.on("/rtc",           HTTP_GET,  [this]() { _api.handleRTC(); });
   _server.on("/rtc",           HTTP_POST, [this]() { _api.handleRTC(); });
   _server.on("/parada",        HTTP_POST, [this]() { _api.handleStop(); });
+  _server.on("/debug/config",  HTTP_GET,  [this]() { _api.handleDebugConfig(); });
   _server.on("/favicon.ico",   HTTP_GET,  [this]() { _api.handleFavicon(); });
   _server.onNotFound([this]() { _api.handleNotFound(); });
   _server.begin();

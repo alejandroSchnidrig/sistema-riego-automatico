@@ -118,6 +118,15 @@ void ApiHandler::handleConfig() {
   _server.send(400, "application/json", buildOkJson(false, "\"error\":\"accion no reconocida\""));
 }
 
+void ApiHandler::handleDebugConfig() {
+  String raw = _storage.readRaw();
+  if (raw.length() == 0) {
+    _server.send(404, "application/json", "{\"error\":\"config.json no existe\"}");
+    return;
+  }
+  _server.send(200, "application/json", raw);
+}
+
 void ApiHandler::handleFavicon() {
   _server.send(204, "text/plain", "");
 }

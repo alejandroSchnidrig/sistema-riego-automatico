@@ -19,6 +19,7 @@ public:
   void handleFavicon();
   void handleNotFound();
   void handleRTC();
+  void handleDebugConfig();
 
 private:
   IrrigationSystem& _sys;

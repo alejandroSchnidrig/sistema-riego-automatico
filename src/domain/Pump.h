@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Arduino.h>
+#include "../core/HAL.h"
 
 // ============================================================
 // Pump — representa la bomba de agua central del sistema.

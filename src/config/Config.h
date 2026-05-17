@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Arduino.h>
+#include <stdint.h>
 
 // ============================================================
 // Config.h — Centraliza todos los pines GPIO, credenciales

@@ -4,18 +4,18 @@ Pump::Pump(uint8_t pin)
   : _pin(pin), _isOn(false) {}
 
 void Pump::begin() {
-  pinMode(_pin, OUTPUT);
+  hal_pinMode(_pin, HAL_OUTPUT);
   off();  // estado seguro al arrancar: bomba apagada
 }
 
 void Pump::on() {
   _isOn = true;
-  digitalWrite(_pin, HIGH);
+  hal_digitalWrite(_pin, HAL_HIGH);
 }
 
 void Pump::off() {
   _isOn = false;
-  digitalWrite(_pin, LOW);
+  hal_digitalWrite(_pin, HAL_LOW);
 }
 
 bool    Pump::isOn()   const { return _isOn; }

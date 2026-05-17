@@ -1,7 +1,7 @@
 #include "IrrigationSystem.h"
-#include <Arduino.h>
+#include "../core/HAL.h"
 
-IrrigationSystem::IrrigationSystem()
+IrrigationSystem::IrrigationSystem(InitMode mode)
   : _sectors{
       Sector(1, Config::PINES_SECTORES[0]),
       Sector(2, Config::PINES_SECTORES[1]),
@@ -13,7 +13,8 @@ IrrigationSystem::IrrigationSystem()
       Sector(8, Config::PINES_SECTORES[7])
     },
     _pump(Config::PIN_BOMBA),
-    _nextProgramId(3), // los programas semilla ocupan IDs 1 y 2; los IDs del usuario empiezan en 3
+    _nextProgramId(1),
+    _initMode(mode),
     _state(SystemState::IDLE),
     _activeProgramId(0),
     _activeSectorId(0),
@@ -24,7 +25,13 @@ IrrigationSystem::IrrigationSystem()
     _waitingBetweenSectors(false),
     _stepStartMs(0),
     _delayStartMs(0)
-{}
+{
+  clearPrograms();
+
+  if (_initMode == InitMode::WITH_SEED) {
+    seedDefaultPrograms();
+  }
+}
 
 // ============================================================
 // Inicialización de hardware
@@ -43,10 +50,10 @@ void IrrigationSystem::begin() {
 // ============================================================
 
 void IrrigationSystem::seedDefaultPrograms() {
+  clearPrograms();
   for (uint8_t i = 0; i < Config::MAX_PROGRAMAS; i++) {
     _programs[i] = Program();
   }
-  _nextProgramId = 3;
 
   // Programa 1: lunes a viernes a las 07:00, cíclico, 4 sectores
   _programs[0].setValid(true);
@@ -70,6 +77,8 @@ void IrrigationSystem::seedDefaultPrograms() {
   _programs[1].addNode({4, 1, 180});
   _programs[1].addNode({6, 2, 180});
   _programs[1].addNode({8, 3,  90});
+
+   _nextProgramId = 3;
 }
 
 // ============================================================
@@ -80,7 +89,7 @@ void IrrigationSystem::tick() {
   if (_state != SystemState::RUNNING || _runningProgramIndex < 0) return;
 
   Program& p        = _programs[_runningProgramIndex];
-  unsigned long now = millis();
+  unsigned long now = hal_millis();
 
   // Fase 1: pausa inter-sector — espera el retardo antes de pasar al siguiente paso.
   if (_waitingBetweenSectors) {
@@ -302,7 +311,7 @@ void IrrigationSystem::startStep(int programIndex, int stepIndex) {
   _activeProgramId       = p.getId();
   _activeSectorId        = p.getNode(stepIndex).id;
   _remainingTimeSec      = p.getNode(stepIndex).irrigationTime;
-  _stepStartMs           = millis();
+  _stepStartMs           = hal_millis();
 
   applyOutputsFromState();
 }
@@ -347,4 +356,11 @@ int IrrigationSystem::findFreeProgramSlot() const {
     if (!_programs[i].isValid()) return i;
   }
   return -1;
+}
+
+void IrrigationSystem::clearPrograms() {
+  for (uint8_t i = 0; i < Config::MAX_PROGRAMAS; i++) {
+    _programs[i] = Program();
+  }
+  _nextProgramId = 1;
 }

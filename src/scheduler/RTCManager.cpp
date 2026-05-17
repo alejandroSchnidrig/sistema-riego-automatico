@@ -1,20 +1,21 @@
 #include "RTCManager.h"
-#include <Arduino.h>
 
 RTCManager::RTCManager(uint8_t rst, uint8_t dat, uint8_t clk)
-  : _rtc(rst, dat, clk)
-{}
+{
+    hal_rtc_begin(rst, dat, clk);
+}
 
 // ============================================================
 // Inicialización de hardware
 // ============================================================
 
 void RTCManager::begin() {
-  _rtc.writeProtect(false);
-  _rtc.halt(false);
+  // HAL already began in constructor or could be initialized here again
+  // Some HAL might need re-init, but we assume it's ready.
+  // Delay for stabilization
   delay(50);
 
-  Time t = _rtc.time();
+  RTC_Time t = hal_rtc_now();
   Serial.print("Lectura RTC: ");
   Serial.print(formatDate(t));
   Serial.print(" ");
@@ -24,17 +25,17 @@ void RTCManager::begin() {
     Serial.println("RTC con datos invalidos, intentando inicializar...");
 
     bool initOk = false;
-    const Time defaultTime(2024, 1, 1, 12, 0, 0, calculateDayOfWeek(2024, 1, 1));
+    const RTC_Time defaultTime(2024, 1, 1, 12, 0, 0);
 
     for (int attempt = 0; attempt < 5; attempt++) {
       Serial.print("Intento ");
       Serial.println(attempt + 1);
-      _rtc.halt(false);
+      
       delay(20);
-      _rtc.time(defaultTime);
+      hal_rtc_set_time(defaultTime);
       delay(100);
 
-      Time verify = _rtc.time();
+      RTC_Time verify = hal_rtc_now();
       Serial.print("  Verificacion: ");
       Serial.print(formatDate(verify));
       Serial.print(" ");
@@ -52,50 +53,39 @@ void RTCManager::begin() {
     Serial.println("RTC con datos validos, no se requiere inicializacion.");
   }
 
-  _rtc.writeProtect(true);
+  hal_rtc_writeProtect(true);
 }
 
 // ============================================================
 // API pública
 // ============================================================
 
-Time RTCManager::now() {
-  return _rtc.time();
+RTC_Time RTCManager::now() {
+  return hal_rtc_now();
 }
 
 bool RTCManager::setTime(uint16_t year, uint8_t month, uint8_t day,
                           uint8_t hour, uint8_t minute, uint8_t second) {
   if (!isValidDateTime(year, month, day, hour, minute, second)) return false;
 
-  Time::Day dow     = calculateDayOfWeek(year, month, day);
-  Time      newTime(year, month, day, hour, minute, second, dow);
-
-  // Secuencia requerida por el DS1302: deshabilitar write-protect, limpiar halt, escribir, limpiar halt, re-habilitar write-protect
-  _rtc.writeProtect(false);
-  delay(10);
-  _rtc.halt(false);
-  delay(10);
-  _rtc.time(newTime);
-  delay(50);
-  _rtc.halt(false);
-  _rtc.writeProtect(true);
-  return true;
+  RTC_Time newTime(year, month, day, hour, minute, second);
+  return hal_rtc_set_time(newTime);
 }
 
-bool RTCManager::isValid(const Time& t) const {
-  return isValidDateTime(t.yr, t.mon, t.date, t.hr, t.min, t.sec);
+bool RTCManager::isValid(const RTC_Time& t) const {
+  return isValidDateTime(t.year, t.month, t.day, t.hour, t.minute, t.second);
 }
 
 // ============================================================
 // Helpers de formateo (estáticos)
 // ============================================================
 
-String RTCManager::formatDate(const Time& t) {
-  return String(t.yr) + "/" + twoDigits(t.mon) + "/" + twoDigits(t.date);
+String RTCManager::formatDate(const RTC_Time& t) {
+  return String(t.year) + "/" + twoDigits(t.month) + "/" + twoDigits(t.day);
 }
 
-String RTCManager::formatTime(const Time& t) {
-  return twoDigits(t.hr) + ":" + twoDigits(t.min) + ":" + twoDigits(t.sec);
+String RTCManager::formatTime(const RTC_Time& t) {
+  return twoDigits(t.hour) + ":" + twoDigits(t.minute) + ":" + twoDigits(t.second);
 }
 
 // ============================================================
@@ -103,8 +93,8 @@ String RTCManager::formatTime(const Time& t) {
 // ============================================================
 
 uint8_t RTCManager::dayMaskBitFromDate(uint16_t year, uint8_t month, uint8_t day) {
-  // El DS1302 numera: Domingo=1, Lunes=2 … Sábado=7. Se convierte al bitmask interno (lun=bit0 … dom=bit6).
-  const uint8_t dow = (uint8_t)calculateDayOfWeek(year, month, day);
+  // 0=Dom … 6=Sáb. DS1302 usually expects 1=Sun. We'll use calculateDayOfWeek directly.
+  const uint8_t dow = calculateDayOfWeek(year, month, day); // 1..7 (1=Sun)
   switch (dow) {
     case 2: return 0;   // Lunes
     case 3: return 1;   // Martes
@@ -140,13 +130,13 @@ String RTCManager::twoDigits(uint8_t value) {
   return value < 10 ? "0" + String(value) : String(value);
 }
 
-Time::Day RTCManager::calculateDayOfWeek(uint16_t year, uint8_t month, uint8_t day) {
-  // Algoritmo de Tomohiko Sakamoto — devuelve 0=Dom … 6=Sáb; se ajusta a Time::Day sumando 1.
+uint8_t RTCManager::calculateDayOfWeek(uint16_t year, uint8_t month, uint8_t day) {
+  // Algoritmo de Tomohiko Sakamoto — devuelve 0=Dom … 6=Sáb; se ajusta a 1=Sun .. 7=Sat
   static const int monthTable[] = {0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4};
   int y = year;
   if (month < 3) y -= 1;
   int dow = (y + y / 4 - y / 100 + y / 400 + monthTable[month - 1] + day) % 7;
-  return static_cast<Time::Day>(dow + 1);
+  return static_cast<uint8_t>(dow + 1);
 }
 
 bool RTCManager::isLeapYear(uint16_t year) {

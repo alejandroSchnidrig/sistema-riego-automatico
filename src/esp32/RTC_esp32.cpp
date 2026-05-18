@@ -38,9 +38,4 @@ bool hal_rtc_writeProtect(bool enable) {
     return false;
 }
 
-SerialMock Serial;
-void delay(unsigned long ms) {
-    // Simple stub for delay in tests. In real ESP32 code, this will call the actual delay function.
-}
-
 #endif // ARDUINO

@@ -40,6 +40,22 @@ void test_valve_open_close(void) {
     TEST_ASSERT_FALSE(v.isOpen());
 }
 
+void test_active_low_valve_open_close(void) {
+    Valve v(13, 1, true);
+    v.begin();
+
+    TEST_ASSERT_EQUAL(1, mock_pin_states[13]);
+    TEST_ASSERT_FALSE(v.isOpen());
+
+    v.open();
+    TEST_ASSERT_EQUAL(0, mock_pin_states[13]);
+    TEST_ASSERT_TRUE(v.isOpen());
+
+    v.close();
+    TEST_ASSERT_EQUAL(1, mock_pin_states[13]);
+    TEST_ASSERT_FALSE(v.isOpen());
+}
+
 void test_pump_on_off(void) {
     Pump p(27);
     p.begin();
@@ -56,6 +72,22 @@ void test_pump_on_off(void) {
     TEST_ASSERT_FALSE(p.isOn());
 }
 
+void test_active_low_pump_on_off(void) {
+    Pump p(27, true);
+    p.begin();
+
+    TEST_ASSERT_EQUAL(1, mock_pin_states[27]);
+    TEST_ASSERT_FALSE(p.isOn());
+
+    p.on();
+    TEST_ASSERT_EQUAL(0, mock_pin_states[27]);
+    TEST_ASSERT_TRUE(p.isOn());
+
+    p.off();
+    TEST_ASSERT_EQUAL(1, mock_pin_states[27]);
+    TEST_ASSERT_FALSE(p.isOn());
+}
+
 void test_irrigation_system_manual_control(void) {
     IrrigationSystem sys;
     sys.begin();
@@ -69,6 +101,8 @@ void test_irrigation_system_manual_control(void) {
     //Verifico que se active el sector y la bomba.
     TEST_ASSERT_TRUE(sys.isSectorActive(1));
     TEST_ASSERT_TRUE(sys.isPumpOn());
+    TEST_ASSERT_EQUAL(0, mock_pin_states[13]);
+    TEST_ASSERT_EQUAL(0, mock_pin_states[27]);
 
     //Desactivo manualmente el sector 1.
     sys.setManualSector(1, false);
@@ -76,12 +110,16 @@ void test_irrigation_system_manual_control(void) {
     //Verifico que se desactive el sector y la bomba.
     TEST_ASSERT_FALSE(sys.isSectorActive(1));
     TEST_ASSERT_FALSE(sys.isPumpOn());
+    TEST_ASSERT_EQUAL(1, mock_pin_states[13]);
+    TEST_ASSERT_EQUAL(1, mock_pin_states[27]);
 }
 
 int main(int argc, char **argv) {
     UNITY_BEGIN();
     RUN_TEST(test_valve_open_close);
+    RUN_TEST(test_active_low_valve_open_close);
     RUN_TEST(test_pump_on_off);
+    RUN_TEST(test_active_low_pump_on_off);
     RUN_TEST(test_irrigation_system_manual_control);
     return UNITY_END();
 }

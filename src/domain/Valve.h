@@ -16,7 +16,7 @@
 
 class Valve {
 public:
-  Valve(uint8_t pin, uint8_t id);
+  Valve(uint8_t pin, uint8_t id, bool activeLow = false);
 
   // Configura el pin como salida y cierra la válvula.
   // Debe llamarse desde setup(), no desde el constructor,
@@ -34,5 +34,6 @@ public:
 private:
   uint8_t _pin;
   uint8_t _id;
+  bool    _activeLow;
   bool    _isOpen;
 };

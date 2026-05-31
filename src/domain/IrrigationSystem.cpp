@@ -3,16 +3,16 @@
 
 IrrigationSystem::IrrigationSystem(InitMode mode)
   : _sectors{
-      Sector(1, Config::PINES_SECTORES[0]),
-      Sector(2, Config::PINES_SECTORES[1]),
-      Sector(3, Config::PINES_SECTORES[2]),
-      Sector(4, Config::PINES_SECTORES[3]),
-      Sector(5, Config::PINES_SECTORES[4]),
-      Sector(6, Config::PINES_SECTORES[5]),
-      Sector(7, Config::PINES_SECTORES[6]),
-      Sector(8, Config::PINES_SECTORES[7])
+      Sector(1, Config::PINES_SECTORES[0], Config::SECTORES_ACTIVOS_BAJO[0]),
+      Sector(2, Config::PINES_SECTORES[1], Config::SECTORES_ACTIVOS_BAJO[1]),
+      Sector(3, Config::PINES_SECTORES[2], Config::SECTORES_ACTIVOS_BAJO[2]),
+      Sector(4, Config::PINES_SECTORES[3], Config::SECTORES_ACTIVOS_BAJO[3]),
+      Sector(5, Config::PINES_SECTORES[4], Config::SECTORES_ACTIVOS_BAJO[4]),
+      Sector(6, Config::PINES_SECTORES[5], Config::SECTORES_ACTIVOS_BAJO[5]),
+      Sector(7, Config::PINES_SECTORES[6], Config::SECTORES_ACTIVOS_BAJO[6]),
+      Sector(8, Config::PINES_SECTORES[7], Config::SECTORES_ACTIVOS_BAJO[7])
     },
-    _pump(Config::PIN_BOMBA),
+    _pump(Config::PIN_BOMBA, Config::BOMBA_ACTIVA_BAJO),
     _nextProgramId(1),
     _initMode(mode),
     _state(SystemState::IDLE),

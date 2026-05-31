@@ -20,7 +20,7 @@
 
 class Sector {
 public:
-  Sector(uint8_t id, uint8_t pin);
+  Sector(uint8_t id, uint8_t pin, bool activeLow = false);
 
   // Inicializa el pin de la válvula asociada.
   // Debe llamarse desde setup().

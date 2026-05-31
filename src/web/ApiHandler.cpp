@@ -115,6 +115,18 @@ void ApiHandler::handleConfig() {
     return;
   }
 
+  if (body.indexOf("\"caudalBomba\"") >= 0) {
+    int caudal = 0;
+    if (!extractIntField(body, "caudalBomba", caudal) || caudal <= 0 || caudal > 65535) {
+      _server.send(400, "application/json", buildOkJson(false, "\"error\":\"caudalBomba invalido\""));
+      return;
+    }
+    _sys.setPumpFlow((uint16_t)caudal);
+    _storage.savePrograms(_sys);
+    _server.send(200, "application/json", buildOkJson(true, "\"caudalBomba\":" + String(caudal)));
+    return;
+  }
+
   _server.send(400, "application/json", buildOkJson(false, "\"error\":\"accion no reconocida\""));
 }
 
@@ -215,7 +227,7 @@ String ApiHandler::buildStatusJson() const {
 }
 
 String ApiHandler::buildProgramsJson() const {
-  String json = "{\"programas\":[";
+  String json = "{\"caudalBomba\":" + String(_sys.getPumpFlow()) + ",\"programas\":[";
   bool firstProgram = true;
 
   for (uint8_t i = 0; i < Config::MAX_PROGRAMAS; i++) {
@@ -229,16 +241,19 @@ String ApiHandler::buildProgramsJson() const {
     json += "\"horaInicio\":\"" + escapeJson(String(p.getStartTime()))          + "\",";
     json += "\"dias\":"         + String(p.getDays())                           + ",";
     json += "\"ciclico\":"      + boolToJson(p.isCyclic())                      + ",";
-    json += "\"sectores\":[";
+    json += "\"nodos\":[";
 
     for (uint8_t s = 0; s < p.getSectorCount(); s++) {
       if (s > 0) json += ",";
       const ProgramNode& node = p.getNode(s);
       json += "{";
-      json += "\"id\":"          + String(node.sectorId)       + ",";
+      json += "\"sectorId\":"    + String(node.sectorId)       + ",";
       json += "\"tiempoRiego\":" + String(node.irrigationTime) + ",";
       json += "\"retardo\":"     + String(node.delay)          + ",";
-      json += "\"padre\":"       + String(node.parentSectorId) + ",";
+      // raíz → "padre": null; hijo → número del sector padre
+      json += "\"padre\":"       + (node.parentSectorId == 0
+                                      ? String("null")
+                                      : String(node.parentSectorId)) + ",";
       json += "\"caudal\":"      + String(node.flow);
       json += "}";
     }
@@ -276,7 +291,7 @@ String ApiHandler::getRequestBody() {
 }
 
 // ============================================================
-// Parser de programas — se mueve a formato árbol en Fase D1
+// Parser de programas — formato árbol (nodos[] con padre nullable)
 // ============================================================
 
 bool ApiHandler::parseProgramFromJson(const String& programJson, Program& outProgram) {
@@ -303,40 +318,41 @@ bool ApiHandler::parseProgramFromJson(const String& programJson, Program& outPro
   if (!extractBoolField(programJson, "ciclico", ciclico)) return false;
   outProgram.setCyclic(ciclico);
 
-  String sectoresArray;
-  if (!extractArrayField(programJson, "sectores", sectoresArray)) return false;
+  String nodosArray;
+  if (!extractArrayField(programJson, "nodos", nodosArray)) return false;
 
   int pos = 0;
-  while (pos < (int)sectoresArray.length() &&
+  while (pos < (int)nodosArray.length() &&
          outProgram.getSectorCount() < Config::NUM_SECTORES) {
-    int objStart = sectoresArray.indexOf('{', pos);
+    int objStart = nodosArray.indexOf('{', pos);
     if (objStart < 0) break;
 
     int depth = 0, objEnd = -1;
-    for (int i = objStart; i < (int)sectoresArray.length(); i++) {
-      if      (sectoresArray[i] == '{') depth++;
-      else if (sectoresArray[i] == '}') {
+    for (int i = objStart; i < (int)nodosArray.length(); i++) {
+      if      (nodosArray[i] == '{') depth++;
+      else if (nodosArray[i] == '}') {
         depth--;
         if (depth == 0) { objEnd = i; break; }
       }
     }
     if (objEnd < 0) break;
 
-    String item = sectoresArray.substring(objStart, objEnd + 1);
+    String item = nodosArray.substring(objStart, objEnd + 1);
     int sectorId = 0, tiempo = 0, retardo = 0, padre = 0, caudal = 0;
 
-    if (extractIntField(item, "id",          sectorId) &&
-        extractIntField(item, "tiempoRiego",  tiempo)   &&
+    if (extractIntField(item, "sectorId",    sectorId) &&
+        extractIntField(item, "tiempoRiego", tiempo)   &&
         sectorId >= 1 && sectorId <= (int)Config::NUM_SECTORES &&
         tiempo   > 0) {
       extractIntField(item, "retardo", retardo);
-      extractIntField(item, "padre",   padre);
+      extractNullableIntField(item, "padre", padre); // null → 0 (raíz)
       extractIntField(item, "caudal",  caudal);
       ProgramNode node;
       node.sectorId       = (uint8_t)sectorId;
       node.irrigationTime = (uint32_t)tiempo;
       node.delay          = (retardo >= 0 && retardo <= 65535) ? (uint16_t)retardo : 0;
-      node.parentSectorId = (uint8_t)padre;
+      node.parentSectorId = (padre >= 0 && padre <= (int)Config::NUM_SECTORES)
+                              ? (uint8_t)padre : 0;
       node.flow           = (caudal > 0) ? (uint16_t)caudal : 0;
       outProgram.addNode(node);
     }

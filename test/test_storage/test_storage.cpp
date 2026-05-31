@@ -1,6 +1,7 @@
 #include <unity.h>
 #include "../src/storage/StorageManager.h"
 #include "../src/domain/IrrigationSystem.h"
+#include "../src/web/JsonHelpers.h"
 
 #include <iostream>
 #include <map>
@@ -122,6 +123,26 @@ void test_load_invalid_json(void)
     TEST_ASSERT_FALSE(storage.loadPrograms(sys));
 }
 
+void test_nullable_parent_field(void)
+{
+    int out = -1;
+
+    //"padre": null → 0 (raíz).
+    out = -1;
+    TEST_ASSERT_TRUE(extractNullableIntField("{\"padre\":null}", "padre", out));
+    TEST_ASSERT_EQUAL(0, out);
+
+    //Campo ausente → 0 (raíz).
+    out = -1;
+    TEST_ASSERT_TRUE(extractNullableIntField("{\"sectorId\":2}", "padre", out));
+    TEST_ASSERT_EQUAL(0, out);
+
+    //"padre": número → ese valor.
+    out = -1;
+    TEST_ASSERT_TRUE(extractNullableIntField("{\"padre\":3}", "padre", out));
+    TEST_ASSERT_EQUAL(3, out);
+}
+
 int main(int argc, char **argv)
 {
     UNITY_BEGIN();
@@ -129,5 +150,6 @@ int main(int argc, char **argv)
     RUN_TEST(test_load_programs_missing_file);
     RUN_TEST(test_save_and_load_programs);
     RUN_TEST(test_load_invalid_json);
+    RUN_TEST(test_nullable_parent_field);
     return UNITY_END();
 }

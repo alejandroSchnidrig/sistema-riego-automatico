@@ -147,6 +147,208 @@ void test_program_tree_helpers(void) {
     TEST_ASSERT_EQUAL(0, p.getChildCount(3));
 }
 
+// ============================================================
+// Motor de ejecución — modelo árbol + caudal
+// ============================================================
+
+//Avanza el reloj simulado n segundos, procesando un paso de motor por segundo.
+static void advanceSeconds(IrrigationSystem &sys, int n) {
+    for (int i = 0; i < n; i++) {
+        mock_millis_value += 1000;
+        sys.tick();
+    }
+}
+
+//Pines de los sectores 2, 3 y 4 (todos activo-alto → abrir = pin HIGH).
+//Sector N → índice N-1 en Config::PINES_SECTORES = {13,14,16,17,32,33,25,26}.
+static const uint8_t PIN_S2 = 14;
+static const uint8_t PIN_S3 = 16;
+
+void test_engine_root_then_child_with_delay(void) {
+    //Árbol: s2 raíz (2 s); s3 hijo de s2 (2 s) con retardo de 3 s.
+    IrrigationSystem sys(IrrigationSystem::InitMode::EMPTY);
+    sys.begin();
+
+    Program p;
+    p.setCyclic(false);
+    p.addNode({2, 2, 0, 0, 6}); // {sectorId, irrigationTime, delay, parent, flow}
+    p.addNode({3, 2, 3, 2, 6});
+    uint16_t id = sys.saveProgram(p);
+    TEST_ASSERT_NOT_EQUAL(0, id);
+
+    TEST_ASSERT_TRUE(sys.startProgramById(id));
+
+    //Al arrancar, solo la raíz s2 riega.
+    SystemStateSnapshot s = sys.getStateSnapshot();
+    TEST_ASSERT_EQUAL(1, s.activeCount);
+    TEST_ASSERT_EQUAL(2, s.active[0].sectorId);
+
+    //Tras 2 s la raíz termina; el hijo queda pendiente por su retardo.
+    advanceSeconds(sys, 2);
+    s = sys.getStateSnapshot();
+    TEST_ASSERT_EQUAL(0, s.activeCount);
+    TEST_ASSERT_EQUAL(1, s.pendingCount);
+    TEST_ASSERT_EQUAL(3, s.pending[0].sectorId);
+    TEST_ASSERT_TRUE((s.completedMask & (1 << (2 - 1))) != 0); // s2 completado
+
+    //Tras agotarse el retardo (3 s más), el hijo pasa a regar.
+    advanceSeconds(sys, 3);
+    s = sys.getStateSnapshot();
+    TEST_ASSERT_EQUAL(1, s.activeCount);
+    TEST_ASSERT_EQUAL(3, s.active[0].sectorId);
+    TEST_ASSERT_EQUAL(0, s.pendingCount);
+
+    //Tras 2 s más el hijo termina y, al no ser cíclico, el sistema para.
+    advanceSeconds(sys, 2);
+    TEST_ASSERT_FALSE(sys.isRunning());
+}
+
+void test_engine_parallel_children_by_flow(void) {
+    //s2 raíz (3 s); s3 y s4 hijos de s2, ambos sin retardo y con caudal que entra.
+    IrrigationSystem sys(IrrigationSystem::InitMode::EMPTY);
+    sys.begin();
+
+    Program p;
+    p.addNode({2, 3, 0, 0, 6});
+    p.addNode({3, 3, 0, 2, 3});
+    p.addNode({4, 3, 0, 2, 3});
+    uint16_t id = sys.saveProgram(p);
+    TEST_ASSERT_NOT_EQUAL(0, id);
+    TEST_ASSERT_TRUE(sys.startProgramById(id));
+
+    //Tras 3 s la raíz termina y sus dos hijos arrancan en paralelo.
+    advanceSeconds(sys, 3);
+    SystemStateSnapshot s = sys.getStateSnapshot();
+    TEST_ASSERT_EQUAL(2, s.activeCount);
+    uint16_t mask = 0;
+    for (uint8_t i = 0; i < s.activeCount; i++) mask |= (1 << (s.active[i].sectorId - 1));
+    TEST_ASSERT_TRUE((mask & (1 << (3 - 1))) != 0);
+    TEST_ASSERT_TRUE((mask & (1 << (4 - 1))) != 0);
+    TEST_ASSERT_TRUE(sys.isPumpOn());
+}
+
+void test_engine_fifo_queue_and_drain(void) {
+    //3 raíces de caudal 8. Validado contra una bomba de 30, luego se baja a 20:
+    //entran 2 raíces (16) y la tercera (24) va a la cola FIFO.
+    IrrigationSystem sys(IrrigationSystem::InitMode::EMPTY);
+    sys.begin();
+    sys.setPumpFlow(30);
+
+    Program p;
+    p.addNode({2, 3, 0, 0, 8});
+    p.addNode({3, 3, 0, 0, 8});
+    p.addNode({4, 3, 0, 0, 8});
+    uint16_t id = sys.saveProgram(p);
+    TEST_ASSERT_NOT_EQUAL(0, id);
+
+    sys.setPumpFlow(20);
+    TEST_ASSERT_TRUE(sys.startProgramById(id));
+
+    SystemStateSnapshot s = sys.getStateSnapshot();
+    TEST_ASSERT_EQUAL(2, s.activeCount);
+    TEST_ASSERT_EQUAL(1, s.queuedCount);
+    TEST_ASSERT_EQUAL(4, s.queued[0].sectorId);
+
+    //Al terminar las dos raíces activas (3 s) se libera caudal y la cola drena.
+    advanceSeconds(sys, 3);
+    s = sys.getStateSnapshot();
+    TEST_ASSERT_EQUAL(0, s.queuedCount);
+    TEST_ASSERT_EQUAL(1, s.activeCount);
+    TEST_ASSERT_EQUAL(4, s.active[0].sectorId);
+}
+
+void test_engine_feeding_valve_blinks(void) {
+    //s2 raíz (2 s); s3 hijo de s2 (4 s). Mientras s3 riega, s2 (cañería) titila.
+    IrrigationSystem sys(IrrigationSystem::InitMode::EMPTY);
+    sys.begin();
+
+    Program p;
+    p.addNode({2, 2, 0, 0, 6});
+    p.addNode({3, 4, 0, 2, 6});
+    uint16_t id = sys.saveProgram(p);
+    TEST_ASSERT_NOT_EQUAL(0, id);
+    TEST_ASSERT_TRUE(sys.startProgramById(id));
+
+    //Tras 2 s: s2 terminó y alimenta a s3; s3 riega (válvula fija abierta).
+    advanceSeconds(sys, 2);
+    SystemStateSnapshot s = sys.getStateSnapshot();
+    TEST_ASSERT_EQUAL(1, s.activeCount);
+    TEST_ASSERT_EQUAL(3, s.active[0].sectorId);
+    TEST_ASSERT_EQUAL(1, mock_pin_states[PIN_S3]); // s3 activo: abierto fijo
+    TEST_ASSERT_EQUAL(1, mock_pin_states[PIN_S2]); // s2 cañería: fase encendida
+
+    //Un paso más: la fase de titileo cambia y la válvula de cañería se cierra.
+    advanceSeconds(sys, 1);
+    TEST_ASSERT_EQUAL(1, mock_pin_states[PIN_S3]); // s3 sigue regando fijo
+    TEST_ASSERT_EQUAL(0, mock_pin_states[PIN_S2]); // s2 cañería: fase apagada
+
+    //Otro paso: vuelve a encender (titileo 1 s ON / 1 s OFF).
+    advanceSeconds(sys, 1);
+    TEST_ASSERT_EQUAL(1, mock_pin_states[PIN_S2]);
+}
+
+void test_engine_cyclic_restarts_roots(void) {
+    //s2 raíz (2 s), programa cíclico: al vaciarse todo, reinicia.
+    IrrigationSystem sys(IrrigationSystem::InitMode::EMPTY);
+    sys.begin();
+
+    Program p;
+    p.setCyclic(true);
+    p.addNode({2, 2, 0, 0, 6});
+    uint16_t id = sys.saveProgram(p);
+    TEST_ASSERT_NOT_EQUAL(0, id);
+    TEST_ASSERT_TRUE(sys.startProgramById(id));
+
+    //Tras 2 s la raíz termina y, por ser cíclico, vuelve a arrancar.
+    advanceSeconds(sys, 2);
+    TEST_ASSERT_TRUE(sys.isRunning());
+    SystemStateSnapshot s = sys.getStateSnapshot();
+    TEST_ASSERT_EQUAL(1, s.activeCount);
+    TEST_ASSERT_EQUAL(2, s.active[0].sectorId);
+    TEST_ASSERT_EQUAL(0, s.completedMask); // reinicio limpia completados
+}
+
+void test_engine_validations(void) {
+    IrrigationSystem sys(IrrigationSystem::InitMode::EMPTY);
+    sys.begin(); // pumpFlow default = 20
+
+    //Válido: raíz + hijo dentro de los límites.
+    Program ok;
+    ok.addNode({2, 10, 0, 0, 10});
+    ok.addNode({3, 10, 0, 2, 6});
+    TEST_ASSERT_NOT_EQUAL(0, sys.saveProgram(ok));
+
+    //Sin raíz (todos cuelgan de otro).
+    Program noRoot;
+    noRoot.addNode({2, 10, 0, 3, 6});
+    noRoot.addNode({3, 10, 0, 2, 6});
+    TEST_ASSERT_EQUAL(0, sys.saveProgram(noRoot));
+
+    //Padre inexistente.
+    Program badParent;
+    badParent.addNode({2, 10, 0, 0, 6});
+    badParent.addNode({3, 10, 0, 7, 6}); // sector 7 no está en el programa
+    TEST_ASSERT_EQUAL(0, sys.saveProgram(badParent));
+
+    //Caudal de un sector mayor que la bomba.
+    Program tooMuchFlow;
+    tooMuchFlow.addNode({2, 10, 0, 0, 25});
+    TEST_ASSERT_EQUAL(0, sys.saveProgram(tooMuchFlow));
+
+    //Σ caudal de raíces mayor que la bomba.
+    Program rootsTooMuch;
+    rootsTooMuch.addNode({2, 10, 0, 0, 12});
+    rootsTooMuch.addNode({3, 10, 0, 0, 12});
+    TEST_ASSERT_EQUAL(0, sys.saveProgram(rootsTooMuch));
+
+    //Σ caudal de hijos mayor que el del padre.
+    Program childrenTooMuch;
+    childrenTooMuch.addNode({2, 10, 0, 0, 6});
+    childrenTooMuch.addNode({3, 10, 0, 2, 5});
+    childrenTooMuch.addNode({4, 10, 0, 2, 5}); // 5 + 5 > 6
+    TEST_ASSERT_EQUAL(0, sys.saveProgram(childrenTooMuch));
+}
+
 int main(int argc, char **argv) {
     UNITY_BEGIN();
     RUN_TEST(test_valve_open_close);
@@ -155,5 +357,11 @@ int main(int argc, char **argv) {
     RUN_TEST(test_active_low_pump_on_off);
     RUN_TEST(test_irrigation_system_manual_control);
     RUN_TEST(test_program_tree_helpers);
+    RUN_TEST(test_engine_root_then_child_with_delay);
+    RUN_TEST(test_engine_parallel_children_by_flow);
+    RUN_TEST(test_engine_fifo_queue_and_drain);
+    RUN_TEST(test_engine_feeding_valve_blinks);
+    RUN_TEST(test_engine_cyclic_restarts_roots);
+    RUN_TEST(test_engine_validations);
     return UNITY_END();
 }

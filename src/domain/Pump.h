@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Arduino.h>
+#include "../core/HAL.h"
 
 // ============================================================
 // Pump — representa la bomba de agua central del sistema.
@@ -17,7 +17,7 @@
 
 class Pump {
 public:
-  explicit Pump(uint8_t pin);
+  explicit Pump(uint8_t pin, bool activeLow = false);
 
   // Configura el pin como salida y apaga la bomba.
   // Debe llamarse desde setup(), no desde el constructor.
@@ -31,5 +31,6 @@ public:
 
 private:
   uint8_t _pin;
+  bool    _activeLow;
   bool    _isOn;
 };

@@ -22,9 +22,15 @@ struct SystemStateSnapshot {
 
 class IrrigationSystem {
 public:
-  IrrigationSystem();
+  enum class InitMode {
+    EMPTY,
+    WITH_SEED
+  };
+
+  explicit IrrigationSystem(InitMode mode = InitMode::WITH_SEED);
 
   void begin();
+  void clearPrograms();
   void seedDefaultPrograms();
   void tick();
 
@@ -58,6 +64,8 @@ private:
   Pump     _pump;
   Program  _programs[Config::MAX_PROGRAMAS];
   uint16_t _nextProgramId;
+
+  InitMode _initMode;
 
   SystemState   _state;
   uint16_t      _activeProgramId;

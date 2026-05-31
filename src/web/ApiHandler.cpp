@@ -221,14 +221,14 @@ String ApiHandler::buildProgramsJson() const {
 }
 
 String ApiHandler::buildRTCJson() {
-  Time now = _rtc.now();
+  RTC_Time now = _rtc.now();
   String json = "{";
-  json += "\"year\":"   + String(now.yr)   + ",";
-  json += "\"month\":"  + String(now.mon)  + ",";
-  json += "\"day\":"    + String(now.date) + ",";
-  json += "\"hour\":"   + String(now.hr)   + ",";
-  json += "\"minute\":" + String(now.min)  + ",";
-  json += "\"second\":" + String(now.sec);
+  json += "\"year\":"   + String(now.year)   + ",";
+  json += "\"month\":"  + String(now.month)  + ",";
+  json += "\"day\":"    + String(now.day)    + ",";
+  json += "\"hour\":"   + String(now.hour)   + ",";
+  json += "\"minute\":" + String(now.minute) + ",";
+  json += "\"second\":" + String(now.second);
   json += "}";
   return json;
 }

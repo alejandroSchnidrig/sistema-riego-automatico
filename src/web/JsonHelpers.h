@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Arduino.h>
+#include "../src/core/Arduino.h"
 
 // ============================================================
 // JsonHelpers.h — Utilidades de serialización y parsing JSON.

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Arduino.h>
+#include <stdint.h>
 
 // ============================================================
 // Config.h — Centraliza todos los pines GPIO, credenciales
@@ -18,11 +18,13 @@ namespace Config {
   // ----------------------------------------------------------
   constexpr uint8_t NUM_SECTORES = 8;
   constexpr uint8_t PINES_SECTORES[NUM_SECTORES] = {13, 14, 16, 17, 32, 33, 25, 26};
+  constexpr bool    SECTORES_ACTIVOS_BAJO[NUM_SECTORES] = {true, false, false, false, false, false, false, false};
 
   // ----------------------------------------------------------
   // Pin de la bomba de agua central
   // ----------------------------------------------------------
   constexpr uint8_t PIN_BOMBA = 27;
+  constexpr bool    BOMBA_ACTIVA_BAJO = true;
 
   // ----------------------------------------------------------
   // Pines del módulo RTC DS1302 (bit-banging, no I2C)

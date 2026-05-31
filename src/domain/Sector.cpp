@@ -1,8 +1,8 @@
 #include "Sector.h"
 
 // El id del sector coincide con el id de su válvula (1-8)
-Sector::Sector(uint8_t id, uint8_t pin)
-  : _id(id), _valve(pin, id) {}
+Sector::Sector(uint8_t id, uint8_t pin, bool activeLow)
+  : _id(id), _valve(pin, id, activeLow) {}
 
 void Sector::begin() {
   _valve.begin();

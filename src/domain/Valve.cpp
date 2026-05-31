@@ -1,21 +1,21 @@
 #include "Valve.h"
 
-Valve::Valve(uint8_t pin, uint8_t id)
-  : _pin(pin), _id(id), _isOpen(false) {}
+Valve::Valve(uint8_t pin, uint8_t id, bool activeLow)
+  : _pin(pin), _id(id), _activeLow(activeLow), _isOpen(false) {}
 
 void Valve::begin() {
-  pinMode(_pin, OUTPUT);
+  hal_pinMode(_pin, HAL_OUTPUT);
   close();  // estado seguro al arrancar: válvula cerrada
 }
 
 void Valve::open() {
   _isOpen = true;
-  digitalWrite(_pin, HIGH);
+  hal_digitalWrite(_pin, _activeLow ? HAL_LOW : HAL_HIGH);
 }
 
 void Valve::close() {
   _isOpen = false;
-  digitalWrite(_pin, LOW);
+  hal_digitalWrite(_pin, _activeLow ? HAL_HIGH : HAL_LOW);
 }
 
 bool    Valve::isOpen()  const { return _isOpen; }

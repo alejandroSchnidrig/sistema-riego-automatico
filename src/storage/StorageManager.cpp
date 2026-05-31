@@ -1,5 +1,5 @@
+#include "../core/Storage.h"
 #include "StorageManager.h"
-#include <LittleFS.h>
 #include "../web/JsonHelpers.h"
 #include "../config/Config.h"
 
@@ -8,11 +8,11 @@
 // ============================================================
 
 bool StorageManager::begin() {
-  if (!LittleFS.begin(true)) {
-    Serial.println("[Storage] ERROR: LittleFS no pudo montarse");
+  if (!hal_storage_begin()) {
+    Serial.println("[Storage] ERROR: FS no pudo montarse");
     return false;
   }
-  Serial.println("[Storage] LittleFS montado OK");
+  Serial.println("[Storage] FS montado OK");
   return true;
 }
 
@@ -21,20 +21,12 @@ bool StorageManager::begin() {
 // ============================================================
 
 bool StorageManager::loadPrograms(IrrigationSystem& sys) {
-  if (!LittleFS.exists(CONFIG_PATH)) {
+  if (!hal_storage_exists(CONFIG_PATH)) {
     Serial.println("[Storage] config.json no existe — usando programas semilla");
     return false;
   }
 
-  File f = LittleFS.open(CONFIG_PATH, "r");
-  if (!f) {
-    Serial.println("[Storage] ERROR: no se pudo abrir config.json");
-    return false;
-  }
-
-  String json = f.readString();
-  f.close();
-
+  String json = hal_storage_read(CONFIG_PATH);
   if (json.length() == 0) {
     Serial.println("[Storage] config.json vacio");
     return false;
@@ -74,7 +66,9 @@ bool StorageManager::loadPrograms(IrrigationSystem& sys) {
     pos = objEnd + 1;
   }
 
-  Serial.printf("[Storage] %d programa(s) cargados desde config.json\n", loaded);
+  Serial.print("[Storage] ");
+  Serial.print(loaded);
+  Serial.println(" programa(s) cargados desde config.json");
   return loaded > 0;
 }
 
@@ -83,17 +77,16 @@ bool StorageManager::loadPrograms(IrrigationSystem& sys) {
 // ============================================================
 
 bool StorageManager::savePrograms(const IrrigationSystem& sys) {
-  File f = LittleFS.open(CONFIG_PATH, "w");
-  if (!f) {
+  String json = buildConfigJson(sys);
+  
+  if (!hal_storage_write(CONFIG_PATH, json)) {
     Serial.println("[Storage] ERROR: no se pudo escribir config.json");
     return false;
   }
 
-  String json = buildConfigJson(sys);
-  f.print(json);
-  f.close();
-
-  Serial.printf("[Storage] config.json guardado (%d bytes)\n", json.length());
+  Serial.print("[Storage] config.json guardado (");
+  Serial.print(json.length());
+  Serial.println(" bytes)");
   return true;
 }
 
@@ -102,12 +95,7 @@ bool StorageManager::savePrograms(const IrrigationSystem& sys) {
 // ============================================================
 
 String StorageManager::readRaw() {
-  if (!LittleFS.exists(CONFIG_PATH)) return "";
-  File f = LittleFS.open(CONFIG_PATH, "r");
-  if (!f) return "";
-  String content = f.readString();
-  f.close();
-  return content;
+  return hal_storage_read(CONFIG_PATH);
 }
 
 // ============================================================

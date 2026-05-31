@@ -1,9 +1,10 @@
 #pragma once
 
 #include "../domain/IrrigationSystem.h"
+#include "../core/Storage.h"
 
-// Único componente del sistema que interactúa con LittleFS.
-// Ninguna otra clase debe incluir <LittleFS.h> ni abrir archivos directamente.
+// Único componente del sistema que interactúa con el almacenamiento.
+// Ninguna otra clase debe incluir dependencias de FS ni abrir archivos directamente.
 class StorageManager {
 public:
   // Monta LittleFS. Si falla el montaje, el sistema sigue funcionando sin

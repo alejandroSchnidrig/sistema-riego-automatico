@@ -66,7 +66,7 @@ void printPeriodicStatus() {
   Serial.println();
   Serial.println("===== ESTADO DEL SISTEMA =====");
 
-  Time rtcNow = rtcManager.now();
+  RTC_Time rtcNow = rtcManager.now();
   Serial.print("Hora RTC       : ");
   Serial.print(RTCManager::formatDate(rtcNow));
   Serial.print(" ");

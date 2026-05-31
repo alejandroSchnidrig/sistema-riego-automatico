@@ -1,21 +1,21 @@
 #include "Pump.h"
 
-Pump::Pump(uint8_t pin)
-  : _pin(pin), _isOn(false) {}
+Pump::Pump(uint8_t pin, bool activeLow)
+  : _pin(pin), _activeLow(activeLow), _isOn(false) {}
 
 void Pump::begin() {
-  pinMode(_pin, OUTPUT);
+  hal_pinMode(_pin, HAL_OUTPUT);
   off();  // estado seguro al arrancar: bomba apagada
 }
 
 void Pump::on() {
   _isOn = true;
-  digitalWrite(_pin, HIGH);
+  hal_digitalWrite(_pin, _activeLow ? HAL_LOW : HAL_HIGH);
 }
 
 void Pump::off() {
   _isOn = false;
-  digitalWrite(_pin, LOW);
+  hal_digitalWrite(_pin, _activeLow ? HAL_HIGH : HAL_LOW);
 }
 
 bool    Pump::isOn()   const { return _isOn; }

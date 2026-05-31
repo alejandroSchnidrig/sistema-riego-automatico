@@ -12,7 +12,7 @@ Scheduler::Scheduler(IrrigationSystem& sys, RTCManager& rtc)
 {}
 
 void Scheduler::tick() {
-  const Time now = _rtc.now();
+  const RTC_Time now = _rtc.now();
   if (!_rtc.isValid(now)) return;
   if (isSameMinute(now)) return;
 
@@ -29,31 +29,31 @@ void Scheduler::tick() {
   }
 }
 
-bool Scheduler::shouldStartProgramNow(const Program& program, const Time& now) const {
+bool Scheduler::shouldStartProgramNow(const Program& program, const RTC_Time& now) const {
   if (!program.isValid() || program.getSectorCount() == 0) return false;
   if (!_rtc.isValid(now)) return false;
 
-  const uint8_t dayBit = RTCManager::dayMaskBitFromDate(now.yr, now.mon, now.date);
+  const uint8_t dayBit = RTCManager::dayMaskBitFromDate(now.year, now.month, now.day);
   if (dayBit > 6 || (program.getDays() & (1U << dayBit)) == 0) return false;
 
   uint8_t programHour = 0, programMinute = 0;
   if (!RTCManager::parseHourMinute(program.getStartTime(), programHour, programMinute)) return false;
 
-  return programHour == now.hr && programMinute == now.min;
+  return programHour == now.hour && programMinute == now.minute;
 }
 
-void Scheduler::rememberMinute(const Time& now) {
-  _lastYear   = now.yr;
-  _lastMonth  = now.mon;
-  _lastDay    = now.date;
-  _lastHour   = now.hr;
-  _lastMinute = now.min;
+void Scheduler::rememberMinute(const RTC_Time& now) {
+  _lastYear   = now.year;
+  _lastMonth  = now.month;
+  _lastDay    = now.day;
+  _lastHour   = now.hour;
+  _lastMinute = now.minute;
 }
 
-bool Scheduler::isSameMinute(const Time& now) const {
-  return now.yr   == _lastYear   &&
-         now.mon  == _lastMonth  &&
-         now.date == _lastDay    &&
-         now.hr   == _lastHour   &&
-         now.min  == _lastMinute;
+bool Scheduler::isSameMinute(const RTC_Time& now) const {
+  return now.year   == _lastYear   &&
+         now.month  == _lastMonth  &&
+         now.day == _lastDay    &&
+         now.hour   == _lastHour   &&
+         now.minute  == _lastMinute;
 }

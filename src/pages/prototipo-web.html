@@ -59,6 +59,18 @@
     .header-time .pencil { font-size: 0.9rem; opacity: 0.7; transition: opacity 0.15s; }
     .header-time:hover .pencil { opacity: 1; }
 
+    .header-controls { display: flex; align-items: center; gap: 0.5rem; }
+
+    .header-config {
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(255,255,255,0.15);
+      width: 2.1rem; height: 2.1rem; border-radius: 8px;
+      font-size: 1.05rem; cursor: pointer;
+      transition: background 0.15s, transform 0.2s;
+      user-select: none;
+    }
+    .header-config:hover { background: rgba(255,255,255,0.28); transform: rotate(30deg); }
+
     .status-badge {
       display: inline-flex; align-items: center; gap: 0.5rem;
       background: rgba(255,255,255,0.15);
@@ -181,13 +193,32 @@
     .sector.active .sector-timer { color: rgba(255,255,255,0.85); }
 
     .sector.pending {
-      background: #fff8e6; border-color: var(--warning);
-      box-shadow: 0 0 8px rgba(217, 139, 31, 0.25);
+      background: #e6f1fb; border-color: #4a8ec4;
+      box-shadow: 0 0 8px rgba(74, 142, 196, 0.25);
       animation: pulse-amber 1.2s ease-in-out infinite;
     }
-    .sector.pending .name  { color: #8a5a10; }
-    .sector.pending .icon  { color: var(--warning); }
-    .sector.pending .sector-timer { color: #b07020; font-weight: 600; }
+    .sector.pending .name  { color: #1a4a70; }
+    .sector.pending .icon  { color: #4a8ec4; }
+    .sector.pending .sector-timer { color: #2a6a9a; font-weight: 600; }
+
+    .sector.queued {
+      background: #fff8e6; border-color: var(--warning);
+      box-shadow: 0 0 8px rgba(217, 139, 31, 0.2);
+    }
+    .sector.queued .name  { color: #8a5a10; }
+    .sector.queued .icon  { color: var(--warning); }
+    .sector.queued .sector-timer { color: #b07020; font-style: italic; }
+
+    .sector.feeding {
+      background: #e0f7fa;
+      border-color: #00acc1;
+      box-shadow: 0 0 8px rgba(0, 172, 193, 0.25);
+    }
+    .sector.feeding .name  { color: #006064; }
+    .sector.feeding .icon  { color: #00acc1; }
+    .sector.feeding .sector-timer {
+      color: #00838f; font-weight: 600; font-style: italic;
+    }
 
     @keyframes pulse-amber {
       0%, 100% { opacity: 1; }
@@ -230,7 +261,14 @@
       flex-wrap: wrap; gap: 0.5rem;
     }
 
-    .program-title { font-weight: 600; font-size: 1rem; }
+    .program-title { font-weight: 600; font-size: 1rem; display: flex; align-items: center; flex-wrap: wrap; gap: 0.45rem; }
+    .prog-badge {
+      display: inline-flex; align-items: center; font-size: 0.72rem; font-weight: 600;
+      padding: 0.15rem 0.5rem; border-radius: 20px; white-space: nowrap; cursor: default;
+    }
+    .prog-badge.warn   { background: color-mix(in srgb,#e67e22 15%,transparent); color: #a04000; border: 1px solid #e67e22; }
+    .prog-badge.danger { background: color-mix(in srgb,#e74c3c 15%,transparent); color: #922b21; border: 1px solid #e74c3c; }
+    .btn.disabled { opacity: 0.45; pointer-events: none; cursor: not-allowed; }
     .program-meta {
       font-size: 0.8rem; color: var(--text-soft); margin-top: 0.25rem;
       display: flex; flex-wrap: wrap; gap: 0.75rem;
@@ -238,12 +276,14 @@
     .program-meta span::before { content: "• "; color: var(--primary); }
     .program-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; }
 
-    /* --- Árbol de sectores en la lista de programas --- */
+    /* --- Árbol de sectores en la lista de programas (preview estático) --- */
     .program-tree {
-      margin-top: 0.75rem;
+      margin-top: 0.65rem;
+      padding-top: 0.65rem;
+      border-top: 1px solid var(--panel-border);
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 5px;
     }
 
     .tree-item { }
@@ -252,21 +292,19 @@
       margin-left: 20px;
       padding-left: 14px;
       border-left: 2px solid #cdd8d5;
-      margin-top: 5px;
+      margin-top: 4px;
       display: flex;
       flex-direction: column;
-      gap: 5px;
+      gap: 4px;
     }
 
     .tree-node-row {
       display: flex;
       align-items: center;
       gap: 6px;
-      padding: 1px 0;
       position: relative;
     }
 
-    /* Línea horizontal conectora (solo para nodos no raíz) */
     .tree-children .tree-node-row::before {
       content: "";
       position: absolute;
@@ -279,7 +317,7 @@
     }
 
     .delay-badge {
-      font-size: 0.65rem;
+      font-size: 0.63rem;
       font-family: 'Courier New', monospace;
       color: var(--text-soft);
       background: #eef0ef;
@@ -291,33 +329,147 @@
     }
 
     .chip {
-      background: #fff; border: 1px solid var(--panel-border);
-      border-radius: 999px; padding: 0.2rem 0.6rem;
-      font-size: 0.75rem; color: var(--text-soft);
-      transition: background 0.3s, border-color 0.3s, color 0.3s;
+      background: #f4f6f5;
+      border: 1px solid #d4dbd9;
+      border-radius: 999px;
+      padding: 0.18rem 0.55rem;
+      font-size: 0.74rem;
+      color: var(--text-soft);
     }
-    .program-item.active .chip { background: #fff; }
 
-    .chip.chip-active {
-      background: #f0faf5;
-      border-color: var(--primary);
-      color: var(--primary-dark);
+    /* --- Árbol de flujo vertical --- */
+    #flowCard {
+      overflow: hidden;
+    }
+
+    #flowCard h2 {
+      margin-bottom: 0.85rem;
+    }
+
+    .flow-tree-scroll {
+      overflow-x: auto;
+      padding-bottom: 0.5rem;
+    }
+
+    .flow-tree-container {
+      position: relative;
+      margin: 0 auto;
+    }
+
+    .flow-svg {
+      position: absolute;
+      top: 0; left: 0;
+      overflow: visible;
+      pointer-events: none;
+    }
+
+    @keyframes flowDash {
+      to { stroke-dashoffset: -12; }
+    }
+
+    .flow-node-box {
+      position: absolute;
+      width: 82px;
+      height: 56px;
+      transform: translateX(-50%);
+      border: 2px solid #cdd8d5;
+      border-radius: 8px;
+      background: #f8faf9;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      box-sizing: border-box;
+      transition: background 0.25s, border-color 0.25s, box-shadow 0.25s;
+    }
+
+    .flow-node-label {
+      font-size: 0.9rem;
       font-weight: 700;
-      box-shadow: 0 0 0 2px rgba(46, 139, 87, 0.15);
+      color: #4a5e5a;
+      line-height: 1;
     }
 
-    .chip.chip-done {
-      background: #f0f3f2;
-      border-color: #c8d4d0;
-      color: #9aaba7;
+    .flow-node-caudal {
+      font-size: 0.58rem;
+      font-family: 'Courier New', monospace;
+      color: var(--text-soft);
+      opacity: 0.8;
+      margin-top: 1px;
     }
 
-    .chip.chip-pending {
+    .flow-node-timer {
+      font-size: 0.62rem;
+      font-family: 'Courier New', monospace;
+      color: #8a9c98;
+      min-height: 1em;
+      line-height: 1.2;
+    }
+
+    .flow-node-box.flow-active {
+      background: var(--primary);
+      border-color: var(--primary-dark);
+      box-shadow: 0 0 10px rgba(46, 139, 87, 0.45);
+    }
+    .flow-node-box.flow-active .flow-node-label  { color: #fff; }
+    .flow-node-box.flow-active .flow-node-timer  { color: rgba(255,255,255,0.85); }
+    .flow-node-box.flow-active .flow-node-caudal { color: rgba(255,255,255,0.65); }
+
+    .flow-node-box.flow-feeding {
+      background: #e0f7fa;
+      border-color: #00acc1;
+      box-shadow: 0 0 8px rgba(0, 172, 193, 0.35);
+    }
+    .flow-node-box.flow-feeding .flow-node-label  { color: #006064; }
+    .flow-node-box.flow-feeding .flow-node-timer  { color: #00838f; font-weight: 600; }
+    .flow-node-box.flow-feeding .flow-node-caudal { color: #00838f; }
+
+    .flow-node-box.flow-pending {
+      background: #e6f1fb;
+      border-color: #4a8ec4;
+      animation: pulse-amber 1.2s ease-in-out infinite;
+    }
+    .flow-node-box.flow-pending .flow-node-label  { color: #1a4a70; }
+    .flow-node-box.flow-pending .flow-node-timer  { color: #2a6a9a; }
+    .flow-node-box.flow-pending .flow-node-caudal { color: #2a6a9a; }
+
+    .flow-node-box.flow-queued {
       background: #fff8e6;
       border-color: var(--warning);
-      color: #8a5a10;
-      font-weight: 600;
     }
+    .flow-node-box.flow-queued .flow-node-label  { color: #8a5a10; }
+    .flow-node-box.flow-queued .flow-node-timer  { color: #b07020; font-style: italic; }
+    .flow-node-box.flow-queued .flow-node-caudal { color: #b07020; }
+
+    .flow-node-box.flow-done {
+      background: #f0f3f2;
+      border-color: #c8d4d0;
+      opacity: 0.65;
+    }
+    .flow-node-box.flow-done .flow-node-label  { color: #9aaba7; }
+    .flow-node-box.flow-done .flow-node-timer  { color: #9aaba7; }
+    .flow-node-box.flow-done .flow-node-caudal { color: #9aaba7; }
+
+    .flow-node-box.flow-idle .flow-node-label { color: #8a9c98; }
+
+    .flow-node-box.flow-pump-off {
+      background: #f4f6f5;
+      border-color: #9aaba7;
+      border-style: dashed;
+      border-radius: 14px;
+    }
+    .flow-node-box.flow-pump-off .flow-node-label { color: #6c7a78; }
+    .flow-node-box.flow-pump-off .flow-node-timer  { color: #9aaba7; }
+
+    .flow-node-box.flow-pump-on {
+      background: var(--primary);
+      border-color: var(--primary-dark);
+      border-radius: 14px;
+      box-shadow: 0 0 14px rgba(46, 139, 87, 0.55);
+    }
+    .flow-node-box.flow-pump-on .flow-node-label { color: #fff; }
+    .flow-node-box.flow-pump-on .flow-node-timer  { color: rgba(255,255,255,0.85); }
 
     /* --- Formulario de programa --- */
     .form-grid {
@@ -359,7 +511,7 @@
 
     .sector-config-row {
       display: grid;
-      grid-template-columns: auto 1fr auto auto auto;
+      grid-template-columns: auto 1fr auto auto auto auto;
       align-items: center;
       gap: 0.55rem;
       padding: 0.55rem 0.7rem;
@@ -377,6 +529,22 @@
       font-size: 0.85rem; text-align: right;
     }
     .sector-config-row input.delay-input:disabled { opacity: 0.35; }
+
+    .sector-config-row .flow-wrapper {
+      display: flex; align-items: center; gap: 0.3rem;
+    }
+    .sector-config-row .flow-wrapper input {
+      width: 56px; border: 1px solid var(--panel-border);
+      border-radius: 6px; padding: 0.35rem 0.4rem;
+      font-size: 0.85rem; text-align: right;
+    }
+    .sector-config-row .flow-wrapper input:disabled { opacity: 0.35; }
+    /* Resalta en naranja cuando el valor supera el máximo permitido (bomba/padre) */
+    .sector-config-row .flow-wrapper input:not(:disabled):invalid {
+      border-color: var(--warning, #e67e22);
+      background: color-mix(in srgb, var(--warning, #e67e22) 8%, transparent);
+      color: var(--warning, #e67e22);
+    }
 
     .sector-config-row input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary); }
     .sector-config-row .sector-name { font-weight: 600; font-size: 0.9rem; }
@@ -546,7 +714,8 @@
         grid-template-areas:
           "check  name"
           "parent parent"
-          "delay  time";
+          "delay  time"
+          "flow   flow";
       }
       .sector-config-row input[type="checkbox"]  { grid-area: check; }
       .sector-config-row .sector-name            { grid-area: name; }
@@ -556,6 +725,7 @@
         grid-area: time;
         display: flex; align-items: center; gap: 0.5rem; justify-content: flex-end;
       }
+      .sector-config-row .flow-wrapper           { grid-area: flow; }
       .sector-config-row .unit { display: inline; }
     }
   </style>
@@ -572,9 +742,12 @@
       <span id="statusDot" class="status-dot idle"></span>
       <span id="statusLabel">Inactivo</span>
     </div>
-    <div id="headerTime" class="header-time" title="Click para editar la hora">
-      <span class="time-value" id="timeValue">--:--</span>
-      <span class="pencil">✎</span>
+    <div class="header-controls">
+      <div id="headerConfig" class="header-config" title="Configuración del sistema">⚙</div>
+      <div id="headerTime" class="header-time" title="Click para editar la hora">
+        <span class="time-value" id="timeValue">--:--</span>
+        <span class="pencil">✎</span>
+      </div>
     </div>
   </header>
 
@@ -611,6 +784,22 @@
           Sectores (click para encender/apagar manualmente)
         </div>
         <div id="sectorsGrid" class="sectors-grid"></div>
+        <div style="margin-top: 0.65rem; display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center;">
+          <span style="font-size: 0.7rem; color: var(--text-soft); text-transform: uppercase; letter-spacing: 0.4px; margin-right: 0.2rem;">Estados:</span>
+          <span style="display:inline-flex;align-items:center;gap:0.3rem;font-size:0.75rem;color:#236b42"><span style="width:10px;height:10px;border-radius:50%;background:var(--primary);display:inline-block"></span>Irrigando</span>
+          <span style="display:inline-flex;align-items:center;gap:0.3rem;font-size:0.75rem;color:#006064"><span style="width:10px;height:10px;border-radius:50%;background:#00acc1;display:inline-block"></span>Cañería abierta</span>
+          <span style="display:inline-flex;align-items:center;gap:0.3rem;font-size:0.75rem;color:#1a4a70"><span style="width:10px;height:10px;border-radius:50%;background:#4a8ec4;display:inline-block"></span>Retardo</span>
+          <span style="display:inline-flex;align-items:center;gap:0.3rem;font-size:0.75rem;color:#8a5a10"><span style="width:10px;height:10px;border-radius:50%;background:var(--warning);display:inline-block"></span>En cola</span>
+          <span style="display:inline-flex;align-items:center;gap:0.3rem;font-size:0.75rem;color:var(--text-soft)"><span style="width:10px;height:10px;border-radius:50%;background:#c8d2d0;display:inline-block"></span>Inactivo</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ Árbol de flujo (visible durante ejecución) ============ -->
+    <section id="flowCard" class="card" style="display:none;">
+      <h2>Flujo de riego &mdash; <span id="flowProgramTitle" style="color:var(--primary);font-weight:700;">Programa #?</span></h2>
+      <div class="flow-tree-scroll">
+        <div id="flowTreeContainer" class="flow-tree-container"></div>
       </div>
     </section>
 
@@ -668,6 +857,11 @@
 
           <div class="form-field" style="margin-top: 1rem;">
             <label>Sectores — seleccioná y configurá el árbol de riego</label>
+            <div id="rootFlowBar" style="font-size:0.8rem; margin-bottom:0.5rem; color:var(--text-soft);">
+              Bomba: <strong id="flowHintValue">20</strong> L/min —
+              raíces: <strong id="rootFlowSum">0</strong>&thinsp;/&thinsp;<strong id="rootFlowMax">20</strong> L/min
+              <span id="rootFlowIcon"></span>
+            </div>
             <div id="sectorConfigList" class="sector-config-list"></div>
           </div>
 
@@ -678,6 +872,34 @@
         </form>
       </div>
     </section>
+
+    <!-- ============ System Config Modal ============ -->
+    <div id="systemConfigModal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">⚙ Configuración del sistema</div>
+        <div class="modal-body">
+          <div class="form-field" style="margin:0;">
+            <label for="pumpFlow" style="font-size:0.75rem; text-transform:uppercase; color:var(--text-soft);">Caudal de la bomba</label>
+            <div style="display:flex; align-items:center; gap:0.6rem;">
+              <input type="number" id="pumpFlow" min="1" max="200" step="1" value="20" style="width:100px;">
+              <span style="font-size:0.85rem; color:var(--text-soft);">L/min</span>
+            </div>
+            <p class="muted" style="margin:0.5rem 0 0; font-size:0.8rem;">
+              Limita cuántos sectores pueden regar simultáneamente según su demanda de caudal.
+            </p>
+          </div>
+          <!-- Advertencia de impacto en programas — se muestra/oculta dinámicamente -->
+          <div id="configImpactWarning" style="display:none; margin-top:0.9rem; padding:0.65rem 0.8rem;
+               border-radius:8px; font-size:0.82rem; background:color-mix(in srgb,#e67e22 12%,transparent);
+               border:1px solid #e67e22; color:#c0600a;">
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" id="btnConfigCancel" class="btn secondary">✕ Cancelar</button>
+          <button type="button" id="btnConfigSave"   class="btn">✓ Guardar</button>
+        </div>
+      </div>
+    </div>
 
     <!-- ============ Time Editor Modal ============ -->
     <div id="timeEditorModal" class="modal">
@@ -718,7 +940,7 @@
 
     const NUM_SECTORS      = 8;
     const POLL_INTERVAL_MS = 1000;
-    const STORAGE_KEY      = "riego.programas.v3";
+    const STORAGE_KEY      = "riego.programas.v10";
 
     // --- Estado global ---
     let programs     = [];
@@ -726,12 +948,16 @@
     let selectedDays = 0;
     let manualSectorMask = 0;
 
+    // --- Configuración física del sistema ---
+    let systemConfig = { caudalBomba: 20 }; // L/min
+
     // --- Estado de la simulación ---
     const fakeState = {
       estado: "IDLE",
       programaActivo: 0,
-      sectoresActivos: [],      // [{ sectorId, tiempoRestante }]
-      pendingActivations: [],   // [{ sectorId, delay }]
+      sectoresActivos: [],      // [{ sectorId, tiempoRestante, caudal }]
+      pendingActivations: [],   // [{ sectorId, delay, caudal }]
+      queuedSectors: [],        // [{ sectorId, tiempoRiego, retardo, caudal }] — esperando caudal
       completedSectors: [],     // sectorIds que ya terminaron en el ciclo actual
       bomba: false,
       modoManual: false,
@@ -740,32 +966,82 @@
 
     // --- Seed con estructura de árbol ---
     const DEFAULT_SEED = {
+      caudalBomba: 20,  // L/min — restricción física de la bomba
       programas: [
         {
+          // Árbol S1→S2,S3→S4,S5.
+          // S1 alimenta S2+S3 simultáneamente → caudal S1 = S2+S3 = 12.
+          // Cada hoja iguala al padre directo (cañería exacta, sin desperdicio).
           id: 1, horaInicio: "07:00", dias: 62, ciclico: true,
           nodos: [
-            { sectorId: 1, tiempoRiego: 60,  retardo: 0, padre: null },
-            { sectorId: 2, tiempoRiego: 90,  retardo: 5, padre: 1    },
-            { sectorId: 3, tiempoRiego: 120, retardo: 8, padre: 1    },
-            { sectorId: 4, tiempoRiego: 60,  retardo: 3, padre: 2    },
-            { sectorId: 5, tiempoRiego: 45,  retardo: 3, padre: 3    }
+            { sectorId: 1, tiempoRiego: 15, retardo: 0, padre: null, caudal: 12 },
+            { sectorId: 2, tiempoRiego: 12, retardo: 3, padre: 1,    caudal: 6  },
+            { sectorId: 3, tiempoRiego: 18, retardo: 3, padre: 1,    caudal: 6  },
+            { sectorId: 4, tiempoRiego: 10, retardo: 2, padre: 2,    caudal: 6  },
+            { sectorId: 5, tiempoRiego: 12, retardo: 2, padre: 3,    caudal: 6  }
           ]
         },
         {
+          // S4 y S6 son raíces (7 L/min c/u → 14 ≤ 20), sus hijos también caben.
           id: 2, horaInicio: "19:30", dias: 96, ciclico: false,
           nodos: [
-            { sectorId: 4, tiempoRiego: 180, retardo: 0,  padre: null },
-            { sectorId: 6, tiempoRiego: 180, retardo: 0,  padre: null },
-            { sectorId: 7, tiempoRiego: 60,  retardo: 10, padre: 4    },
-            { sectorId: 8, tiempoRiego: 90,  retardo: 10, padre: 6    }
+            { sectorId: 4, tiempoRiego: 20, retardo: 0, padre: null, caudal: 7 },
+            { sectorId: 6, tiempoRiego: 20, retardo: 0, padre: null, caudal: 7 },
+            { sectorId: 7, tiempoRiego: 15, retardo: 3, padre: 4,    caudal: 6 },
+            { sectorId: 8, tiempoRiego: 18, retardo: 3, padre: 6,    caudal: 6 }
           ]
         },
         {
+          // 3 raíces × 6 L/min = 18 ≤ 20, todas arrancan juntas sin cola.
           id: 3, horaInicio: "12:00", dias: 127, ciclico: false,
           nodos: [
-            { sectorId: 1, tiempoRiego: 30, retardo: 0, padre: null },
-            { sectorId: 2, tiempoRiego: 30, retardo: 0, padre: null },
-            { sectorId: 3, tiempoRiego: 30, retardo: 0, padre: null }
+            { sectorId: 1, tiempoRiego: 10, retardo: 0, padre: null, caudal: 6 },
+            { sectorId: 2, tiempoRiego: 10, retardo: 0, padre: null, caudal: 6 },
+            { sectorId: 3, tiempoRiego: 10, retardo: 0, padre: null, caudal: 6 }
+          ]
+        },
+        {
+          // Escenario complejo en ~40s. Raíces S4+S6=18≤20. Complejidad vía hijos.
+          //  t= 0: S4(11)+S6(7)=18 activos. Bomba 18/20.
+          //  t=13: S6 termina → S2 (hijo, retardo 4) entra en pending. Bomba 11+6=17/20 committedFlow.
+          //  t=17: S2 activa → S4(11)+S2(6)=17. Bomba 17/20.
+          //  t=18: S4 termina → S8 (retardo 3) y S1 (retardo 5) entran en pending.
+          //         committedFlow = S2(6)+S8(5)+S1(6) = 17.
+          //  t=21: S8 activa → S2+S8=11. Bomba 11/20.
+          //  t=23: S1 activa → S2+S8+S1=17. Bomba 17/20.
+          //  t=32: S2(15s) y S8(11s) terminan juntos → solo S1(6) activo.
+          //  t=37: S1 termina. Fin.
+          id: 4, horaInicio: "08:00", dias: 21, ciclico: false,
+          nodos: [
+            { sectorId: 4, tiempoRiego: 18, retardo: 0, padre: null, caudal: 11 }, // raíz 1 (caudal = S1+S8)
+            { sectorId: 6, tiempoRiego: 13, retardo: 0, padre: null, caudal: 7  }, // raíz 2 — S4+S6=18≤20 ✓
+            { sectorId: 1, tiempoRiego: 14, retardo: 5, padre: 4,    caudal: 6  }, // hijo S4 — retardo largo
+            { sectorId: 8, tiempoRiego: 11, retardo: 3, padre: 4,    caudal: 5  }, // hijo S4 — retardo corto (6+5=11=S4 ✓)
+            { sectorId: 2, tiempoRiego: 15, retardo: 4, padre: 6,    caudal: 6  }  // hijo S6 (6≤7 ✓)
+          ]
+        },
+        {
+          // S1(12)+S2(8)=20≤20 arrancan (bomba llena desde el inicio).
+          // Hijos escalonados: S3+S4 hijos de S1, S5+S6 hijos de S2.
+          //  t= 0: S1+S2=20. Bomba 20/20.
+          //  t=15: S1 termina → S3(retardo 0)+S4(retardo 3) entran.
+          //         S3(7): 8+7=15≤20 activa. S4(5): 15+5=20≤20 pending(3s).
+          //  t=18: S4 activa → S2(8)+S3(7)+S4(5)=20. Bomba 20/20 otra vez.
+          //  Escenario: S1(12)+S2(8)=20/20 arrancan. S2 tiene hijos S5(4)+S6(4)=8=S2 ✓
+          //  t=0:  S1(12) + S2(8) activos → 20/20 L/min
+          //  t=15: S1 termina → S3(7,0): 8+7=15≤20 activa; S4(5,3): 15+5=20≤20 → pending 3s
+          //  t=18: S4 pending→activo: 8+7+5=20/20
+          //  t=20: S2 termina → S5(4,0): 7+5+4=16≤20 activa; S6(4,4): 16+4=20≤20 → pending 4s
+          //  t=24: S6 pending→activo: 5+4+4=13/20
+          //  t=27: S3 termina → sin cola. t=32: S4 termina. t=36: S5 y S6 terminan. Fin ~t=36
+          id: 5, horaInicio: "15:00", dias: 42, ciclico: false,
+          nodos: [
+            { sectorId: 1, tiempoRiego: 15, retardo: 0, padre: null, caudal: 12 }, // raíz 1
+            { sectorId: 2, tiempoRiego: 20, retardo: 0, padre: null, caudal: 8  }, // raíz 2 — S1+S2=20 ✓
+            { sectorId: 3, tiempoRiego: 12, retardo: 0, padre: 1,    caudal: 7  }, // hijo S1
+            { sectorId: 4, tiempoRiego: 14, retardo: 3, padre: 1,    caudal: 5  }, // hijo S1 (7+5=12=S1 ✓)
+            { sectorId: 5, tiempoRiego: 16, retardo: 0, padre: 2,    caudal: 4  }, // hijo S2
+            { sectorId: 6, tiempoRiego: 12, retardo: 4, padre: 2,    caudal: 4  }  // hijo S2 (4+4=8=S2 ✓)
           ]
         }
       ]
@@ -782,7 +1058,8 @@
           sectorId: Number(n.sectorId),
           tiempoRiego: Number(n.tiempoRiego) || 60,
           retardo: Number(n.retardo) || 0,
-          padre: n.padre != null ? Number(n.padre) : null
+          padre: n.padre != null ? Number(n.padre) : null,
+          caudal: Number(n.caudal) || 6
         }))
       };
     }
@@ -797,7 +1074,8 @@
           sectorId: n.sectorId,
           tiempoRiego: n.tiempoRiego,
           retardo: n.retardo,
-          padre: n.padre
+          padre: n.padre,
+          caudal: n.caudal
         }))
       };
     }
@@ -811,16 +1089,21 @@
         }
         try {
           const data = JSON.parse(raw);
+          if (data.caudalBomba) systemConfig.caudalBomba = Number(data.caudalBomba);
           return (data.programas || []).map(fromStorageFormat);
         } catch (err) {
           console.warn("Storage corrupto, reseeding:", err);
           localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_SEED));
+          systemConfig.caudalBomba = DEFAULT_SEED.caudalBomba;
           return DEFAULT_SEED.programas.map(fromStorageFormat);
         }
       },
 
       async saveProgramas(list) {
-        const payload = { programas: list.map(toStorageFormat) };
+        const payload = {
+          caudalBomba: systemConfig.caudalBomba,
+          programas: list.map(toStorageFormat)
+        };
         localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
       }
     };
@@ -885,8 +1168,47 @@
       fakeState.programaActivo = 0;
       fakeState.sectoresActivos = [];
       fakeState.pendingActivations = [];
+      fakeState.queuedSectors = [];
       fakeState.completedSectors = [];
       fakeState.bomba = false;
+    }
+
+    // --- Helpers de caudal ---
+    // Suma el caudal comprometido: sectores activos + pendientes (retardo en curso).
+    // Los pendientes cuentan porque su caudal ya está "reservado" aunque la válvula
+    // aún no esté abierta. La bomba se apaga durante el retardo (deadhead prevention),
+    // pero el caudal se considera comprometido para la lógica de cola.
+    function committedFlow() {
+      const active  = fakeState.sectoresActivos.reduce((s, a) => s + (a.caudal || 0), 0);
+      const pending = fakeState.pendingActivations.reduce((s, p) => s + (p.caudal || 0), 0);
+      return active + pending;
+    }
+
+    function tryActivateSector(sectorId, tiempoRiego, caudal, retardo, maxCaudal) {
+      if (committedFlow() + caudal <= maxCaudal) {
+        if (retardo > 0) {
+          fakeState.pendingActivations.push({ sectorId, delay: retardo, caudal });
+        } else {
+          fakeState.sectoresActivos.push({ sectorId, tiempoRestante: tiempoRiego, caudal });
+        }
+      } else {
+        fakeState.queuedSectors.push({ sectorId, tiempoRiego, retardo, caudal });
+      }
+    }
+
+    // Semántica FIFO: si el primer elemento de la cola no cabe, se detiene.
+    function drainQueue(maxCaudal) {
+      while (
+        fakeState.queuedSectors.length > 0 &&
+        committedFlow() + fakeState.queuedSectors[0].caudal <= maxCaudal
+      ) {
+        const next = fakeState.queuedSectors.shift();
+        if (next.retardo > 0) {
+          fakeState.pendingActivations.push({ sectorId: next.sectorId, delay: next.retardo, caudal: next.caudal });
+        } else {
+          fakeState.sectoresActivos.push({ sectorId: next.sectorId, tiempoRestante: next.tiempoRiego, caudal: next.caudal });
+        }
+      }
     }
 
     // --- Simulación árbol ---
@@ -896,20 +1218,27 @@
       const prog = programs.find((p) => p.id === fakeState.programaActivo);
       if (!prog) { stopProgram(); return; }
 
+      const maxCaudal = systemConfig.caudalBomba;
+
       // Decrementar activaciones pendientes (retardo entre sectores)
+      // pending→active: pasar el objeto completo para preservar caudal
       const toActivateNow = [];
       fakeState.pendingActivations = fakeState.pendingActivations
-        .map((p) => ({ sectorId: p.sectorId, delay: p.delay - 1 }))
+        .map((p) => ({ sectorId: p.sectorId, delay: p.delay - 1, caudal: p.caudal }))
         .filter((p) => {
-          if (p.delay <= 0) { toActivateNow.push(p.sectorId); return false; }
+          if (p.delay <= 0) { toActivateNow.push(p); return false; }
           return true;
         });
 
-      toActivateNow.forEach((sectorId) => {
-        if (!fakeState.sectoresActivos.find((a) => a.sectorId === sectorId)) {
-          const node = prog.nodos.find((n) => n.sectorId === sectorId);
+      toActivateNow.forEach((pendingItem) => {
+        if (!fakeState.sectoresActivos.find((a) => a.sectorId === pendingItem.sectorId)) {
+          const node = prog.nodos.find((n) => n.sectorId === pendingItem.sectorId);
           if (node) {
-            fakeState.sectoresActivos.push({ sectorId, tiempoRestante: node.tiempoRiego });
+            fakeState.sectoresActivos.push({
+              sectorId: pendingItem.sectorId,
+              tiempoRestante: node.tiempoRiego,
+              caudal: pendingItem.caudal
+            });
           }
         }
       });
@@ -919,35 +1248,33 @@
       fakeState.sectoresActivos = fakeState.sectoresActivos
         .map((active) => {
           if (active.tiempoRestante <= 1) { finished.push(active.sectorId); return null; }
-          return { sectorId: active.sectorId, tiempoRestante: active.tiempoRestante - 1 };
+          return { sectorId: active.sectorId, tiempoRestante: active.tiempoRestante - 1, caudal: active.caudal };
         })
         .filter(Boolean);
 
-      // Registrar sectores que terminaron
+      // Registrar sectores terminados
       finished.forEach((id) => {
         if (!fakeState.completedSectors.includes(id)) fakeState.completedSectors.push(id);
       });
 
+      // Drenar cola con caudal liberado (prioridad FIFO sobre hijos nuevos)
+      drainQueue(maxCaudal);
+
       // Encolar hijos de los sectores que terminaron
       finished.forEach((parentId) => {
-        const children = prog.nodos.filter((n) => n.padre === parentId);
-        children.forEach((child) => {
-          const delay = child.retardo || 0;
-          if (delay > 0) {
-            fakeState.pendingActivations.push({ sectorId: child.sectorId, delay });
-          } else {
-            if (!fakeState.sectoresActivos.find((a) => a.sectorId === child.sectorId)) {
-              fakeState.sectoresActivos.push({
-                sectorId: child.sectorId,
-                tiempoRestante: child.tiempoRiego
-              });
-            }
-          }
-        });
+        prog.nodos
+          .filter((n) => n.padre === parentId)
+          .forEach((child) =>
+            tryActivateSector(child.sectorId, child.tiempoRiego, child.caudal || 6, child.retardo, maxCaudal)
+          );
       });
 
-      // Verificar fin de programa
-      if (fakeState.sectoresActivos.length === 0 && fakeState.pendingActivations.length === 0) {
+      // Verificar fin de programa (incluyendo cola)
+      if (
+        fakeState.sectoresActivos.length    === 0 &&
+        fakeState.pendingActivations.length === 0 &&
+        fakeState.queuedSectors.length      === 0
+      ) {
         if (prog.ciclico) {
           startRootSectors(prog);
         } else {
@@ -955,22 +1282,261 @@
         }
       }
 
-      fakeState.bomba = fakeState.sectoresActivos.length > 0 || fakeState.pendingActivations.length > 0;
+      // La bomba solo corre cuando al menos una válvula está abierta.
+      // pendingActivations (retardo) no cuentan: ninguna válvula está abierta aún.
+      fakeState.bomba = fakeState.sectoresActivos.length > 0;
     }
 
     function startRootSectors(prog) {
-      fakeState.completedSectors = [];
-      const roots = prog.nodos.filter((n) => n.padre === null);
-      fakeState.sectoresActivos = roots.map((n) => ({
-        sectorId: n.sectorId,
-        tiempoRestante: n.tiempoRiego
-      }));
+      fakeState.sectoresActivos    = [];
+      fakeState.completedSectors   = [];
+      fakeState.queuedSectors      = [];
       fakeState.pendingActivations = [];
-      fakeState.bomba = roots.length > 0;
+      const maxCaudal = systemConfig.caudalBomba;
+      prog.nodos
+        .filter((n) => n.padre === null)
+        .forEach((n) => tryActivateSector(n.sectorId, n.tiempoRiego, n.caudal || 6, 0, maxCaudal));
+      fakeState.bomba = fakeState.sectoresActivos.length > 0;
+    }
+
+    // --- Árbol de flujo vertical ---
+    const FT = {
+      NODE_W: 82,   // ancho del nodo (px)
+      NODE_H: 68,   // alto del nodo (px)
+      H_GAP:  22,   // espacio horizontal entre hermanos
+      V_GAP:  50,   // espacio vertical entre niveles (zona del conector)
+      PAD_X:  14,   // padding izquierdo/derecho del contenedor
+      PAD_Y:  12,   // padding superior/inferior
+    };
+
+    // Ancho total que ocupa el subárbol de un sector (incluyendo H_GAP)
+    function ftSubtreeWidth(sectorId, nodos) {
+      const children = nodos.filter((n) => n.padre === sectorId);
+      if (!children.length) return FT.NODE_W + FT.H_GAP;
+      return children.reduce((sum, c) => sum + ftSubtreeWidth(c.sectorId, nodos), 0);
+    }
+
+    // Asigna (x, y) centrado a cada nodo recursivamente
+    function ftAssignPositions(sectorId, nodos, level, xLeft, positions) {
+      const children = nodos.filter((n) => n.padre === sectorId);
+      const subtreeW = ftSubtreeWidth(sectorId, nodos);
+      positions[sectorId] = {
+        x: FT.PAD_X + xLeft + subtreeW / 2,
+        y: FT.PAD_Y + level * (FT.NODE_H + FT.V_GAP) + FT.NODE_H / 2,
+      };
+      let childXLeft = xLeft;
+      children.forEach((child) => {
+        ftAssignPositions(child.sectorId, nodos, level + 1, childXLeft, positions);
+        childXLeft += ftSubtreeWidth(child.sectorId, nodos);
+      });
+    }
+
+    // Estado visual de un nodo dado el estado global de la simulación
+    function ftNodeState(sectorId, feedingIds) {
+      if (fakeState.sectoresActivos.some((a) => a.sectorId === sectorId))  return "active";
+      if (fakeState.pendingActivations.some((p) => p.sectorId === sectorId)) return "pending";
+      if (fakeState.queuedSectors.some((q) => q.sectorId === sectorId))    return "queued";
+      if (feedingIds.has(sectorId))                                          return "feeding";
+      if (fakeState.completedSectors.includes(sectorId))                    return "done";
+      return "idle";
+    }
+
+    // Color del conector SVG según el estado del nodo destino
+    function ftLineColor(state) {
+      return { active: "#2e8b57", feeding: "#00acc1", pending: "#4a8ec4",
+               queued: "#d98b1f", done: "#bec9c6", idle: "#d5e0de" }[state] || "#d5e0de";
+    }
+
+    function renderFlowTree() {
+      const card      = document.getElementById("flowCard");
+      const container = document.getElementById("flowTreeContainer");
+
+      if (fakeState.estado !== "RUNNING" || !fakeState.programaActivo) {
+        card.style.display = "none";
+        return;
+      }
+      const prog = programs.find((p) => p.id === fakeState.programaActivo);
+      if (!prog || !prog.nodos.length) { card.style.display = "none"; return; }
+
+      card.style.display = "";
+      document.getElementById("flowProgramTitle").textContent =
+        `Programa #${prog.id} · ${prog.horaInicio}`;
+
+      const feedingIds = getFeedingSectors();
+      const nodos      = prog.nodos;
+      const roots      = nodos.filter((n) => n.padre === null);
+
+      // Posiciones — raíces en nivel 1, bomba ocupa nivel 0
+      const positions = {};
+      let xLeft = 0;
+      roots.forEach((r) => {
+        ftAssignPositions(r.sectorId, nodos, 1, xLeft, positions);
+        xLeft += ftSubtreeWidth(r.sectorId, nodos);
+      });
+      const totalW = xLeft;
+
+      // Nodo bomba: centrado sobre todas las raíces
+      const pumpX  = FT.PAD_X + totalW / 2;
+      const pumpY  = FT.PAD_Y + FT.NODE_H / 2;
+      const pumpOn = fakeState.bomba;
+
+      // Profundidad máxima de sectores (0-based desde raíz)
+      const getDepth = (sectorId) => {
+        let d = 0, node = nodos.find((n) => n.sectorId === sectorId);
+        while (node && node.padre !== null) {
+          d++;
+          node = nodos.find((n) => n.sectorId === node.padre);
+        }
+        return d;
+      };
+      const maxDepth = Math.max(...nodos.map((n) => getDepth(n.sectorId)));
+
+      const cW = FT.PAD_X * 2 + totalW;
+      // +2: nivel 0 (bomba) + niveles de sectores (maxDepth+1)
+      const cH = FT.PAD_Y * 2 + (maxDepth + 2) * (FT.NODE_H + FT.V_GAP) - FT.V_GAP;
+
+      container.innerHTML = "";
+      container.style.width  = cW + "px";
+      container.style.height = cH + "px";
+
+      // Conectores SVG
+      const svgNS = "http://www.w3.org/2000/svg";
+      const svg   = document.createElementNS(svgNS, "svg");
+      svg.setAttribute("class",  "flow-svg");
+      svg.setAttribute("width",  cW);
+      svg.setAttribute("height", cH);
+
+      function drawConnector(x1, y1, x2, y2, flowing) {
+        const midY  = y1 + FT.V_GAP / 2;
+        const color = flowing ? "#2e8b57" : "#d5e0de";
+        const lw    = flowing ? 3 : 1.5;
+        const path  = document.createElementNS(svgNS, "path");
+        path.setAttribute("d",
+          `M ${x1} ${y1} L ${x1} ${midY} L ${x2} ${midY} L ${x2} ${y2}`);
+        path.setAttribute("stroke",          color);
+        path.setAttribute("stroke-width",    lw);
+        path.setAttribute("fill",            "none");
+        path.setAttribute("stroke-linecap",  "round");
+        path.setAttribute("stroke-linejoin", "round");
+        if (flowing) {
+          path.setAttribute("stroke-dasharray", "8 4");
+          path.style.animation = "flowDash 0.75s linear infinite";
+        }
+        svg.appendChild(path);
+      }
+
+      // Conexiones bomba → raíces
+      roots.forEach((root) => {
+        const rPos = positions[root.sectorId];
+        if (!rPos) return;
+        // Fluye solo si la válvula de la raíz está físicamente abierta
+        // (active = irrigando, feeding = cañería abierta para un hijo).
+        // pending (retardo) y queued (esperando caudal) NO tienen la válvula abierta.
+        const rootState = ftNodeState(root.sectorId, feedingIds);
+        const rootFlows = pumpOn && (rootState === "active" || rootState === "feeding");
+        drawConnector(pumpX, pumpY + FT.NODE_H / 2, rPos.x, rPos.y - FT.NODE_H / 2, rootFlows);
+      });
+
+      // Conexiones entre sectores
+      nodos.forEach((node) => {
+        if (node.padre === null) return;
+        const pPos = positions[node.padre];
+        const cPos = positions[node.sectorId];
+        if (!pPos || !cPos) return;
+        const state     = ftNodeState(node.sectorId, feedingIds);
+        const isFlowing = state === "active" || state === "feeding";
+        const lw        = isFlowing ? 3 : 1.5;
+        const color     = ftLineColor(state);
+        const midY      = pPos.y + FT.NODE_H / 2 + FT.V_GAP / 2;
+        const path      = document.createElementNS(svgNS, "path");
+        path.setAttribute("d",
+          `M ${pPos.x} ${pPos.y + FT.NODE_H / 2} L ${pPos.x} ${midY} L ${cPos.x} ${midY} L ${cPos.x} ${cPos.y - FT.NODE_H / 2}`);
+        path.setAttribute("stroke",          color);
+        path.setAttribute("stroke-width",    lw);
+        path.setAttribute("fill",            "none");
+        path.setAttribute("stroke-linecap",  "round");
+        path.setAttribute("stroke-linejoin", "round");
+        if (isFlowing) {
+          path.setAttribute("stroke-dasharray", "8 4");
+          path.style.animation = "flowDash 0.75s linear infinite";
+        }
+        svg.appendChild(path);
+      });
+
+      container.appendChild(svg);
+
+      // Nodos de sectores
+      nodos.forEach((node) => {
+        const pos   = positions[node.sectorId];
+        if (!pos) return;
+        const state = ftNodeState(node.sectorId, feedingIds);
+
+        let timerText = "";
+        if (state === "active") {
+          const info = fakeState.sectoresActivos.find((a) => a.sectorId === node.sectorId);
+          timerText  = info ? formatTime(info.tiempoRestante) : "";
+        } else if (state === "pending") {
+          const info = fakeState.pendingActivations.find((p) => p.sectorId === node.sectorId);
+          timerText  = info ? `⏱ ${info.delay}s` : "";
+        } else if (state === "queued") {
+          timerText = "en cola";
+        } else if (state === "feeding") {
+          timerText = "abierta ↓";
+        } else if (state === "done") {
+          timerText = "✓ listo";
+        }
+
+        const div     = document.createElement("div");
+        div.className = `flow-node-box flow-${state}`;
+        div.style.left = pos.x + "px";
+        div.style.top  = (pos.y - FT.NODE_H / 2) + "px";
+        div.innerHTML  = `
+          <div class="flow-node-label">S${node.sectorId}</div>
+          <div class="flow-node-timer">${timerText}</div>
+          <div class="flow-node-caudal">${node.caudal || 6} L/min</div>
+        `;
+        container.appendChild(div);
+      });
+
+      // Nodo bomba (último para quedar por encima del SVG)
+      const activeFlow  = fakeState.sectoresActivos.reduce((s, a) => s + (a.caudal || 0), 0);
+      const pumpDiv     = document.createElement("div");
+      pumpDiv.className = `flow-node-box flow-pump-${pumpOn ? "on" : "off"}`;
+      pumpDiv.style.left = pumpX + "px";
+      pumpDiv.style.top  = (pumpY - FT.NODE_H / 2) + "px";
+      pumpDiv.innerHTML  = `
+        <div class="flow-node-label">⚙ Bomba</div>
+        <div class="flow-node-timer">${pumpOn ? `${activeFlow}/${systemConfig.caudalBomba} L/min` : "inactiva"}</div>
+      `;
+      container.appendChild(pumpDiv);
+    }
+
+    // --- Sectores cañería: ancestors de sectores activos ---
+    // Devuelve un Set con los sectorId de todos los sectores que deben tener
+    // su válvula abierta para alimentar a los sectores actualmente irrigando.
+    function getFeedingSectors() {
+      if (fakeState.estado !== "RUNNING" || !fakeState.programaActivo) return new Set();
+      const prog = programs.find((p) => p.id === fakeState.programaActivo);
+      if (!prog) return new Set();
+
+      const activeSectorIds = fakeState.sectoresActivos.map((a) => a.sectorId);
+      const feeding = new Set();
+
+      for (const id of activeSectorIds) {
+        let node = prog.nodos.find((n) => n.sectorId === id);
+        while (node && node.padre !== null) {
+          feeding.add(node.padre);
+          node = prog.nodos.find((n) => n.sectorId === node.padre);
+        }
+      }
+      // Un sector que está irrigando no puede ser "cañería" al mismo tiempo
+      activeSectorIds.forEach((id) => feeding.delete(id));
+      return feeding;
     }
 
     // --- Render: Estado ---
     function renderStatus() {
+      const feedingIds = getFeedingSectors();
       const manualIds = [];
       for (let i = 1; i <= NUM_SECTORS; i++) {
         if (isManualSectorActive(i)) manualIds.push(i);
@@ -998,7 +1564,10 @@
       const pendingLabels = pendingIds
         .filter((id) => !allActiveIds.includes(id))
         .map((id) => `S${id}⏱`);
-      const allLabels = [...activeLabels, ...pendingLabels];
+      const queuedLabels  = fakeState.queuedSectors
+        .map((q) => `S${q.sectorId}⏱`)
+        .filter((lbl, idx, arr) => arr.indexOf(lbl) === idx);
+      const allLabels = [...activeLabels, ...pendingLabels, ...queuedLabels];
       $("#activeSector").textContent = allLabels.length ? allLabels.join(", ") : "—";
 
       const maxRemaining = fakeState.sectoresActivos.length > 0
@@ -1015,9 +1584,13 @@
         const isActive  = allActiveIds.includes(id);
         const pendingInfo = fakeState.pendingActivations.find((p) => p.sectorId === id);
         const isPending = !!pendingInfo && !isActive;
+        const isQueued  = !isActive && !isPending && fakeState.queuedSectors.some((q) => q.sectorId === id);
+        const isFeeding = !isActive && !isPending && !isQueued && feedingIds.has(id);
 
         el.classList.toggle("active",  isActive);
         el.classList.toggle("pending", isPending);
+        el.classList.toggle("queued",  isQueued);
+        el.classList.toggle("feeding", isFeeding);
 
         const timerEl = el.querySelector(".sector-timer");
         if (timerEl) {
@@ -1026,6 +1599,10 @@
             timerEl.textContent = info ? formatTime(info.tiempoRestante) : "";
           } else if (isPending) {
             timerEl.textContent = `⏱ ${pendingInfo.delay}s`;
+          } else if (isQueued) {
+            timerEl.textContent = "en cola";
+          } else if (isFeeding) {
+            timerEl.textContent = "↓ cañería";
           } else {
             timerEl.textContent = "";
           }
@@ -1034,6 +1611,9 @@
 
       // Actualizar chips del árbol en la lista de programas
       renderPrograms(programs, fakeState.programaActivo || 0);
+
+      // Árbol de flujo vertical
+      renderFlowTree();
     }
 
     function buildSectorsGrid() {
@@ -1073,38 +1653,26 @@
     }
 
     // --- Render: árbol visual en lista de programas ---
-    function buildTreeHtml(nodos, progId, padre = null) {
+    // Árbol de preview estático (chips neutros, sin estados de ejecución)
+    function buildTreeHtml(nodos, padre = null, _visited = new Set()) {
       const children = nodos.filter((n) => n.padre === padre);
       if (!children.length) return "";
 
-      const isActiveProg = fakeState.programaActivo === progId && fakeState.estado === "RUNNING";
-
       return children.map((node) => {
-        let chipClass = "chip";
-        if (isActiveProg) {
-          const isRunning = fakeState.sectoresActivos.some((a) => a.sectorId === node.sectorId);
-          const isPending = fakeState.pendingActivations.some((p) => p.sectorId === node.sectorId);
-          const isDone    = fakeState.completedSectors.includes(node.sectorId);
-          if (isRunning)      chipClass = "chip chip-active";
-          else if (isPending) chipClass = "chip chip-pending";
-          else if (isDone)    chipClass = "chip chip-done";
-        }
-
+        if (_visited.has(node.sectorId)) return ""; // guard anti-ciclo (datos corruptos)
+        const visited = new Set(_visited);
+        visited.add(node.sectorId);
         const delayBadge = (node.padre !== null && node.retardo > 0)
           ? `<span class="delay-badge">⏱ ${node.retardo}s</span>`
           : "";
-
-        const subTree = buildTreeHtml(nodos, progId, node.sectorId);
-        const childrenContainer = subTree
-          ? `<div class="tree-children">${subTree}</div>`
-          : "";
-
+        const subTree = buildTreeHtml(nodos, node.sectorId, visited);
+        const childrenHtml = subTree ? `<div class="tree-children">${subTree}</div>` : "";
         return `
           <div class="tree-item">
             <div class="tree-node-row">
-              ${delayBadge}<span class="${chipClass}">S${node.sectorId} · ${formatTime(node.tiempoRiego)}</span>
+              ${delayBadge}<span class="chip">S${node.sectorId} · ${formatTime(node.tiempoRiego)}</span>
             </div>
-            ${childrenContainer}
+            ${childrenHtml}
           </div>
         `;
       }).join("");
@@ -1118,15 +1686,30 @@
       }
       container.innerHTML = "";
       list.forEach((p) => {
+        const consistency   = checkProgramConsistency(p, systemConfig.caudalBomba);
+        const hasDeadlock   = consistency.deadlocked.length > 0;
+        const hasCrowded    = consistency.crowded;
+        const isInconsistent = hasDeadlock || hasCrowded;
+
+        // Badge de estado
+        let badgeHtml = "";
+        if (hasDeadlock) {
+          const sects = consistency.deadlocked.map((s) => `S${s}`).join(", ");
+          badgeHtml = `<span class="prog-badge danger" title="${sects} tienen caudal mayor al de la bomba y nunca podrían activarse">⛔ ${sects} bloqueado${consistency.deadlocked.length > 1 ? "s" : ""}</span>`;
+        } else if (hasCrowded) {
+          badgeHtml = `<span class="prog-badge warn" title="La suma de sectores raíz supera el caudal de la bomba; algunos sectores irán a cola">⚠️ Raíces exceden bomba</span>`;
+        }
+
         const item = document.createElement("div");
         item.className = "program-item" + (p.id === activeId ? " active" : "");
-
-        const treeHtml = buildTreeHtml(p.nodos, p.id);
-
+        const treeHtml = buildTreeHtml(p.nodos);
         item.innerHTML = `
           <div class="program-item-header">
             <div>
-              <div class="program-title">Programa #${p.id} · ${p.horaInicio}</div>
+              <div class="program-title">
+                Programa #${p.id} · ${p.horaInicio}
+                ${badgeHtml}
+              </div>
               <div class="program-meta">
                 <span>${daysMaskToLabel(p.dias)}</span>
                 <span>${p.ciclico ? "Cíclico" : "Ejecución única"}</span>
@@ -1134,7 +1717,7 @@
             </div>
             <div class="program-actions">
               <button class="btn small secondary" data-action="edit"   data-id="${p.id}">Editar</button>
-              <button class="btn small"           data-action="run"    data-id="${p.id}">Ejecutar</button>
+              <button class="btn small ${hasDeadlock ? "disabled" : ""}" data-action="run" data-id="${p.id}" ${hasDeadlock ? 'title="Corregí los caudales antes de ejecutar"' : ""}>Ejecutar</button>
               <button class="btn small danger"    data-action="delete" data-id="${p.id}">Borrar</button>
             </div>
           </div>
@@ -1165,6 +1748,10 @@
             <input type="number" id="sec_${i}_time" min="1" max="3600" value="60" disabled>
             <span class="unit">s riego</span>
           </div>
+          <div class="flow-wrapper">
+            <input type="number" id="sec_${i}_flow" min="1" max="50" step="1" value="6" disabled title="Caudal requerido por este sector (L/min)">
+            <span class="unit">L/min</span>
+          </div>
         `;
         list.appendChild(row);
 
@@ -1172,12 +1759,29 @@
         const sel = $(`#sec_${i}_parent`);
         const t   = $(`#sec_${i}_time`);
         const d   = $(`#sec_${i}_delay`);
+        const fl  = $(`#sec_${i}_flow`);
 
         cb.addEventListener("change", (e) => {
           const checked = e.target.checked;
-          t.disabled = !checked;
+          t.disabled  = !checked;
+          fl.disabled = !checked;
           sel.disabled = !checked;
-          if (!checked) {
+          if (checked) {
+            // Caudal inicial inteligente: usar el espacio libre en la bomba para raíces,
+            // así no se pisan los valores que el usuario ya configuró en otros sectores.
+            // Por defecto el nuevo sector es raíz (sel todavía no tiene valor).
+            let usedByOtherRoots = 0;
+            for (let j = 1; j <= NUM_SECTORS; j++) {
+              if (j === i || !$(`#sec_${j}_enabled`)?.checked) continue;
+              const jSel = $(`#sec_${j}_parent`);
+              const jFl  = $(`#sec_${j}_flow`);
+              if (jSel && !jSel.value && jFl && !jFl.disabled) {
+                usedByOtherRoots += parseInt(jFl.value, 10) || 0;
+              }
+            }
+            const remaining = systemConfig.caudalBomba - usedByOtherRoots;
+            fl.value = remaining > 0 ? Math.min(6, remaining) : 1;
+          } else {
             for (let j = 1; j <= NUM_SECTORS; j++) {
               if (j === i) continue;
               const jSel = $(`#sec_${j}_parent`);
@@ -1187,13 +1791,19 @@
             d.value = 0;
           }
           updateParentSelectors();
+          updateFlowConstraints(); // sin editingSectorId → solo actualiza maxes y UI
         });
 
         sel.addEventListener("change", () => {
           const hasParent = !!sel.value;
           d.disabled = !hasParent;
           if (!hasParent) d.value = 0;
+          updateFlowConstraints(); // sin editingSectorId → no clampea
         });
+
+        // Cuando el caudal del padre cambia, propagar la restricción a sus hijos.
+        // Pasamos el id del sector para que solo se recorte ese campo si excede el max.
+        fl.addEventListener("input", () => updateFlowConstraints(i));
       }
     }
 
@@ -1203,24 +1813,121 @@
         if ($(`#sec_${i}_enabled`).checked) enabled.push(i);
       }
 
+      // Calcula qué sectores son descendientes de `sectorId` según las selecciones
+      // actuales. Usamos propagación iterativa para terminar siempre (sin recursión).
+      function getDescendants(sectorId) {
+        const result = new Set([sectorId]);
+        let changed = true;
+        while (changed) {
+          changed = false;
+          for (const id of enabled) {
+            if (result.has(id)) continue;
+            const pSel = $(`#sec_${id}_parent`);
+            const pVal = pSel ? parseInt(pSel.value, 10) : NaN;
+            if (!isNaN(pVal) && result.has(pVal)) {
+              result.add(id);
+              changed = true;
+            }
+          }
+        }
+        return result;
+      }
+
       for (let i = 1; i <= NUM_SECTORS; i++) {
         const sel = $(`#sec_${i}_parent`);
         if (!sel) continue;
-        const prev = sel.value;
+        const prev        = sel.value;
+        const descendants = getDescendants(i); // sectores que NO pueden ser padre de i
         sel.innerHTML = '<option value="">Al inicio (raíz)</option>';
-        enabled.filter((id) => id !== i).forEach((id) => {
-          const opt = document.createElement("option");
-          opt.value = String(id);
-          opt.textContent = `Sector ${id}`;
-          sel.appendChild(opt);
-        });
-        // Restaurar selección anterior si sigue siendo válida
-        if (prev && enabled.includes(parseInt(prev))) {
+        enabled
+          .filter((id) => !descendants.has(id)) // excluye i mismo y sus descendientes
+          .forEach((id) => {
+            const opt = document.createElement("option");
+            opt.value = String(id);
+            opt.textContent = `Sector ${id}`;
+            sel.appendChild(opt);
+          });
+        // Restaurar selección anterior sólo si sigue siendo una opción válida (no forma ciclo)
+        if (prev && enabled.includes(parseInt(prev)) && !descendants.has(parseInt(prev))) {
           sel.value = prev;
         } else {
           sel.value = "";
         }
       }
+    }
+
+    // Ajusta el max de caudal de cada sector descontando lo que ya consumen sus
+    // "hermanos" (mismos padre). Para raíces, la bomba actúa como padre común:
+    //   raíz.max   = caudalBomba  − suma_de_otras_raíces
+    //   hijo.max   = padre.caudal − suma_de_otros_hijos_del_mismo_padre
+    //
+    // editingSectorId: si se pasa, se permite recortar ese sector (el usuario lo
+    // está editando activamente con el spinner/teclado). Los demás nunca se tocan
+    // automáticamente para no destruir valores que el usuario ya configuró.
+    function updateFlowConstraints(editingSectorId = null) {
+      // Paso 1: acumular caudal por padre y caudal total de raíces
+      const childSumByParent = {};
+      let   rootCaudalSum    = 0;
+
+      for (let i = 1; i <= NUM_SECTORS; i++) {
+        const cb = $(`#sec_${i}_enabled`);
+        if (!cb || !cb.checked) continue;
+        const sel = $(`#sec_${i}_parent`);
+        const fl  = $(`#sec_${i}_flow`);
+        if (!sel || !fl || fl.disabled) continue;
+        const caudal = parseInt(fl.value, 10) || 0;
+        if (sel.value) {
+          const parentId = parseInt(sel.value, 10);
+          childSumByParent[parentId] = (childSumByParent[parentId] || 0) + caudal;
+        } else {
+          rootCaudalSum += caudal;
+        }
+      }
+
+      // Paso 2: fijar el max de cada sector.
+      // Solo recortar el valor del sector que el usuario está editando en este momento
+      // (editingSectorId). El resto mantiene su valor aunque sea mayor al max actual,
+      // para que el usuario pueda ver qué necesita ajustar sin que el sistema le pise
+      // los valores que ya configuró.
+      for (let i = 1; i <= NUM_SECTORS; i++) {
+        const cb = $(`#sec_${i}_enabled`);
+        if (!cb || !cb.checked) continue;
+        const sel = $(`#sec_${i}_parent`);
+        const fl  = $(`#sec_${i}_flow`);
+        if (!sel || !fl || fl.disabled) continue;
+
+        const myCaudal = parseInt(fl.value, 10) || 0;
+        let maxForThis;
+
+        if (sel.value) {
+          // Con padre: max = caudal_padre − suma_hermanos
+          const parentId     = parseInt(sel.value, 10);
+          const parentFl     = $(`#sec_${parentId}_flow`);
+          const parentCaudal = parentFl ? (parseInt(parentFl.value, 10) || systemConfig.caudalBomba) : systemConfig.caudalBomba;
+          const siblingsSum  = (childSumByParent[parentId] || 0) - myCaudal;
+          maxForThis = Math.min(systemConfig.caudalBomba, Math.max(1, parentCaudal - siblingsSum));
+        } else {
+          // Raíz: la bomba es el padre común — max = caudalBomba − suma_otras_raíces
+          const otherRootsSum = rootCaudalSum - myCaudal;
+          maxForThis = Math.max(1, systemConfig.caudalBomba - otherRootsSum);
+        }
+
+        fl.max = maxForThis;
+        // Recortar solo el sector que el usuario está editando activamente
+        if (editingSectorId === i && myCaudal > maxForThis) fl.value = maxForThis;
+      }
+
+      // Paso 3: actualizar indicador de suma de raíces
+      const sumEl  = $("#rootFlowSum");
+      const maxEl  = $("#rootFlowMax");
+      const iconEl = $("#rootFlowIcon");
+      const barEl  = $("#rootFlowBar");
+      if (sumEl)  sumEl.textContent  = rootCaudalSum;
+      if (maxEl)  maxEl.textContent  = systemConfig.caudalBomba;
+      if (iconEl) iconEl.textContent = rootCaudalSum > systemConfig.caudalBomba ? " ⚠️ excede la bomba" : "";
+      if (barEl)  barEl.style.color  = rootCaudalSum > systemConfig.caudalBomba
+                                         ? "var(--danger, #e74c3c)"
+                                         : "var(--text-soft)";
     }
 
     function openEditor(program) {
@@ -1230,14 +1937,22 @@
 
       // Reset
       for (let i = 1; i <= NUM_SECTORS; i++) {
-        $(`#sec_${i}_enabled`).checked = false;
-        $(`#sec_${i}_time`).value    = 60;
-        $(`#sec_${i}_time`).disabled = true;
-        $(`#sec_${i}_delay`).value   = 0;
-        $(`#sec_${i}_delay`).disabled = true;
+        $(`#sec_${i}_enabled`).checked  = false;
+        $(`#sec_${i}_time`).value       = 60;
+        $(`#sec_${i}_time`).disabled    = true;
+        $(`#sec_${i}_delay`).value      = 0;
+        $(`#sec_${i}_delay`).disabled   = true;
+        $(`#sec_${i}_flow`).value       = 6;
+        $(`#sec_${i}_flow`).disabled    = true;
         const sel = $(`#sec_${i}_parent`);
         if (sel) { sel.value = ""; sel.disabled = true; }
       }
+
+      // Sincronizar hint de caudal de bomba
+      const hintEl = $("#flowHintValue");
+      if (hintEl) hintEl.textContent = systemConfig.caudalBomba;
+      const maxEl = $("#rootFlowMax");
+      if (maxEl) maxEl.textContent = systemConfig.caudalBomba;
 
       if (program) {
         editingId = program.id;
@@ -1249,9 +1964,11 @@
         updateDaysUI();
 
         program.nodos.forEach((n) => {
-          $(`#sec_${n.sectorId}_enabled`).checked = true;
-          $(`#sec_${n.sectorId}_time`).disabled   = false;
+          $(`#sec_${n.sectorId}_enabled`).checked  = true;
+          $(`#sec_${n.sectorId}_time`).disabled    = false;
           $(`#sec_${n.sectorId}_time`).value       = n.tiempoRiego;
+          $(`#sec_${n.sectorId}_flow`).disabled    = false;
+          $(`#sec_${n.sectorId}_flow`).value       = n.caudal || 6;
           const sel = $(`#sec_${n.sectorId}_parent`);
           if (sel) sel.disabled = false;
         });
@@ -1268,6 +1985,9 @@
             d.disabled = n.padre === null;
           }
         });
+
+        // Aplicar restricciones de caudal padre→hijo
+        updateFlowConstraints();
       } else {
         editingId = null;
         $("#editorTitle").textContent = "Nuevo programa";
@@ -1276,6 +1996,7 @@
         $("#cyclic").value    = "false";
         selectedDays = 0;
         updateDaysUI();
+        updateFlowConstraints();
       }
     }
 
@@ -1301,7 +2022,8 @@
           sectorId: i,
           tiempoRiego: parseInt($(`#sec_${i}_time`).value, 10) || 0,
           retardo: padre !== null ? (parseInt($(`#sec_${i}_delay`).value, 10) || 0) : 0,
-          padre
+          padre,
+          caudal: Math.max(1, parseInt($(`#sec_${i}_flow`).value, 10) || 6)
         });
       }
       return {
@@ -1333,6 +2055,77 @@
         }
       }
 
+      // Detectar referencias circulares (S2→S3→S2, etc.).
+      // Para cada nodo, seguimos la cadena de padres; si pasamos dos veces por el
+      // mismo sectorId antes de llegar a null, hay un ciclo.
+      {
+        const nodeMap0 = Object.fromEntries(prog.nodos.map((n) => [n.sectorId, n]));
+        for (const nodo of prog.nodos) {
+          const visited = new Set();
+          let cur = nodo;
+          while (cur && cur.padre !== null) {
+            if (visited.has(cur.sectorId)) {
+              toast(
+                `Referencia circular: S${cur.sectorId} es ancestor de sí mismo. ` +
+                `Revisá la cadena de padres.`,
+                true
+              );
+              return;
+            }
+            visited.add(cur.sectorId);
+            cur = nodeMap0[cur.padre];
+          }
+        }
+      }
+
+      // Ningún sector puede pedir más caudal que la bomba: nunca podría activarse.
+      for (const nodo of prog.nodos) {
+        if (nodo.caudal > systemConfig.caudalBomba) {
+          toast(
+            `S${nodo.sectorId} pide ${nodo.caudal} L/min pero la bomba solo tiene ${systemConfig.caudalBomba} L/min — nunca podría activarse`,
+            true
+          );
+          return;
+        }
+      }
+
+      // La suma de los sectores raíz no puede superar la bomba:
+      // todos arrancan simultáneamente y la bomba es su cañería común.
+      const rootNodos   = prog.nodos.filter((n) => n.padre === null);
+      const rootCaudalSum = rootNodos.reduce((s, n) => s + n.caudal, 0);
+      if (rootCaudalSum > systemConfig.caudalBomba) {
+        const detalle = rootNodos.map((n) => `S${n.sectorId}(${n.caudal})`).join(" + ");
+        toast(
+          `Los sectores raíz suman ${rootCaudalSum} L/min pero la bomba solo tiene ${systemConfig.caudalBomba} L/min (${detalle})`,
+          true
+        );
+        return;
+      }
+
+      // El padre es la cañería que alimenta a todos sus hijos simultáneamente.
+      // La suma de caudales de los hijos directos no puede superar el caudal del padre.
+      const nodeMap = Object.fromEntries(prog.nodos.map((n) => [n.sectorId, n]));
+      const childSumByParent = {};
+      for (const nodo of prog.nodos) {
+        if (nodo.padre !== null) {
+          childSumByParent[nodo.padre] = (childSumByParent[nodo.padre] || 0) + nodo.caudal;
+        }
+      }
+      for (const [padreId, suma] of Object.entries(childSumByParent)) {
+        const padre = nodeMap[Number(padreId)];
+        if (padre && suma > padre.caudal) {
+          const detalle = prog.nodos
+            .filter((n) => n.padre === Number(padreId))
+            .map((n) => `S${n.sectorId}(${n.caudal})`)
+            .join(" + ");
+          toast(
+            `S${padreId} tiene ${padre.caudal} L/min pero sus hijos suman ${suma} L/min (${detalle})`,
+            true
+          );
+          return;
+        }
+      }
+
       if (prog.id) {
         const idx = programs.findIndex((p) => p.id === prog.id);
         if (idx >= 0) programs[idx] = prog;
@@ -1359,6 +2152,18 @@
     function runProgram(id) {
       const p = programs.find((x) => x.id === id);
       if (!p || !p.nodos.length) { toast("Programa sin sectores", true); return; }
+
+      // Bloquear ejecución si algún sector tiene caudal > bomba (jamás se activaría)
+      const { deadlocked } = checkProgramConsistency(p, systemConfig.caudalBomba);
+      if (deadlocked.length) {
+        const sects = deadlocked.map((s) => `S${s}`).join(", ");
+        toast(
+          `No se puede ejecutar: ${sects} tiene${deadlocked.length > 1 ? "n" : ""} un caudal mayor al de la bomba (${systemConfig.caudalBomba} L/min). ` +
+          `Editá el programa para corregir los caudales.`,
+          true
+        );
+        return;
+      }
 
       manualSectorMask = 0;
       fakeState.modoManual = false;
@@ -1391,6 +2196,98 @@
       fakeState.manualSectorMask = 0;
       toast("Sistema detenido");
       renderStatus();
+    }
+
+    // --- Config editor ---
+    function openSystemConfigModal() {
+      $("#pumpFlow").value = systemConfig.caudalBomba;
+      // Resetear warning de sesión anterior
+      const w = $("#configImpactWarning");
+      if (w) { w.style.display = "none"; w.innerHTML = ""; w.style.background = ""; w.style.borderColor = ""; w.style.color = ""; }
+      $("#systemConfigModal").classList.add("show");
+    }
+
+    function closeSystemConfigModal() {
+      $("#systemConfigModal").classList.remove("show");
+    }
+
+    // --- Chequeo de consistencia programa ↔ caudal de bomba ---
+    // Devuelve: { deadlocked: [sectorIds], crowded: bool }
+    //   deadlocked → algún sector tiene caudal > caudalBomba: nunca podría activarse
+    //   crowded    → la suma de raíces > caudalBomba: el programa funciona pero con más cola
+    function checkProgramConsistency(prog, caudalBomba) {
+      const deadlocked = prog.nodos
+        .filter((n) => n.caudal > caudalBomba)
+        .map((n) => n.sectorId);
+      const rootSum = prog.nodos
+        .filter((n) => n.padre === null)
+        .reduce((s, n) => s + n.caudal, 0);
+      return { deadlocked, crowded: rootSum > caudalBomba };
+    }
+
+    function saveSystemConfig() {
+      const val = Math.max(1, parseInt($("#pumpFlow").value, 10) || 20);
+
+      // Detectar programas que quedarían inconsistentes con el nuevo límite
+      const affected = programs.map((p) => {
+        const c = checkProgramConsistency(p, val);
+        return { prog: p, ...c };
+      }).filter((x) => x.deadlocked.length > 0 || x.crowded);
+
+      if (affected.length > 0) {
+        // Construir descripción del impacto
+        const lines = affected.map(({ prog, deadlocked, crowded }) => {
+          const parts = [];
+          if (deadlocked.length) {
+            parts.push(`S${deadlocked.join(", S")} nunca podrían activarse (caudal > ${val} L/min)`);
+          }
+          if (crowded && !deadlocked.length) {
+            parts.push(`sus raíces suman más de ${val} L/min (irán a cola)`);
+          } else if (crowded) {
+            parts.push(`además sus raíces suman más de ${val} L/min`);
+          }
+          return `• Programa #${prog.id}: ${parts.join("; ")}`;
+        });
+
+        const warningEl = $("#configImpactWarning");
+        if (warningEl) {
+          const hasDeadlock = affected.some((x) => x.deadlocked.length > 0);
+          warningEl.innerHTML = `
+            <strong>${hasDeadlock ? "⚠️ Atención" : "ℹ️ Info"}</strong> — con ${val} L/min algunos programas quedan inconsistentes:<br>
+            <div style="margin-top:0.4rem; line-height:1.7;">${lines.join("<br>")}</div>
+            <div style="margin-top:0.5rem;">
+              ${hasDeadlock
+                ? "Los programas marcados con ⛔ no podrán ejecutarse hasta que corrijas sus caudales."
+                : "Los programas marcados con ⚠️ seguirán funcionando pero con más sectores en cola."}
+            </div>
+          `;
+          warningEl.style.display = "block";
+          if (hasDeadlock) {
+            warningEl.style.background = "color-mix(in srgb,#e74c3c 10%,transparent)";
+            warningEl.style.borderColor = "#e74c3c";
+            warningEl.style.color       = "#a93226";
+          }
+        }
+        // Preguntar confirmación solo cuando hay sectores bloqueados de forma permanente
+        const hasDeadlock = affected.some((x) => x.deadlocked.length > 0);
+        if (hasDeadlock) {
+          if (!confirm(`⚠️ Con ${val} L/min, algunos sectores de ${affected.length} programa(s) nunca podrían activarse. ¿Guardar de todas formas?`)) {
+            return; // usuario canceló
+          }
+        }
+        // Si solo hay crowded (sin deadlock), guardar silenciosamente con badges
+      }
+
+      systemConfig.caudalBomba = val;
+      const hintEl = $("#flowHintValue");
+      if (hintEl) hintEl.textContent = val;
+      const maxEl = $("#rootFlowMax");
+      if (maxEl) maxEl.textContent = val;
+      persistPrograms();
+      updateFlowConstraints();
+      renderPrograms(programs, fakeState.programaActivo || 0); // actualizar badges
+      toast("✓ Configuración guardada");
+      closeSystemConfigModal();
     }
 
     // --- RTC editor ---
@@ -1447,6 +2344,14 @@
       $("#btnNewProgram").addEventListener("click", () => openEditor(null));
       $("#btnStop").addEventListener("click", manualStop);
 
+      // Modal de configuración del sistema
+      $("#headerConfig").addEventListener("click", openSystemConfigModal);
+      $("#btnConfigCancel").addEventListener("click", closeSystemConfigModal);
+      $("#btnConfigSave").addEventListener("click", saveSystemConfig);
+      $("#systemConfigModal").addEventListener("click", (e) => {
+        if (e.target === $("#systemConfigModal")) closeSystemConfigModal();
+      });
+
       $("#programsList").addEventListener("click", (e) => {
         const btn = e.target.closest("button[data-action]");
         if (!btn) return;
@@ -1475,6 +2380,12 @@
       buildSectorConfigList();
       wireEvents();
       await loadPrograms();
+      // Sincronizar el input de caudal de bomba con el valor cargado del storage
+      $("#pumpFlow").value = systemConfig.caudalBomba;
+      const hintEl = $("#flowHintValue");
+      if (hintEl) hintEl.textContent = systemConfig.caudalBomba;
+      const maxEl = $("#rootFlowMax");
+      if (maxEl) maxEl.textContent = systemConfig.caudalBomba;
       renderStatus();
       refreshTime();
       setInterval(refreshStatus, POLL_INTERVAL_MS);

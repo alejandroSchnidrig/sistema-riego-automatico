@@ -52,6 +52,9 @@ void test_save_and_load_programs(void)
     IrrigationSystem sys(IrrigationSystem::InitMode::EMPTY);
     sys.begin();
 
+    //Caudal de bomba no-default para verificar que persiste.
+    sys.setPumpFlow(17);
+
     //Crear un programa (modelo árbol: raíz + un hijo).
     Program p;
     p.setId(1);
@@ -80,6 +83,9 @@ void test_save_and_load_programs(void)
     sys2.begin();
 
     TEST_ASSERT_TRUE(storage.loadPrograms(sys2));
+
+    //El caudal de bomba persistido debe restaurarse.
+    TEST_ASSERT_EQUAL(17, sys2.getPumpFlow());
 
     //Verificar programa cargado verificando el primer programa cargado (debería ser el mismo que guardamos).
     const Program &loaded = sys2.programAt(0);
@@ -123,6 +129,22 @@ void test_load_invalid_json(void)
     TEST_ASSERT_FALSE(storage.loadPrograms(sys));
 }
 
+void test_legacy_linear_config_not_migrated(void)
+{
+    //Un config.json del modelo lineal viejo (sectores[]/orden, sin nodos[]) no se
+    //migra: parseOneProgram falla → loadPrograms devuelve false (se re-siembra).
+    StorageManager storage;
+    IrrigationSystem sys(IrrigationSystem::InitMode::EMPTY);
+    sys.begin();
+
+    mock_fs["/config.json"] =
+        "{\"programas\":[{\"id\":1,\"horaInicio\":\"08:00\",\"dias\":1,"
+        "\"retardoEntreSectores\":5,\"ciclico\":true,"
+        "\"sectores\":[{\"id\":1,\"orden\":1,\"tiempoRiego\":600}]}]}";
+
+    TEST_ASSERT_FALSE(storage.loadPrograms(sys));
+}
+
 void test_nullable_parent_field(void)
 {
     int out = -1;
@@ -150,6 +172,7 @@ int main(int argc, char **argv)
     RUN_TEST(test_load_programs_missing_file);
     RUN_TEST(test_save_and_load_programs);
     RUN_TEST(test_load_invalid_json);
+    RUN_TEST(test_legacy_linear_config_not_migrated);
     RUN_TEST(test_nullable_parent_field);
     return UNITY_END();
 }

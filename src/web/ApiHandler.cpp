@@ -197,19 +197,21 @@ String ApiHandler::buildProgramsJson() const {
     firstProgram = false;
 
     json += "{";
-    json += "\"id\":"                   + String(p.getId())                             + ",";
-    json += "\"horaInicio\":\""         + escapeJson(String(p.getStartTime()))          + "\",";
-    json += "\"dias\":"                 + String(p.getDays())                           + ",";
-    json += "\"retardoEntreSectores\":" + String(p.getSectorDelay())                    + ",";
-    json += "\"ciclico\":"              + boolToJson(p.isCyclic())                      + ",";
+    json += "\"id\":"           + String(p.getId())                             + ",";
+    json += "\"horaInicio\":\"" + escapeJson(String(p.getStartTime()))          + "\",";
+    json += "\"dias\":"         + String(p.getDays())                           + ",";
+    json += "\"ciclico\":"      + boolToJson(p.isCyclic())                      + ",";
     json += "\"sectores\":[";
 
     for (uint8_t s = 0; s < p.getSectorCount(); s++) {
       if (s > 0) json += ",";
+      const ProgramNode& node = p.getNode(s);
       json += "{";
-      json += "\"id\":"          + String(p.getNode(s).id)            + ",";
-      json += "\"orden\":"       + String(p.getNode(s).order)         + ",";
-      json += "\"tiempoRiego\":" + String(p.getNode(s).irrigationTime);
+      json += "\"id\":"          + String(node.sectorId)       + ",";
+      json += "\"tiempoRiego\":" + String(node.irrigationTime) + ",";
+      json += "\"retardo\":"     + String(node.delay)          + ",";
+      json += "\"padre\":"       + String(node.parentSectorId) + ",";
+      json += "\"caudal\":"      + String(node.flow);
       json += "}";
     }
 
@@ -269,13 +271,6 @@ bool ApiHandler::parseProgramFromJson(const String& programJson, Program& outPro
   if (!extractIntField(programJson, "dias", dias) || dias < 0 || dias > 0x7F) return false;
   outProgram.setDays((uint8_t)dias);
 
-  int retardo = 0;
-  if (!extractIntField(programJson, "retardoEntreSectores", retardo) ||
-      retardo < 0 || retardo > 65535) {
-    return false;
-  }
-  outProgram.setSectorDelay((uint16_t)retardo);
-
   bool ciclico = false;
   if (!extractBoolField(programJson, "ciclico", ciclico)) return false;
   outProgram.setCyclic(ciclico);
@@ -300,18 +295,21 @@ bool ApiHandler::parseProgramFromJson(const String& programJson, Program& outPro
     if (objEnd < 0) break;
 
     String item = sectoresArray.substring(objStart, objEnd + 1);
-    int sectorId = 0, orden = 0, tiempo = 0;
+    int sectorId = 0, tiempo = 0, retardo = 0, padre = 0, caudal = 0;
 
     if (extractIntField(item, "id",          sectorId) &&
-        extractIntField(item, "orden",        orden)    &&
         extractIntField(item, "tiempoRiego",  tiempo)   &&
         sectorId >= 1 && sectorId <= (int)Config::NUM_SECTORES &&
-        orden    >= 1 && orden    <= (int)Config::NUM_SECTORES &&
         tiempo   > 0) {
+      extractIntField(item, "retardo", retardo);
+      extractIntField(item, "padre",   padre);
+      extractIntField(item, "caudal",  caudal);
       ProgramNode node;
-      node.id             = (uint8_t)sectorId;
-      node.order          = (uint8_t)orden;
+      node.sectorId       = (uint8_t)sectorId;
       node.irrigationTime = (uint32_t)tiempo;
+      node.delay          = (retardo >= 0 && retardo <= 65535) ? (uint16_t)retardo : 0;
+      node.parentSectorId = (uint8_t)padre;
+      node.flow           = (caudal > 0) ? (uint16_t)caudal : 0;
       outProgram.addNode(node);
     }
 
@@ -320,6 +318,5 @@ bool ApiHandler::parseProgramFromJson(const String& programJson, Program& outPro
 
   if (outProgram.getSectorCount() == 0) return false;
 
-  outProgram.sortNodesByOrder();
   return true;
 }

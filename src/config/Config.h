@@ -46,6 +46,13 @@ namespace Config {
   constexpr uint8_t MAX_PROGRAMAS = 10;  // cantidad máxima de programas guardados
 
   // ----------------------------------------------------------
+  // Caudal de la bomba (modelo árbol + caudal)
+  // Límite global de caudal simultáneo en L/min; gobierna la
+  // concurrencia de sectores y la cola FIFO.
+  // ----------------------------------------------------------
+  constexpr uint16_t CAUDAL_BOMBA_DEFAULT = 20;
+
+  // ----------------------------------------------------------
   // Intervalos de temporización (milisegundos)
   // ----------------------------------------------------------
 

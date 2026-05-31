@@ -20,9 +20,6 @@ public:
   uint8_t getDays() const;
   void setDays(uint8_t days);
 
-  uint16_t getSectorDelay() const;
-  void setSectorDelay(uint16_t delay);
-
   bool isCyclic() const;
   void setCyclic(bool cyclic);
 
@@ -33,7 +30,16 @@ public:
   const ProgramNode& getNode(uint8_t index) const;
   ProgramNode& getNode(uint8_t index);
 
-  void sortNodesByOrder();
+  // Helpers del modelo árbol
+  // Devuelve el nodo cuyo sectorId coincide, o nullptr si no existe.
+  const ProgramNode* findNodeBySectorId(uint8_t sectorId) const;
+  // True si algún nodo riega ese sector.
+  bool hasNode(uint8_t sectorId) const;
+  // Cantidad de nodos raíz (padreSectorId == 0).
+  uint8_t getRootCount() const;
+  // Cantidad de hijos directos de un sector dado.
+  uint8_t getChildCount(uint8_t parentSectorId) const;
+
   void reset();
 
 private:
@@ -41,7 +47,6 @@ private:
   uint16_t    _id;
   char        _startTime[6]; // formato "HH:MM\0"
   uint8_t     _days;          // bitmask: bit0=lunes … bit6=domingo
-  uint16_t    _sectorDelay;
   bool        _cyclic;
   uint8_t     _sectorCount;
   ProgramNode _nodes[Config::NUM_SECTORES];

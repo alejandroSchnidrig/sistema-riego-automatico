@@ -9,7 +9,6 @@ void Program::reset() {
   _id          = 0;
   memset(_startTime, 0, sizeof(_startTime));
   _days        = 0;
-  _sectorDelay = 0;
   _cyclic      = false;
   _sectorCount = 0;
   memset(_nodes, 0, sizeof(_nodes));
@@ -29,9 +28,6 @@ void Program::setStartTime(const char* time) {
 
 uint8_t Program::getDays() const { return _days; }
 void Program::setDays(uint8_t days) { _days = days; }
-
-uint16_t Program::getSectorDelay() const { return _sectorDelay; }
-void Program::setSectorDelay(uint16_t delay) { _sectorDelay = delay; }
 
 bool Program::isCyclic() const { return _cyclic; }
 void Program::setCyclic(bool cyclic) { _cyclic = cyclic; }
@@ -54,14 +50,29 @@ ProgramNode& Program::getNode(uint8_t index) {
   return _nodes[index];
 }
 
-void Program::sortNodesByOrder() {
+const ProgramNode* Program::findNodeBySectorId(uint8_t sectorId) const {
   for (uint8_t i = 0; i < _sectorCount; i++) {
-    for (uint8_t j = i + 1; j < _sectorCount; j++) {
-      if (_nodes[j].order < _nodes[i].order) {
-        ProgramNode tmp = _nodes[i];
-        _nodes[i]       = _nodes[j];
-        _nodes[j]       = tmp;
-      }
-    }
+    if (_nodes[i].sectorId == sectorId) return &_nodes[i];
   }
+  return nullptr;
+}
+
+bool Program::hasNode(uint8_t sectorId) const {
+  return findNodeBySectorId(sectorId) != nullptr;
+}
+
+uint8_t Program::getRootCount() const {
+  uint8_t count = 0;
+  for (uint8_t i = 0; i < _sectorCount; i++) {
+    if (_nodes[i].parentSectorId == 0) count++;
+  }
+  return count;
+}
+
+uint8_t Program::getChildCount(uint8_t parentSectorId) const {
+  uint8_t count = 0;
+  for (uint8_t i = 0; i < _sectorCount; i++) {
+    if (_nodes[i].parentSectorId == parentSectorId) count++;
+  }
+  return count;
 }

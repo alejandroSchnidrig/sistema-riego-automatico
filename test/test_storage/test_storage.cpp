@@ -51,16 +51,18 @@ void test_save_and_load_programs(void)
     IrrigationSystem sys(IrrigationSystem::InitMode::EMPTY);
     sys.begin();
 
-    //Crear un programa.
+    //Crear un programa (modelo árbol: raíz + un hijo).
     Program p;
     p.setId(1);
     p.setStartTime("08:00");
     p.setDays(0b01010101);
-    p.setSectorDelay(15);
     p.setCyclic(true);
 
-    ProgramNode n1 = {1, 1, 600};
+    // {sectorId, irrigationTime, delay, parentSectorId, flow}
+    ProgramNode n1 = {1, 600, 0, 0, 12};
+    ProgramNode n2 = {2, 300, 5, 1, 6};
     p.addNode(n1);
+    p.addNode(n2);
     p.setValid(true);
 
     //Agregar programa al sistema.
@@ -84,11 +86,28 @@ void test_save_and_load_programs(void)
     TEST_ASSERT_EQUAL(1, loaded.getId());
     TEST_ASSERT_EQUAL_STRING("08:00", loaded.getStartTime());
     TEST_ASSERT_EQUAL(0b01010101, loaded.getDays());
-    TEST_ASSERT_EQUAL(15, loaded.getSectorDelay());
     TEST_ASSERT_TRUE(loaded.isCyclic());
-    TEST_ASSERT_EQUAL(1, loaded.getSectorCount());
-    TEST_ASSERT_EQUAL(1, loaded.getNode(0).id);
-    TEST_ASSERT_EQUAL(600, loaded.getNode(0).irrigationTime);
+    TEST_ASSERT_EQUAL(2, loaded.getSectorCount());
+
+    //Raíz (sector 1).
+    const ProgramNode *root = loaded.findNodeBySectorId(1);
+    TEST_ASSERT_NOT_NULL(root);
+    TEST_ASSERT_EQUAL(600, root->irrigationTime);
+    TEST_ASSERT_EQUAL(0, root->delay);
+    TEST_ASSERT_EQUAL(0, root->parentSectorId);
+    TEST_ASSERT_EQUAL(12, root->flow);
+
+    //Hijo (sector 2, cuelga del 1).
+    const ProgramNode *child = loaded.findNodeBySectorId(2);
+    TEST_ASSERT_NOT_NULL(child);
+    TEST_ASSERT_EQUAL(300, child->irrigationTime);
+    TEST_ASSERT_EQUAL(5, child->delay);
+    TEST_ASSERT_EQUAL(1, child->parentSectorId);
+    TEST_ASSERT_EQUAL(6, child->flow);
+
+    //Estructura de árbol: 1 raíz, 1 hijo del sector 1.
+    TEST_ASSERT_EQUAL(1, loaded.getRootCount());
+    TEST_ASSERT_EQUAL(1, loaded.getChildCount(1));
 }
 
 void test_load_invalid_json(void)

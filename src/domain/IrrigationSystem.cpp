@@ -56,27 +56,26 @@ void IrrigationSystem::seedDefaultPrograms() {
   }
 
   // Programa 1: lunes a viernes a las 07:00, cíclico, 4 sectores
+  // Nodos: {sectorId, irrigationTime, delay, parentSectorId, flow}
   _programs[0].setValid(true);
   _programs[0].setId(1);
   _programs[0].setStartTime("07:00");
   _programs[0].setDays(0b0111110);  // lun=bit0 … vie=bit4
-  _programs[0].setSectorDelay(5);
   _programs[0].setCyclic(true);
-  _programs[0].addNode({1, 1,  60});
-  _programs[0].addNode({2, 2,  90});
-  _programs[0].addNode({3, 3, 120});
-  _programs[0].addNode({5, 4,  45});
+  _programs[0].addNode({1,  60, 0, 0, 10});
+  _programs[0].addNode({2,  90, 5, 0, 10});
+  _programs[0].addNode({3, 120, 5, 0, 10});
+  _programs[0].addNode({5,  45, 5, 0, 10});
 
   // Programa 2: sábado y domingo a las 19:30, no cíclico, 3 sectores
   _programs[1].setValid(true);
   _programs[1].setId(2);
   _programs[1].setStartTime("19:30");
   _programs[1].setDays(0b1100000);  // sáb=bit5, dom=bit6
-  _programs[1].setSectorDelay(10);
   _programs[1].setCyclic(false);
-  _programs[1].addNode({4, 1, 180});
-  _programs[1].addNode({6, 2, 180});
-  _programs[1].addNode({8, 3,  90});
+  _programs[1].addNode({4, 180,  0, 0, 10});
+  _programs[1].addNode({6, 180, 10, 0, 10});
+  _programs[1].addNode({8,  90, 10, 0, 10});
 
    _nextProgramId = 3;
 }
@@ -91,12 +90,15 @@ void IrrigationSystem::tick() {
   Program& p        = _programs[_runningProgramIndex];
   unsigned long now = hal_millis();
 
-  // Fase 1: pausa inter-sector — espera el retardo antes de pasar al siguiente paso.
+  // Fase 1: pausa inter-sector — espera el retardo del nodo siguiente antes de iniciarlo.
   if (_waitingBetweenSectors) {
     _remainingTimeSec = 0;
-    if (now - _delayStartMs >= (unsigned long)p.getSectorDelay() * 1000UL) {
-      int nextStep = _runningStepIndex + 1;
-      if (nextStep >= p.getSectorCount()) {
+    int nextStep      = _runningStepIndex + 1;
+    bool wraps        = (nextStep >= p.getSectorCount());
+    uint8_t targetIdx = wraps ? 0 : (uint8_t)nextStep;
+    uint16_t delaySec = (p.getSectorCount() > 0) ? p.getNode(targetIdx).delay : 0;
+    if (now - _delayStartMs >= (unsigned long)delaySec * 1000UL) {
+      if (wraps) {
         p.isCyclic() ? startStep(_runningProgramIndex, 0) : stopRuntime(SystemState::IDLE);
       } else {
         startStep(_runningProgramIndex, nextStep);
@@ -118,7 +120,7 @@ void IrrigationSystem::tick() {
 
     if (nextStep >= p.getSectorCount()) {
       if (p.isCyclic()) {
-        if (p.getSectorDelay() > 0) {
+        if (p.getNode(0).delay > 0) {
           _waitingBetweenSectors = true;
           _delayStartMs          = now;
         } else {
@@ -128,7 +130,7 @@ void IrrigationSystem::tick() {
         stopRuntime(SystemState::IDLE);
       }
     } else {
-      if (p.getSectorDelay() > 0) {
+      if (p.getNode(nextStep).delay > 0) {
         _waitingBetweenSectors = true;
         _delayStartMs          = now;
         _remainingTimeSec      = 0;
@@ -309,7 +311,7 @@ void IrrigationSystem::startStep(int programIndex, int stepIndex) {
   _waitingBetweenSectors = false;
   _state                 = SystemState::RUNNING;
   _activeProgramId       = p.getId();
-  _activeSectorId        = p.getNode(stepIndex).id;
+  _activeSectorId        = p.getNode(stepIndex).sectorId;
   _remainingTimeSec      = p.getNode(stepIndex).irrigationTime;
   _stepStartMs           = hal_millis();
 

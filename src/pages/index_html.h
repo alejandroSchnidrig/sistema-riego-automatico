@@ -9,7 +9,7 @@ const char INDEX_HTML[] PROGMEM = R"=====(
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sistema de Riego Automático</title>
+  <title>Sistema de Riego Automático — Prototipo</title>
   <style>
     :root {
       --bg: #f1f5f4;
@@ -25,8 +25,6 @@ const char INDEX_HTML[] PROGMEM = R"=====(
       --danger-dark: #962d22;
       --warning: #d98b1f;
       --idle: #6c7a78;
-      --running: #2e8b57;
-      --stop: #c0392b;
       --shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
       --radius: 10px;
     }
@@ -34,12 +32,10 @@ const char INDEX_HTML[] PROGMEM = R"=====(
     * { box-sizing: border-box; }
 
     html, body {
-      margin: 0;
-      padding: 0;
+      margin: 0; padding: 0;
       background: var(--bg);
       color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
-                   Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
       font-size: 15px;
       line-height: 1.4;
     }
@@ -55,103 +51,87 @@ const char INDEX_HTML[] PROGMEM = R"=====(
       gap: 0.75rem;
     }
 
-    header h1 {
-      margin: 0;
-      font-size: 1.15rem;
-      font-weight: 600;
-      letter-spacing: 0.2px;
-    }
+    header h1 { margin: 0; font-size: 1.15rem; font-weight: 600; letter-spacing: 0.2px; }
 
     .header-time {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      background: rgba(255, 255, 255, 0.15);
-      padding: 0.35rem 0.75rem;
-      border-radius: 8px;
-      font-size: 0.95rem;
-      font-weight: 500;
-      cursor: pointer;
-      transition: background 0.15s;
+      display: flex; align-items: center; gap: 0.5rem;
+      background: rgba(255,255,255,0.15);
+      padding: 0.35rem 0.75rem; border-radius: 8px;
+      font-size: 0.95rem; font-weight: 500;
+      cursor: pointer; transition: background 0.15s;
     }
+    .header-time:hover { background: rgba(255,255,255,0.25); }
+    .header-time .time-value { font-weight: 600; font-family: 'Courier New', monospace; }
+    .header-time .pencil { font-size: 0.9rem; opacity: 0.7; transition: opacity 0.15s; }
+    .header-time:hover .pencil { opacity: 1; }
 
-    .header-time:hover {
-      background: rgba(255, 255, 255, 0.25);
-    }
+    .header-controls { display: flex; align-items: center; gap: 0.5rem; }
 
-    .header-time .time-value {
-      font-weight: 600;
-      font-family: 'Courier New', monospace;
+    .header-config {
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(255,255,255,0.15);
+      width: 2.1rem; height: 2.1rem; border-radius: 8px;
+      font-size: 1.05rem; cursor: pointer;
+      transition: background 0.15s, transform 0.2s;
+      user-select: none;
     }
-
-    .header-time .pencil {
-      font-size: 0.9rem;
-      opacity: 0.7;
-      transition: opacity 0.15s;
-    }
-
-    .header-time:hover .pencil {
-      opacity: 1;
-    }
+    .header-config:hover { background: rgba(255,255,255,0.28); transform: rotate(30deg); }
 
     .status-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      background: rgba(255, 255, 255, 0.15);
-      padding: 0.35rem 0.75rem;
-      border-radius: 999px;
-      font-size: 0.85rem;
-      font-weight: 600;
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      background: rgba(255,255,255,0.15);
+      padding: 0.35rem 0.75rem; border-radius: 999px;
+      font-size: 0.85rem; font-weight: 600;
     }
 
-    .status-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: #aaa;
-    }
-
+    .status-dot { width: 10px; height: 10px; border-radius: 50%; background: #aaa; }
     .status-dot.idle    { background: #cfd6d4; }
     .status-dot.running { background: #7ee2a8; animation: pulse 1.4s ease-in-out infinite; }
     .status-dot.stop    { background: #ff8070; }
 
     @keyframes pulse {
-      0%, 100% { opacity: 1;   transform: scale(1); }
+      0%, 100% { opacity: 1; transform: scale(1); }
       50%      { opacity: 0.5; transform: scale(1.3); }
     }
 
+    .demo-banner {
+      background: var(--warning); color: #fff;
+      text-align: center; padding: 0.4rem 1rem;
+      font-size: 0.8rem; font-weight: 600; letter-spacing: 0.3px;
+    }
+
     main {
-      max-width: 1100px;
-      margin: 0 auto;
-      padding: 1.25rem;
-      display: grid;
-      gap: 1.25rem;
+      max-width: 1100px; margin: 0 auto; padding: 1.25rem;
+      display: grid; gap: 1.25rem;
     }
 
     .card {
-      background: var(--panel);
-      border: 1px solid var(--panel-border);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      padding: 1.25rem;
+      background: var(--panel); border: 1px solid var(--panel-border);
+      border-radius: var(--radius); box-shadow: var(--shadow); padding: 1.25rem;
     }
 
     .card h2 {
-      margin: 0 0 1rem 0;
-      font-size: 1rem;
-      font-weight: 600;
-      color: var(--text);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
+      margin: 0 0 1rem 0; font-size: 1rem; font-weight: 600;
+      color: var(--text); text-transform: uppercase; letter-spacing: 0.5px;
     }
 
-    /* --- Estado en tiempo real ----------------------------------------- */
-
+    /* --- Estado en tiempo real --- */
     .status-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      grid-template-columns: repeat(4, minmax(140px, 1fr));
       gap: 0.75rem;
+    }
+
+    @media (max-width: 900px) {
+      .status-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 400px) {
+      .status-grid {
+        grid-template-columns: 1fr;
+      }
     }
 
     .status-cell {
@@ -161,336 +141,425 @@ const char INDEX_HTML[] PROGMEM = R"=====(
     }
 
     .status-cell .label {
-      font-size: 0.7rem;
-      text-transform: uppercase;
-      color: var(--text-soft);
-      letter-spacing: 0.5px;
-      margin-bottom: 0.25rem;
+      font-size: 0.7rem; text-transform: uppercase;
+      color: var(--text-soft); letter-spacing: 0.5px; margin-bottom: 0.25rem;
     }
-
-    .status-cell .value {
-      font-size: 1.35rem;
-      font-weight: 600;
-      color: var(--text);
-    }
-
-    .status-cell .value.big {
-      font-size: 1.6rem;
-      color: var(--primary-dark);
-    }
+    .status-cell .value { font-size: 1.35rem; font-weight: 600; color: var(--text); }
+    .status-cell .value.big { font-size: 1.6rem; color: var(--primary-dark); }
 
     .pump-indicator {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      font-weight: 600;
-      cursor: default;
-      padding: 0.25rem 0.5rem;
-      border-radius: 6px;
-      transition: background 0.2s ease;
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      font-weight: 600; cursor: default;
+      padding: 0.25rem 0.5rem; border-radius: 6px;
       user-select: none;
     }
-
-    .pump-indicator:hover {
-      background: transparent;
-    }
-
-    .pump-indicator:active .dot {
-      transform: none;
-    }
-
     .pump-indicator .dot {
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      background: #ccc;
-      transition: transform 0.15s;
+      width: 12px; height: 12px; border-radius: 50%; background: #ccc;
     }
-
     .pump-indicator.on .dot { background: var(--primary); box-shadow: 0 0 6px var(--primary); }
 
-    /* --- Sectores ------------------------------------------------------ */
-
+    /* --- Sectores --- */
     .sectors-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
-      gap: 0.65rem;
+      grid-template-columns: repeat(4, minmax(140px, 1fr));
+      gap: 0.75rem;
+    }
+
+    @media (max-width: 900px) {
+      .sectors-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 400px) {
+      .sectors-grid {
+        grid-template-columns: 1fr;
+      }
     }
 
     .sector {
-      background: #f8faf9;
-      border: 1px solid var(--panel-border);
-      border-radius: 8px;
-      padding: 0.65rem;
-      text-align: center;
-      transition: all 0.2s ease;
-      cursor: pointer;
-      user-select: none;
+      background: #f8faf9; border: 1px solid var(--panel-border);
+      border-radius: 8px; padding: 0.65rem; text-align: center;
+      transition: all 0.2s ease; cursor: pointer; user-select: none;
     }
-
-    .sector:hover {
-      border-color: var(--primary);
-      background: #f0f5f3;
+    .sector:hover { border-color: var(--primary); background: #f0f5f3; }
+    .sector .name { font-size: 0.75rem; font-weight: 600; color: var(--text-soft); text-transform: uppercase; }
+    .sector .icon { font-size: 1.8rem; margin: 0.25rem 0; color: #c8d2d0; transition: transform 0.15s; }
+    .sector:active .icon { transform: scale(1.15); }
+    .sector .sector-timer {
+      font-size: 0.7rem; font-family: 'Courier New', monospace;
+      color: #a0b0ad; min-height: 1.1em; margin-top: 0.1rem;
     }
-
-    .sector .name {
-      font-size: 0.75rem;
-      font-weight: 600;
-      color: var(--text-soft);
-      text-transform: uppercase;
-    }
-
-    .sector .icon {
-      font-size: 1.8rem;
-      margin: 0.25rem 0;
-      color: #c8d2d0;
-    }
-
     .sector.active {
-      background: var(--primary);
-      border-color: var(--primary-dark);
-      color: #fff;
+      background: var(--primary); border-color: var(--primary-dark); color: #fff;
       box-shadow: 0 0 8px rgba(46, 139, 87, 0.4);
     }
+    .sector.active .name  { color: #e8f5ed; }
+    .sector.active .icon  { color: #fff; }
+    .sector.active .sector-timer { color: rgba(255,255,255,0.85); }
 
-    .sector .icon {
-      transition: transform 0.15s;
+    .sector.pending {
+      background: #e6f1fb; border-color: #4a8ec4;
+      box-shadow: 0 0 8px rgba(74, 142, 196, 0.25);
+      animation: pulse-amber 1.2s ease-in-out infinite;
+    }
+    .sector.pending .name  { color: #1a4a70; }
+    .sector.pending .icon  { color: #4a8ec4; }
+    .sector.pending .sector-timer { color: #2a6a9a; font-weight: 600; }
+
+    .sector.queued {
+      background: #fff8e6; border-color: var(--warning);
+      box-shadow: 0 0 8px rgba(217, 139, 31, 0.2);
+    }
+    .sector.queued .name  { color: #8a5a10; }
+    .sector.queued .icon  { color: var(--warning); }
+    .sector.queued .sector-timer { color: #b07020; font-style: italic; }
+
+    .sector.feeding {
+      background: #e0f7fa;
+      border-color: #00acc1;
+      box-shadow: 0 0 8px rgba(0, 172, 193, 0.25);
+    }
+    .sector.feeding .name  { color: #006064; }
+    .sector.feeding .icon  { color: #00acc1; }
+    .sector.feeding .sector-timer {
+      color: #00838f; font-weight: 600; font-style: italic;
     }
 
-    .sector:active .icon {
-      transform: scale(1.15);
+    @keyframes pulse-amber {
+      0%, 100% { opacity: 1; }
+      50%      { opacity: 0.65; }
     }
 
-    .sector.active .name { color: #e8f5ed; }
-    .sector.active .icon { color: #fff; }
-
-    /* --- Botones ------------------------------------------------------- */
-
+    /* --- Botones --- */
     .btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.4rem;
-      padding: 0.65rem 1.1rem;
-      border-radius: 8px;
-      border: 1px solid transparent;
-      background: var(--primary);
-      color: #fff;
-      font-size: 0.9rem;
-      font-weight: 600;
-      cursor: pointer;
-      text-decoration: none;
-      transition: background 0.15s, transform 0.05s;
+      display: inline-flex; align-items: center; justify-content: center;
+      gap: 0.4rem; padding: 0.65rem 1.1rem; border-radius: 8px;
+      border: 1px solid transparent; background: var(--primary); color: #fff;
+      font-size: 0.9rem; font-weight: 600; cursor: pointer;
+      text-decoration: none; transition: background 0.15s, transform 0.05s;
     }
-    .btn:hover   { background: var(--primary-dark); }
-    .btn:active  { transform: translateY(1px); }
-
-    .btn.secondary {
-      background: #fff;
-      color: var(--text);
-      border-color: var(--panel-border);
-    }
+    .btn:hover  { background: var(--primary-dark); }
+    .btn:active { transform: translateY(1px); }
+    .btn.secondary { background: #fff; color: var(--text); border-color: var(--panel-border); }
     .btn.secondary:hover { background: #f4f6f5; }
-
     .btn.danger       { background: var(--danger); }
     .btn.danger:hover { background: var(--danger-dark); }
+    .btn.small { padding: 0.4rem 0.7rem; font-size: 0.8rem; }
+    .btn-stop { width: 100%; padding: 1rem; font-size: 1.05rem; letter-spacing: 0.5px; text-transform: uppercase; }
 
-    .btn.small {
-      padding: 0.4rem 0.7rem;
-      font-size: 0.8rem;
-    }
-
-    .btn-stop {
-      width: 100%;
-      padding: 1rem;
-      font-size: 1.05rem;
-      letter-spacing: 0.5px;
-      text-transform: uppercase;
-    }
-
-    /* --- Programas ----------------------------------------------------- */
-
+    /* --- Programas --- */
     .programs-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 0.5rem;
-      margin-bottom: 0.75rem;
+      display: flex; justify-content: space-between; align-items: center;
+      flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.75rem;
     }
 
-    .programs-list {
-      display: grid;
-      gap: 0.75rem;
-    }
+    .programs-list { display: grid; gap: 0.75rem; }
 
     .program-item {
-      border: 1px solid var(--panel-border);
-      border-radius: 8px;
-      padding: 0.9rem;
-      background: #fcfdfd;
+      border: 1px solid var(--panel-border); border-radius: 8px;
+      padding: 0.9rem; background: #fcfdfd;
     }
-
-    .program-item.active {
-      border-color: var(--primary);
-      background: var(--primary-soft);
-    }
+    .program-item.active { border-color: var(--primary); background: var(--primary-soft); }
 
     .program-item-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      flex-wrap: wrap;
-      gap: 0.5rem;
+      display: flex; justify-content: space-between; align-items: flex-start;
+      flex-wrap: wrap; gap: 0.5rem;
     }
 
-    .program-title {
-      font-weight: 600;
-      font-size: 1rem;
+    .program-title { font-weight: 600; font-size: 1rem; display: flex; align-items: center; flex-wrap: wrap; gap: 0.45rem; }
+    .prog-badge {
+      display: inline-flex; align-items: center; font-size: 0.72rem; font-weight: 600;
+      padding: 0.15rem 0.5rem; border-radius: 20px; white-space: nowrap; cursor: default;
     }
-
+    .prog-badge.warn   { background: color-mix(in srgb,#e67e22 15%,transparent); color: #a04000; border: 1px solid #e67e22; }
+    .prog-badge.danger { background: color-mix(in srgb,#e74c3c 15%,transparent); color: #922b21; border: 1px solid #e74c3c; }
+    .btn.disabled { opacity: 0.45; pointer-events: none; cursor: not-allowed; }
     .program-meta {
-      font-size: 0.8rem;
-      color: var(--text-soft);
-      margin-top: 0.25rem;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.75rem;
+      font-size: 0.8rem; color: var(--text-soft); margin-top: 0.25rem;
+      display: flex; flex-wrap: wrap; gap: 0.75rem;
     }
+    .program-meta span::before { content: "• "; color: var(--primary); }
+    .program-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; }
 
-    .program-meta span::before {
-      content: "• ";
-      color: var(--primary);
-    }
-
-    .program-actions {
-      display: flex;
-      gap: 0.4rem;
-      flex-wrap: wrap;
-    }
-
-    .program-sectors {
+    /* --- Árbol de sectores en la lista de programas (preview estático) --- */
+    .program-tree {
       margin-top: 0.65rem;
+      padding-top: 0.65rem;
+      border-top: 1px solid var(--panel-border);
       display: flex;
-      flex-wrap: wrap;
-      gap: 0.3rem;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .tree-item { }
+
+    .tree-children {
+      margin-left: 20px;
+      padding-left: 14px;
+      border-left: 2px solid #cdd8d5;
+      margin-top: 4px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .tree-node-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      position: relative;
+    }
+
+    .tree-children .tree-node-row::before {
+      content: "";
+      position: absolute;
+      left: -16px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 12px;
+      height: 2px;
+      background: #cdd8d5;
+    }
+
+    .delay-badge {
+      font-size: 0.63rem;
+      font-family: 'Courier New', monospace;
+      color: var(--text-soft);
+      background: #eef0ef;
+      border: 1px solid #d4dbd9;
+      border-radius: 4px;
+      padding: 0.05rem 0.3rem;
+      flex-shrink: 0;
+      white-space: nowrap;
     }
 
     .chip {
-      background: #fff;
-      border: 1px solid var(--panel-border);
+      background: #f4f6f5;
+      border: 1px solid #d4dbd9;
       border-radius: 999px;
-      padding: 0.2rem 0.6rem;
-      font-size: 0.75rem;
+      padding: 0.18rem 0.55rem;
+      font-size: 0.74rem;
       color: var(--text-soft);
     }
 
-    .program-item.active .chip { background: #fff; }
+    /* --- Árbol de flujo vertical --- */
+    #flowCard {
+      overflow: hidden;
+    }
 
-    /* --- Formulario de programa --------------------------------------- */
+    #flowCard h2 {
+      margin-bottom: 0.85rem;
+    }
 
+    .flow-tree-scroll {
+      overflow-x: auto;
+      padding-bottom: 0.5rem;
+    }
+
+    .flow-tree-container {
+      position: relative;
+      margin: 0 auto;
+    }
+
+    .flow-svg {
+      position: absolute;
+      top: 0; left: 0;
+      overflow: visible;
+      pointer-events: none;
+    }
+
+    @keyframes flowDash {
+      to { stroke-dashoffset: -12; }
+    }
+
+    .flow-node-box {
+      position: absolute;
+      width: 82px;
+      height: 56px;
+      transform: translateX(-50%);
+      border: 2px solid #cdd8d5;
+      border-radius: 8px;
+      background: #f8faf9;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      box-sizing: border-box;
+      transition: background 0.25s, border-color 0.25s, box-shadow 0.25s;
+    }
+
+    .flow-node-label {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: #4a5e5a;
+      line-height: 1;
+    }
+
+    .flow-node-caudal {
+      font-size: 0.58rem;
+      font-family: 'Courier New', monospace;
+      color: var(--text-soft);
+      opacity: 0.8;
+      margin-top: 1px;
+    }
+
+    .flow-node-timer {
+      font-size: 0.62rem;
+      font-family: 'Courier New', monospace;
+      color: #8a9c98;
+      min-height: 1em;
+      line-height: 1.2;
+    }
+
+    .flow-node-box.flow-active {
+      background: var(--primary);
+      border-color: var(--primary-dark);
+      box-shadow: 0 0 10px rgba(46, 139, 87, 0.45);
+    }
+    .flow-node-box.flow-active .flow-node-label  { color: #fff; }
+    .flow-node-box.flow-active .flow-node-timer  { color: rgba(255,255,255,0.85); }
+    .flow-node-box.flow-active .flow-node-caudal { color: rgba(255,255,255,0.65); }
+
+    .flow-node-box.flow-feeding {
+      background: #e0f7fa;
+      border-color: #00acc1;
+      box-shadow: 0 0 8px rgba(0, 172, 193, 0.35);
+    }
+    .flow-node-box.flow-feeding .flow-node-label  { color: #006064; }
+    .flow-node-box.flow-feeding .flow-node-timer  { color: #00838f; font-weight: 600; }
+    .flow-node-box.flow-feeding .flow-node-caudal { color: #00838f; }
+
+    .flow-node-box.flow-pending {
+      background: #e6f1fb;
+      border-color: #4a8ec4;
+      animation: pulse-amber 1.2s ease-in-out infinite;
+    }
+    .flow-node-box.flow-pending .flow-node-label  { color: #1a4a70; }
+    .flow-node-box.flow-pending .flow-node-timer  { color: #2a6a9a; }
+    .flow-node-box.flow-pending .flow-node-caudal { color: #2a6a9a; }
+
+    .flow-node-box.flow-queued {
+      background: #fff8e6;
+      border-color: var(--warning);
+    }
+    .flow-node-box.flow-queued .flow-node-label  { color: #8a5a10; }
+    .flow-node-box.flow-queued .flow-node-timer  { color: #b07020; font-style: italic; }
+    .flow-node-box.flow-queued .flow-node-caudal { color: #b07020; }
+
+    .flow-node-box.flow-done {
+      background: #f0f3f2;
+      border-color: #c8d4d0;
+      opacity: 0.65;
+    }
+    .flow-node-box.flow-done .flow-node-label  { color: #9aaba7; }
+    .flow-node-box.flow-done .flow-node-timer  { color: #9aaba7; }
+    .flow-node-box.flow-done .flow-node-caudal { color: #9aaba7; }
+
+    .flow-node-box.flow-idle .flow-node-label { color: #8a9c98; }
+
+    .flow-node-box.flow-pump-off {
+      background: #f4f6f5;
+      border-color: #9aaba7;
+      border-style: dashed;
+      border-radius: 14px;
+    }
+    .flow-node-box.flow-pump-off .flow-node-label { color: #6c7a78; }
+    .flow-node-box.flow-pump-off .flow-node-timer  { color: #9aaba7; }
+
+    .flow-node-box.flow-pump-on {
+      background: var(--primary);
+      border-color: var(--primary-dark);
+      border-radius: 14px;
+      box-shadow: 0 0 14px rgba(46, 139, 87, 0.55);
+    }
+    .flow-node-box.flow-pump-on .flow-node-label { color: #fff; }
+    .flow-node-box.flow-pump-on .flow-node-timer  { color: rgba(255,255,255,0.85); }
+
+    /* --- Formulario de programa --- */
     .form-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
       gap: 0.85rem;
     }
 
-    .form-field {
-      display: flex;
-      flex-direction: column;
-      gap: 0.3rem;
-    }
-
+    .form-field { display: flex; flex-direction: column; gap: 0.3rem; }
     .form-field label {
-      font-size: 0.75rem;
-      text-transform: uppercase;
-      color: var(--text-soft);
-      font-weight: 600;
-      letter-spacing: 0.3px;
+      font-size: 0.75rem; text-transform: uppercase;
+      color: var(--text-soft); font-weight: 600; letter-spacing: 0.3px;
     }
-
     .form-field input[type="text"],
     .form-field input[type="time"],
     .form-field input[type="number"],
     .form-field select {
-      border: 1px solid var(--panel-border);
-      border-radius: 6px;
-      padding: 0.55rem 0.7rem;
-      font-size: 0.9rem;
-      background: #fff;
-      color: var(--text);
-      font-family: inherit;
+      border: 1px solid var(--panel-border); border-radius: 6px;
+      padding: 0.55rem 0.7rem; font-size: 0.9rem;
+      background: #fff; color: var(--text); font-family: inherit;
     }
-
     .form-field input:focus,
     .form-field select:focus {
-      outline: none;
-      border-color: var(--primary);
+      outline: none; border-color: var(--primary);
       box-shadow: 0 0 0 2px var(--primary-soft);
     }
 
-    .days-picker {
-      display: flex;
-      gap: 0.3rem;
-      flex-wrap: wrap;
-    }
-
+    .days-picker { display: flex; gap: 0.3rem; flex-wrap: wrap; }
     .day-toggle {
-      width: 34px;
-      height: 34px;
-      border-radius: 50%;
-      border: 1px solid var(--panel-border);
-      background: #fff;
-      color: var(--text-soft);
-      font-size: 0.75rem;
-      font-weight: 600;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      transition: all 0.15s;
+      width: 34px; height: 34px; border-radius: 50%;
+      border: 1px solid var(--panel-border); background: #fff;
+      color: var(--text-soft); font-size: 0.75rem; font-weight: 600;
+      cursor: pointer; display: inline-flex; align-items: center;
+      justify-content: center; transition: all 0.15s;
     }
+    .day-toggle.on { background: var(--primary); color: #fff; border-color: var(--primary); }
 
-    .day-toggle.on {
-      background: var(--primary);
-      color: #fff;
-      border-color: var(--primary);
-    }
-
-    .sector-config-list {
-      display: grid;
-      gap: 0.5rem;
-    }
+    .sector-config-list { display: grid; gap: 0.5rem; }
 
     .sector-config-row {
       display: grid;
-      grid-template-columns: auto 1fr auto auto;
+      grid-template-columns: auto 1fr auto auto auto auto;
       align-items: center;
-      gap: 0.6rem;
+      gap: 0.55rem;
       padding: 0.55rem 0.7rem;
       background: #f8faf9;
       border: 1px solid var(--panel-border);
       border-radius: 6px;
     }
 
-    .sector-config-row input[type="checkbox"] {
-      width: 18px;
-      height: 18px;
-      accent-color: var(--primary);
+    .sector-config-row .delay-wrapper {
+      display: flex; align-items: center; gap: 0.3rem;
+    }
+    .sector-config-row input.delay-input {
+      width: 56px; border: 1px solid var(--panel-border);
+      border-radius: 6px; padding: 0.35rem 0.4rem;
+      font-size: 0.85rem; text-align: right;
+    }
+    .sector-config-row input.delay-input:disabled { opacity: 0.35; }
+
+    .sector-config-row .flow-wrapper {
+      display: flex; align-items: center; gap: 0.3rem;
+    }
+    .sector-config-row .flow-wrapper input {
+      width: 56px; border: 1px solid var(--panel-border);
+      border-radius: 6px; padding: 0.35rem 0.4rem;
+      font-size: 0.85rem; text-align: right;
+    }
+    .sector-config-row .flow-wrapper input:disabled { opacity: 0.35; }
+    /* Resalta en naranja cuando el valor supera el máximo permitido (bomba/padre) */
+    .sector-config-row .flow-wrapper input:not(:disabled):invalid {
+      border-color: var(--warning, #e67e22);
+      background: color-mix(in srgb, var(--warning, #e67e22) 8%, transparent);
+      color: var(--warning, #e67e22);
     }
 
-    .sector-config-row .sector-name {
-      font-weight: 600;
-      font-size: 0.9rem;
-    }
+    .sector-config-row input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary); }
+    .sector-config-row .sector-name { font-weight: 600; font-size: 0.9rem; }
 
-    .sector-config-row input[type="number"] {
-      width: 72px;
-      border: 1px solid var(--panel-border);
-      border-radius: 6px;
-      padding: 0.35rem 0.5rem;
-      font-size: 0.85rem;
-      text-align: right;
+    .sector-config-row select.parent-select {
+      border: 1px solid var(--panel-border); border-radius: 6px;
+      padding: 0.3rem 0.35rem; font-size: 0.78rem;
+      background: #fff; color: var(--text); font-family: inherit;
+      max-width: 140px;
     }
 
     .sector-config-row .unit {
@@ -521,7 +590,7 @@ const char INDEX_HTML[] PROGMEM = R"=====(
       border-radius: var(--radius);
       padding: 1.5rem;
       width: 90%;
-      max-width: 450px;
+      max-width: 650px;
       box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
     }
 
@@ -569,33 +638,62 @@ const char INDEX_HTML[] PROGMEM = R"=====(
       box-shadow: 0 0 0 2px var(--primary-soft);
     }
 
-    .modal-actions {
-      display: flex;
-      gap: 0.75rem;
-      justify-content: flex-end;
+    .sector-config-row input[type="number"] {
+      width: 72px; border: 1px solid var(--panel-border);
+      border-radius: 6px; padding: 0.35rem 0.5rem;
+      font-size: 0.85rem; text-align: right;
     }
-
-    .modal-actions .btn {
-      padding: 0.65rem 1.2rem;
-      font-size: 0.9rem;
-      min-width: 100px;
-    }
+    .sector-config-row .unit { font-size: 0.75rem; color: var(--text-soft); }
 
     .form-actions {
       display: flex;
       gap: 0.5rem;
-      margin-top: 1rem;
-      flex-wrap: wrap;
-      justify-content: flex-end;
+      padding-top: 1.5rem;
     }
 
-    /* --- Toast --------------------------------------------------------- */
+    .form-actions #btnCancel {
+      margin-left: auto;
+    }
 
+    /* --- Modal --- */
+    .modal {
+      display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5); z-index: 1000;
+      align-items: center; justify-content: center;
+    }
+    .modal.show { display: flex; }
+    .modal-content {
+      background: var(--panel); border-radius: var(--radius);
+      padding: 1.5rem; width: 90%; max-width: 450px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    }
+    .modal-header {
+      font-size: 1.35rem; font-weight: 600; color: var(--text);
+      margin-bottom: 1.5rem; text-align: center;
+    }
+    .modal-body { display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1.5rem; }
+    .datetime-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .modal-body .form-field { margin: 0; }
+    .modal-body input[type="date"],
+    .modal-body input[type="time"] {
+      border: 1px solid var(--panel-border); border-radius: 6px; padding: 0.75rem;
+      font-size: 1rem; background: #fff; color: var(--text);
+      font-family: inherit; width: 100%;
+    }
+    .modal-body input[type="date"]:focus,
+    .modal-body input[type="time"]:focus {
+      outline: none; border-color: var(--primary);
+      box-shadow: 0 0 0 2px var(--primary-soft);
+    }
+    .modal-actions { display: flex; gap: 0.75rem; justify-content: flex-end; }
+    .modal-actions .btn { padding: 0.65rem 1.2rem; font-size: 0.9rem; min-width: 100px; }
+
+    /* --- Toast --- */
     #toast {
       position: fixed;
       bottom: 1rem;
       left: 50%;
-      transform: translateX(-50%) translateY(120%);
+      transform: translateX(-50%) translateY(200%);
       background: var(--text);
       color: #fff;
       padding: 0.75rem 1.25rem;
@@ -609,38 +707,10 @@ const char INDEX_HTML[] PROGMEM = R"=====(
     #toast.show { transform: translateX(-50%) translateY(0); }
     #toast.error { background: var(--danger); }
 
-    /* --- Sección colapsable ------------------------------------------- */
 
-    .collapsible-header {
-      cursor: pointer;
-      user-select: none;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
+    .muted { color: var(--text-soft); font-size: 0.85rem; font-style: italic; }
 
-    .collapsible-header::after {
-      content: "▾";
-      color: var(--text-soft);
-      transition: transform 0.2s;
-    }
-
-    .card.collapsed .collapsible-header::after {
-      transform: rotate(-90deg);
-    }
-
-    .card.collapsed .collapsible-body {
-      display: none;
-    }
-
-    .muted {
-      color: var(--text-soft);
-      font-size: 0.85rem;
-      font-style: italic;
-    }
-
-    /* --- Mobile -------------------------------------------------------- */
-
+    /* --- Mobile --- */
     @media (max-width: 540px) {
       header h1 { font-size: 1rem; }
       main { padding: 0.9rem; gap: 0.9rem; }
@@ -648,22 +718,29 @@ const char INDEX_HTML[] PROGMEM = R"=====(
       .sector-config-row {
         grid-template-columns: auto 1fr;
         grid-template-areas:
-          "check name"
-          "time  time";
+          "check  name"
+          "parent parent"
+          "delay  time"
+          "flow   flow";
       }
-      .sector-config-row input[type="checkbox"] { grid-area: check; }
-      .sector-config-row .sector-name           { grid-area: name; }
+      .sector-config-row input[type="checkbox"]  { grid-area: check; }
+      .sector-config-row .sector-name            { grid-area: name; }
+      .sector-config-row .parent-select          { grid-area: parent; max-width: 100%; }
+      .sector-config-row .delay-wrapper          { grid-area: delay; }
       .sector-config-row .time-wrapper {
         grid-area: time;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        justify-content: flex-end;
+        display: flex; align-items: center; gap: 0.5rem; justify-content: flex-end;
       }
+      .sector-config-row .flow-wrapper           { grid-area: flow; }
+      .sector-config-row .unit { display: inline; }
     }
   </style>
 </head>
 <body>
+
+  <div class="demo-banner">
+    PROTOTIPO — datos simulados, no requiere ESP32
+  </div>
 
   <header>
     <h1>Sistema de Riego Automático</h1>
@@ -671,9 +748,12 @@ const char INDEX_HTML[] PROGMEM = R"=====(
       <span id="statusDot" class="status-dot idle"></span>
       <span id="statusLabel">Inactivo</span>
     </div>
-    <div id="headerTime" class="header-time" title="Click para editar la hora">
-      <span class="time-value" id="timeValue">--:--</span>
-      <span class="pencil">✎</span>
+    <div class="header-controls">
+      <div id="headerConfig" class="header-config" title="Configuración del sistema">⚙</div>
+      <div id="headerTime" class="header-time" title="Click para editar la hora">
+        <span class="time-value" id="timeValue">--:--</span>
+        <span class="pencil">✎</span>
+      </div>
     </div>
   </header>
 
@@ -692,13 +772,13 @@ const char INDEX_HTML[] PROGMEM = R"=====(
           <div class="value" id="activeSector">—</div>
         </div>
         <div class="status-cell">
-          <div class="label">Tiempo restante</div>
+          <div class="label">Tiempo máx. restante</div>
           <div class="value big" id="remainingTime">00:00</div>
         </div>
         <div class="status-cell">
           <div class="label">Bomba</div>
           <div class="value">
-            <span id="pumpIndicator" class="pump-indicator" title="La bomba sigue automaticamente a los sectores activos">
+            <span id="pumpIndicator" class="pump-indicator">
               <span class="dot"></span><span id="pumpLabel">Apagada</span>
             </span>
           </div>
@@ -707,9 +787,25 @@ const char INDEX_HTML[] PROGMEM = R"=====(
 
       <div style="margin-top: 1rem;">
         <div class="label" style="font-size: 0.7rem; text-transform: uppercase; color: var(--text-soft); margin-bottom: 0.5rem;">
-          Sectores
+          Sectores (click para encender/apagar manualmente)
         </div>
         <div id="sectorsGrid" class="sectors-grid"></div>
+        <div style="margin-top: 0.65rem; display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center;">
+          <span style="font-size: 0.7rem; color: var(--text-soft); text-transform: uppercase; letter-spacing: 0.4px; margin-right: 0.2rem;">Estados:</span>
+          <span style="display:inline-flex;align-items:center;gap:0.3rem;font-size:0.75rem;color:#236b42"><span style="width:10px;height:10px;border-radius:50%;background:var(--primary);display:inline-block"></span>Irrigando</span>
+          <span style="display:inline-flex;align-items:center;gap:0.3rem;font-size:0.75rem;color:#006064"><span style="width:10px;height:10px;border-radius:50%;background:#00acc1;display:inline-block"></span>Cañería abierta</span>
+          <span style="display:inline-flex;align-items:center;gap:0.3rem;font-size:0.75rem;color:#1a4a70"><span style="width:10px;height:10px;border-radius:50%;background:#4a8ec4;display:inline-block"></span>Retardo</span>
+          <span style="display:inline-flex;align-items:center;gap:0.3rem;font-size:0.75rem;color:#8a5a10"><span style="width:10px;height:10px;border-radius:50%;background:var(--warning);display:inline-block"></span>En cola</span>
+          <span style="display:inline-flex;align-items:center;gap:0.3rem;font-size:0.75rem;color:var(--text-soft)"><span style="width:10px;height:10px;border-radius:50%;background:#c8d2d0;display:inline-block"></span>Inactivo</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ Árbol de flujo (visible durante ejecución) ============ -->
+    <section id="flowCard" class="card" style="display:none;">
+      <h2>Flujo de riego &mdash; <span id="flowProgramTitle" style="color:var(--primary);font-weight:700;">Programa #?</span></h2>
+      <div class="flow-tree-scroll">
+        <div id="flowTreeContainer" class="flow-tree-container"></div>
       </div>
     </section>
 
@@ -730,7 +826,7 @@ const char INDEX_HTML[] PROGMEM = R"=====(
     </section>
 
     <!-- ============ Editor de programa ============ -->
-    <section id="editorCard" class="card collapsed">
+    <section id="editorCard" class="card" style="display:none">
       <h2 class="collapsible-header" id="editorToggle">
         <span id="editorTitle">Nuevo programa</span>
       </h2>
@@ -743,12 +839,6 @@ const char INDEX_HTML[] PROGMEM = R"=====(
               <label for="startTime">Hora de inicio</label>
               <input type="time" id="startTime" value="07:00" required>
             </div>
-
-            <div class="form-field">
-              <label for="delayBetween">Retardo entre sectores (s)</label>
-              <input type="number" id="delayBetween" min="0" max="3600" value="5">
-            </div>
-
             <div class="form-field">
               <label for="cyclic">Repetición</label>
               <select id="cyclic">
@@ -772,7 +862,12 @@ const char INDEX_HTML[] PROGMEM = R"=====(
           </div>
 
           <div class="form-field" style="margin-top: 1rem;">
-            <label>Sectores incluidos y tiempo de riego</label>
+            <label>Sectores — seleccioná y configurá el árbol de riego</label>
+            <div id="rootFlowBar" style="font-size:0.8rem; margin-bottom:0.5rem; color:var(--text-soft);">
+              Bomba: <strong id="flowHintValue">20</strong> L/min —
+              raíces: <strong id="rootFlowSum">0</strong>&thinsp;/&thinsp;<strong id="rootFlowMax">20</strong> L/min
+              <span id="rootFlowIcon"></span>
+            </div>
             <div id="sectorConfigList" class="sector-config-list"></div>
           </div>
 
@@ -784,6 +879,34 @@ const char INDEX_HTML[] PROGMEM = R"=====(
       </div>
     </section>
 
+    <!-- ============ System Config Modal ============ -->
+    <div id="systemConfigModal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">⚙ Configuración del sistema</div>
+        <div class="modal-body">
+          <div class="form-field" style="margin:0;">
+            <label for="pumpFlow" style="font-size:0.75rem; text-transform:uppercase; color:var(--text-soft);">Caudal de la bomba</label>
+            <div style="display:flex; align-items:center; gap:0.6rem;">
+              <input type="number" id="pumpFlow" min="1" max="200" step="1" value="20" style="width:100px;">
+              <span style="font-size:0.85rem; color:var(--text-soft);">L/min</span>
+            </div>
+            <p class="muted" style="margin:0.5rem 0 0; font-size:0.8rem;">
+              Limita cuántos sectores pueden regar simultáneamente según su demanda de caudal.
+            </p>
+          </div>
+          <!-- Advertencia de impacto en programas — se muestra/oculta dinámicamente -->
+          <div id="configImpactWarning" style="display:none; margin-top:0.9rem; padding:0.65rem 0.8rem;
+               border-radius:8px; font-size:0.82rem; background:color-mix(in srgb,#e67e22 12%,transparent);
+               border:1px solid #e67e22; color:#c0600a;">
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" id="btnConfigCancel" class="btn secondary">✕ Cancelar</button>
+          <button type="button" id="btnConfigSave"   class="btn">✓ Guardar</button>
+        </div>
+      </div>
+    </div>
+
     <!-- ============ Time Editor Modal ============ -->
     <div id="timeEditorModal" class="modal">
       <div class="modal-content">
@@ -792,7 +915,7 @@ const char INDEX_HTML[] PROGMEM = R"=====(
           <div class="datetime-row">
             <div class="form-field">
               <label for="timeEditorDate" style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-soft);">Fecha</label>
-              <input type="date" id="timeEditorDate" value="2024-01-01">
+              <input type="date" id="timeEditorDate" value="2024-01-01" min="1900-01-01" max="2099-12-31">
             </div>
             <div class="form-field">
               <label for="timeEditorTime" style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-soft);">Hora</label>
@@ -802,7 +925,7 @@ const char INDEX_HTML[] PROGMEM = R"=====(
         </div>
         <div class="modal-actions">
           <button type="button" id="btnTimeCancel" class="btn secondary">✕ Cancelar</button>
-          <button type="button" id="btnTimeSave" class="btn">✓ Guardar</button>
+          <button type="button" id="btnTimeSave"   class="btn">✓ Guardar</button>
         </div>
       </div>
     </div>
@@ -813,65 +936,135 @@ const char INDEX_HTML[] PROGMEM = R"=====(
 
   <script>
     // ==================================================================
-    // Sistema de Riego Automático — Panel de control
-    // ------------------------------------------------------------------
-    // Este archivo es 100% autónomo: no depende de librerías externas.
-    // Cuando la API del ESP32 no responde (por ejemplo, al abrir el
-    // index.html directamente en un navegador para validar el diseño),
-    // el panel entra en "modo demo" y usa datos ficticios para que el
-    // usuario pueda probar la interfaz completa.
+    // Sistema de Riego Automático (árbol de sectores) — UI embebida.
+    // Cableada a la API REST del ESP32 (/estado, /programas, /configuracion,
+    // /control, /parada, /rtc). El motor de ejecución vive en el firmware;
+    // esta UI solo configura, dispara acciones y refleja el estado por polling.
+    //   nodo: { sectorId, tiempoRiego, retardo, padre, caudal }
+    //   padre=null → raíz (arranca al inicio del programa)
+    //   padre=N    → se activa cuando el sector N termina (+ su retardo)
     // ==================================================================
 
     const NUM_SECTORS      = 8;
-    const POLL_INTERVAL_MS = 2000;
+    const POLL_INTERVAL_MS = 1000;   // refresco de /estado
+    const TIME_INTERVAL_MS = 10000;  // refresco de /rtc (cambia despacio)
 
-    // --- Estado de la UI ---------------------------------------------
-    let demoMode     = false;
+    // --- Estado global ---
     let programs     = [];
     let editingId    = null;
-    let selectedDays = 0; // bitmask: bit0=L … bit6=D
+    let selectedDays = 0;
+    let manualSectorMask = 0;
+    let lastRTC      = null;  // última lectura del RTC (para el editor de hora)
 
-    // --- Datos simulados para modo demo ------------------------------
-    const demoState = {
-      estado: "RUNNING",
-      programaActivo: 1,
-      sectorActivo: 3,
-      sectoresActivos: [3],
-      tiempoRestante: 95,
-      bomba: true,
+    // --- Configuración física del sistema ---
+    let systemConfig = { caudalBomba: 20 }; // L/min
+
+    // --- Último estado recibido de GET /estado (mismo shape que el endpoint) ---
+    let liveState = {
+      estado: "IDLE",
+      programaActivo: 0,
+      sectoresActivos: [],      // [{ sectorId, tiempoRestante, caudal }]
+      pendingActivations: [],   // [{ sectorId, delay, caudal }]
+      queuedSectors: [],        // [{ sectorId, tiempoRiego, retardo, caudal }] — esperando caudal
+      completedSectors: [],     // sectorIds que ya terminaron en el ciclo actual
+      bomba: false,
       modoManual: false,
       manualSectorMask: 0
     };
 
-    const demoPrograms = [
-      {
-        id: 1,
-        horaInicio: "07:00",
-        dias: 0b0111110,           // L-V
-        retardoEntreSectores: 5,
-        ciclico: true,
-        sectores: [
-          { id: 1, orden: 1, tiempoRiego: 60  },
-          { id: 2, orden: 2, tiempoRiego: 90  },
-          { id: 3, orden: 3, tiempoRiego: 120 },
-          { id: 5, orden: 4, tiempoRiego: 45  }
-        ]
-      },
-      {
-        id: 2,
-        horaInicio: "19:30",
-        dias: 0b1100000,           // S-D
-        retardoEntreSectores: 10,
-        ciclico: false,
-        sectores: [
-          { id: 4, orden: 1, tiempoRiego: 180 },
-          { id: 6, orden: 2, tiempoRiego: 180 },
-          { id: 8, orden: 3, tiempoRiego: 90  }
-        ]
-      }
-    ];
 
-    // --- Helpers ------------------------------------------------------
+    // --- Capa de persistencia ---
+    function fromStorageFormat(raw) {
+      return {
+        id: Number(raw.id),
+        horaInicio: raw.horaInicio || "07:00",
+        dias: Number(raw.dias) || 0,
+        ciclico: !!raw.ciclico,
+        nodos: (raw.nodos || []).map((n) => ({
+          sectorId: Number(n.sectorId),
+          tiempoRiego: Number(n.tiempoRiego) || 60,
+          retardo: Number(n.retardo) || 0,
+          padre: n.padre != null ? Number(n.padre) : null,
+          caudal: Number(n.caudal) || 6
+        }))
+      };
+    }
+
+    function toStorageFormat(prog) {
+      return {
+        id: prog.id,
+        horaInicio: prog.horaInicio,
+        dias: prog.dias,
+        ciclico: prog.ciclico,
+        nodos: prog.nodos.map((n) => ({
+          sectorId: n.sectorId,
+          tiempoRiego: n.tiempoRiego,
+          retardo: n.retardo,
+          padre: n.padre,
+          caudal: n.caudal
+        }))
+      };
+    }
+
+    // --- Capa de API REST contra el ESP32 ---
+    const Api = {
+      // POST /configuracion con un objeto JSON (acciones: programa, borrar,
+      // ejecutar, caudalBomba). Devuelve el JSON de respuesta {ok, ...}.
+      async _postConfig(bodyObj) {
+        const res = await fetch("/configuracion", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(bodyObj)
+        });
+        let data = {};
+        try { data = await res.json(); } catch (e) { /* respuesta no-JSON */ }
+        return { httpOk: res.ok, ...data };
+      },
+
+      async getEstado() {
+        const res = await fetch("/estado");
+        return res.json();
+      },
+
+      // GET /programas → { caudalBomba, programas:[...] }. Sincroniza el caudal
+      // de bomba global y devuelve los programas en el formato interno de la UI.
+      async getProgramas() {
+        const res  = await fetch("/programas");
+        const data = await res.json();
+        if (data.caudalBomba) systemConfig.caudalBomba = Number(data.caudalBomba);
+        return (data.programas || []).map(fromStorageFormat);
+      },
+
+      savePrograma(prog)   { return this._postConfig({ programa: toStorageFormat(prog) }); },
+      deletePrograma(id)   { return this._postConfig({ borrar: id }); },
+      runPrograma(id)      { return this._postConfig({ ejecutar: id }); },
+      setCaudalBomba(val)  { return this._postConfig({ caudalBomba: val }); },
+
+      async parada() {
+        const res = await fetch("/parada", { method: "POST" });
+        return res.ok;
+      },
+
+      async controlSector(id, state) {
+        const res = await fetch(`/control?type=sector&id=${id}&state=${state}`);
+        return res.ok;
+      },
+
+      async getRTC() {
+        const res = await fetch("/rtc");
+        return res.json();
+      },
+
+      async setRTC(r) {
+        const q = `year=${r.year}&month=${r.month}&day=${r.day}` +
+                  `&hour=${r.hour}&minute=${r.minute}&second=${r.second}`;
+        const res = await fetch(`/rtc?${q}`, { method: "POST" });
+        return res.ok;
+      }
+    };
+
+
+    // --- Helpers ---
     const $  = (sel) => document.querySelector(sel);
     const $$ = (sel) => document.querySelectorAll(sel);
 
@@ -901,89 +1094,6 @@ const char INDEX_HTML[] PROGMEM = R"=====(
       return `${h}:${min} ${d}/${m}/${y}`;
     }
 
-    function normalizeActiveSectors(data) {
-      if (Array.isArray(data.sectoresActivos)) {
-        return data.sectoresActivos
-          .map(Number)
-          .filter((id) => id >= 1 && id <= NUM_SECTORS);
-      }
-
-      const sectors = [];
-      if (data.sectorActivo) sectors.push(Number(data.sectorActivo));
-      if (data.manualSectorId && !sectors.includes(Number(data.manualSectorId))) {
-        sectors.push(Number(data.manualSectorId));
-      }
-      return sectors;
-    }
-
-    function isManualSectorActive(sectorId) {
-      return (manualSectorMask & (1 << (sectorId - 1))) !== 0;
-    }
-
-    async function fetchRTCTime() {
-      const data = await api("GET", "/rtc", null);
-      if (data) {
-        updateTimeDisplay(data);
-        return data;
-      }
-      return null;
-    }
-
-    function updateTimeDisplay(rtcData) {
-      if (!rtcData) return;
-      const timeStr = formatDateTime(rtcData);
-      const timeElement = $("#timeValue");
-      if (timeElement) {
-        timeElement.textContent = timeStr;
-      }
-    }
-
-    function openTimeEditor(rtcData) {
-      if (!rtcData) return;
-      const dateStr = String(rtcData.year).padStart(4, '0') + '-' +
-                      String(rtcData.month).padStart(2, '0') + '-' +
-                      String(rtcData.day).padStart(2, '0');
-      const timeStr = String(rtcData.hour).padStart(2, '0') + ':' +
-                      String(rtcData.minute).padStart(2, '0') + ':' +
-                      String(rtcData.second).padStart(2, '0');
-      $("#timeEditorDate").value = dateStr;
-      $("#timeEditorTime").value = timeStr;
-      $("#timeEditorModal").classList.add("show");
-    }
-
-    function closeTimeEditor() {
-      $("#timeEditorModal").classList.remove("show");
-    }
-
-    async function saveRTCTime() {
-      const dateVal = $("#timeEditorDate").value;
-      const timeVal = $("#timeEditorTime").value;
-
-      if (!dateVal || !timeVal) {
-        toast("Por favor selecciona fecha y hora", true);
-        return;
-      }
-
-      const [year, month, day] = dateVal.split('-').map(Number);
-      const [hour, minute, second] = timeVal.split(':').map(Number);
-
-      const timeData = `year=${year}&month=${month}&day=${day}&hour=${hour}&minute=${minute}&second=${second}`;
-
-      try {
-        const res = await fetch("/rtc?" + timeData, { method: "POST" });
-        const data = await res.json();
-        if (data && data.ok) {
-          updateTimeDisplay(data.rtc);
-          toast("✓ Hora configurada correctamente");
-          closeTimeEditor();
-        } else {
-          toast("Error al configurar la hora", true);
-        }
-      } catch (err) {
-        toast("Error: " + err.message, true);
-      }
-    }
-
     function daysMaskToLabel(mask) {
       const labels = ["L", "M", "X", "J", "V", "S", "D"];
       const out = [];
@@ -993,99 +1103,258 @@ const char INDEX_HTML[] PROGMEM = R"=====(
       return out.length ? out.join(" ") : "Sin días";
     }
 
-    async function api(method, path, body) {
-      if (demoMode) return demoApi(method, path, body);
-      try {
-        const opts = { method, headers: { "Content-Type": "application/json" } };
-        if (body) opts.body = JSON.stringify(body);
-        const res = await fetch(path, opts);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return await res.json();
-      } catch (err) {
-        // Primera falla → entramos en modo demo y avisamos
-        if (!demoMode) {
-          demoMode = true;
-          toast("Modo demo activo (ESP32 no disponible)");
-        }
-        return demoApi(method, path, body);
-      }
+    function isManualSectorActive(id) {
+      return (manualSectorMask & (1 << (id - 1))) !== 0;
     }
 
-    // Simula las respuestas del ESP32 para poder validar la UI sin
-    // tener el firmware funcionando.
-    function demoApi(method, path, body) {
-      if (path === "/estado" && method === "GET") {
-        // Simulamos que el tiempo restante va bajando
-        if (demoState.estado === "RUNNING" && demoState.tiempoRestante > 0) {
-          demoState.tiempoRestante -= 2;
-          if (demoState.tiempoRestante <= 0) {
-            demoState.sectorActivo = (demoState.sectorActivo % 8) + 1;
-            demoState.sectoresActivos = [demoState.sectorActivo];
-            demoState.tiempoRestante = 90;
-          }
-        }
-        return Promise.resolve({ ...demoState });
-      }
-      if (path === "/programas" && method === "GET") {
-        return Promise.resolve({ programas: demoPrograms });
-      }
-      if (path === "/configuracion" && method === "POST") {
-        const prog = body.programa;
-        if (prog.id) {
-          const idx = demoPrograms.findIndex((p) => p.id === prog.id);
-          if (idx >= 0) demoPrograms[idx] = prog;
-        } else {
-          prog.id = demoPrograms.length
-            ? Math.max(...demoPrograms.map((p) => p.id)) + 1
-            : 1;
-          demoPrograms.push(prog);
-        }
-        return Promise.resolve({ ok: true, id: prog.id });
-      }
-      if (path === "/parada" && method === "POST") {
-        demoState.estado = "MANUAL_STOP";
-        demoState.programaActivo = 0;
-        demoState.sectorActivo = 0;
-        demoState.sectoresActivos = [];
-        demoState.tiempoRestante = 0;
-        demoState.bomba = false;
-        return Promise.resolve({ ok: true });
-      }
-      if (path === "/rtc" && method === "GET") {
-        const now = new Date();
-        return Promise.resolve({
-          year: now.getFullYear(),
-          month: now.getMonth() + 1,
-          day: now.getDate(),
-          hour: now.getHours(),
-          minute: now.getMinutes(),
-          second: now.getSeconds(),
-          dayOfWeek: now.getDay(),
-          running: true
-        });
-      }
-      if (path === "/rtc" && method === "POST") {
-        return Promise.resolve({
-          ok: true,
-          rtc: {
-            year: body.year,
-            month: body.month,
-            day: body.day,
-            hour: body.hour,
-            minute: body.minute,
-            second: body.second,
-            dayOfWeek: new Date(body.year, body.month - 1, body.day).getDay(),
-            running: true
-          }
-        });
-      }
-      return Promise.resolve({});
+
+    // --- Árbol de flujo vertical ---
+    const FT = {
+      NODE_W: 82,   // ancho del nodo (px)
+      NODE_H: 68,   // alto del nodo (px)
+      H_GAP:  22,   // espacio horizontal entre hermanos
+      V_GAP:  50,   // espacio vertical entre niveles (zona del conector)
+      PAD_X:  14,   // padding izquierdo/derecho del contenedor
+      PAD_Y:  12,   // padding superior/inferior
+    };
+
+    // Ancho total que ocupa el subárbol de un sector (incluyendo H_GAP)
+    function ftSubtreeWidth(sectorId, nodos) {
+      const children = nodos.filter((n) => n.padre === sectorId);
+      if (!children.length) return FT.NODE_W + FT.H_GAP;
+      return children.reduce((sum, c) => sum + ftSubtreeWidth(c.sectorId, nodos), 0);
     }
 
-    // --- Render: Estado ----------------------------------------------
-    function renderStatus(data) {
-      const state = data.modoManual ? "MANUAL" : (data.estado || "IDLE");
+    // Asigna (x, y) centrado a cada nodo recursivamente
+    function ftAssignPositions(sectorId, nodos, level, xLeft, positions) {
+      const children = nodos.filter((n) => n.padre === sectorId);
+      const subtreeW = ftSubtreeWidth(sectorId, nodos);
+      positions[sectorId] = {
+        x: FT.PAD_X + xLeft + subtreeW / 2,
+        y: FT.PAD_Y + level * (FT.NODE_H + FT.V_GAP) + FT.NODE_H / 2,
+      };
+      let childXLeft = xLeft;
+      children.forEach((child) => {
+        ftAssignPositions(child.sectorId, nodos, level + 1, childXLeft, positions);
+        childXLeft += ftSubtreeWidth(child.sectorId, nodos);
+      });
+    }
 
+    // Estado visual de un nodo dado el estado global de la simulación
+    function ftNodeState(sectorId, feedingIds) {
+      if (liveState.sectoresActivos.some((a) => a.sectorId === sectorId))  return "active";
+      if (liveState.pendingActivations.some((p) => p.sectorId === sectorId)) return "pending";
+      if (liveState.queuedSectors.some((q) => q.sectorId === sectorId))    return "queued";
+      if (feedingIds.has(sectorId))                                          return "feeding";
+      if (liveState.completedSectors.includes(sectorId))                    return "done";
+      return "idle";
+    }
+
+    // Color del conector SVG según el estado del nodo destino
+    function ftLineColor(state) {
+      return { active: "#2e8b57", feeding: "#00acc1", pending: "#4a8ec4",
+               queued: "#d98b1f", done: "#bec9c6", idle: "#d5e0de" }[state] || "#d5e0de";
+    }
+
+    function renderFlowTree() {
+      const card      = document.getElementById("flowCard");
+      const container = document.getElementById("flowTreeContainer");
+
+      if (liveState.estado !== "RUNNING" || !liveState.programaActivo) {
+        card.style.display = "none";
+        return;
+      }
+      const prog = programs.find((p) => p.id === liveState.programaActivo);
+      if (!prog || !prog.nodos.length) { card.style.display = "none"; return; }
+
+      card.style.display = "";
+      document.getElementById("flowProgramTitle").textContent =
+        `Programa #${prog.id} · ${prog.horaInicio}`;
+
+      const feedingIds = getFeedingSectors();
+      const nodos      = prog.nodos;
+      const roots      = nodos.filter((n) => n.padre === null);
+
+      // Posiciones — raíces en nivel 1, bomba ocupa nivel 0
+      const positions = {};
+      let xLeft = 0;
+      roots.forEach((r) => {
+        ftAssignPositions(r.sectorId, nodos, 1, xLeft, positions);
+        xLeft += ftSubtreeWidth(r.sectorId, nodos);
+      });
+      const totalW = xLeft;
+
+      // Nodo bomba: centrado sobre todas las raíces
+      const pumpX  = FT.PAD_X + totalW / 2;
+      const pumpY  = FT.PAD_Y + FT.NODE_H / 2;
+      const pumpOn = liveState.bomba;
+
+      // Profundidad máxima de sectores (0-based desde raíz)
+      const getDepth = (sectorId) => {
+        let d = 0, node = nodos.find((n) => n.sectorId === sectorId);
+        while (node && node.padre !== null) {
+          d++;
+          node = nodos.find((n) => n.sectorId === node.padre);
+        }
+        return d;
+      };
+      const maxDepth = Math.max(...nodos.map((n) => getDepth(n.sectorId)));
+
+      const cW = FT.PAD_X * 2 + totalW;
+      // +2: nivel 0 (bomba) + niveles de sectores (maxDepth+1)
+      const cH = FT.PAD_Y * 2 + (maxDepth + 2) * (FT.NODE_H + FT.V_GAP) - FT.V_GAP;
+
+      container.innerHTML = "";
+      container.style.width  = cW + "px";
+      container.style.height = cH + "px";
+
+      // Conectores SVG
+      const svgNS = "http://www.w3.org/2000/svg";
+      const svg   = document.createElementNS(svgNS, "svg");
+      svg.setAttribute("class",  "flow-svg");
+      svg.setAttribute("width",  cW);
+      svg.setAttribute("height", cH);
+
+      function drawConnector(x1, y1, x2, y2, flowing) {
+        const midY  = y1 + FT.V_GAP / 2;
+        const color = flowing ? "#2e8b57" : "#d5e0de";
+        const lw    = flowing ? 3 : 1.5;
+        const path  = document.createElementNS(svgNS, "path");
+        path.setAttribute("d",
+          `M ${x1} ${y1} L ${x1} ${midY} L ${x2} ${midY} L ${x2} ${y2}`);
+        path.setAttribute("stroke",          color);
+        path.setAttribute("stroke-width",    lw);
+        path.setAttribute("fill",            "none");
+        path.setAttribute("stroke-linecap",  "round");
+        path.setAttribute("stroke-linejoin", "round");
+        if (flowing) {
+          path.setAttribute("stroke-dasharray", "8 4");
+          path.style.animation = "flowDash 0.75s linear infinite";
+        }
+        svg.appendChild(path);
+      }
+
+      // Conexiones bomba → raíces
+      roots.forEach((root) => {
+        const rPos = positions[root.sectorId];
+        if (!rPos) return;
+        // Fluye solo si la válvula de la raíz está físicamente abierta
+        // (active = irrigando, feeding = cañería abierta para un hijo).
+        // pending (retardo) y queued (esperando caudal) NO tienen la válvula abierta.
+        const rootState = ftNodeState(root.sectorId, feedingIds);
+        const rootFlows = pumpOn && (rootState === "active" || rootState === "feeding");
+        drawConnector(pumpX, pumpY + FT.NODE_H / 2, rPos.x, rPos.y - FT.NODE_H / 2, rootFlows);
+      });
+
+      // Conexiones entre sectores
+      nodos.forEach((node) => {
+        if (node.padre === null) return;
+        const pPos = positions[node.padre];
+        const cPos = positions[node.sectorId];
+        if (!pPos || !cPos) return;
+        const state     = ftNodeState(node.sectorId, feedingIds);
+        const isFlowing = state === "active" || state === "feeding";
+        const lw        = isFlowing ? 3 : 1.5;
+        const color     = ftLineColor(state);
+        const midY      = pPos.y + FT.NODE_H / 2 + FT.V_GAP / 2;
+        const path      = document.createElementNS(svgNS, "path");
+        path.setAttribute("d",
+          `M ${pPos.x} ${pPos.y + FT.NODE_H / 2} L ${pPos.x} ${midY} L ${cPos.x} ${midY} L ${cPos.x} ${cPos.y - FT.NODE_H / 2}`);
+        path.setAttribute("stroke",          color);
+        path.setAttribute("stroke-width",    lw);
+        path.setAttribute("fill",            "none");
+        path.setAttribute("stroke-linecap",  "round");
+        path.setAttribute("stroke-linejoin", "round");
+        if (isFlowing) {
+          path.setAttribute("stroke-dasharray", "8 4");
+          path.style.animation = "flowDash 0.75s linear infinite";
+        }
+        svg.appendChild(path);
+      });
+
+      container.appendChild(svg);
+
+      // Nodos de sectores
+      nodos.forEach((node) => {
+        const pos   = positions[node.sectorId];
+        if (!pos) return;
+        const state = ftNodeState(node.sectorId, feedingIds);
+
+        let timerText = "";
+        if (state === "active") {
+          const info = liveState.sectoresActivos.find((a) => a.sectorId === node.sectorId);
+          timerText  = info ? formatTime(info.tiempoRestante) : "";
+        } else if (state === "pending") {
+          const info = liveState.pendingActivations.find((p) => p.sectorId === node.sectorId);
+          timerText  = info ? `⏱ ${info.delay}s` : "";
+        } else if (state === "queued") {
+          timerText = "en cola";
+        } else if (state === "feeding") {
+          timerText = "abierta ↓";
+        } else if (state === "done") {
+          timerText = "✓ listo";
+        }
+
+        const div     = document.createElement("div");
+        div.className = `flow-node-box flow-${state}`;
+        div.style.left = pos.x + "px";
+        div.style.top  = (pos.y - FT.NODE_H / 2) + "px";
+        div.innerHTML  = `
+          <div class="flow-node-label">S${node.sectorId}</div>
+          <div class="flow-node-timer">${timerText}</div>
+          <div class="flow-node-caudal">${node.caudal || 6} L/min</div>
+        `;
+        container.appendChild(div);
+      });
+
+      // Nodo bomba (último para quedar por encima del SVG)
+      const activeFlow  = liveState.sectoresActivos.reduce((s, a) => s + (a.caudal || 0), 0);
+      const pumpDiv     = document.createElement("div");
+      pumpDiv.className = `flow-node-box flow-pump-${pumpOn ? "on" : "off"}`;
+      pumpDiv.style.left = pumpX + "px";
+      pumpDiv.style.top  = (pumpY - FT.NODE_H / 2) + "px";
+      pumpDiv.innerHTML  = `
+        <div class="flow-node-label">⚙ Bomba</div>
+        <div class="flow-node-timer">${pumpOn ? `${activeFlow}/${systemConfig.caudalBomba} L/min` : "inactiva"}</div>
+      `;
+      container.appendChild(pumpDiv);
+    }
+
+    // --- Sectores cañería: ancestors de sectores activos ---
+    // Devuelve un Set con los sectorId de todos los sectores que deben tener
+    // su válvula abierta para alimentar a los sectores actualmente irrigando.
+    function getFeedingSectors() {
+      if (liveState.estado !== "RUNNING" || !liveState.programaActivo) return new Set();
+      const prog = programs.find((p) => p.id === liveState.programaActivo);
+      if (!prog) return new Set();
+
+      const activeSectorIds = liveState.sectoresActivos.map((a) => a.sectorId);
+      const feeding = new Set();
+
+      for (const id of activeSectorIds) {
+        let node = prog.nodos.find((n) => n.sectorId === id);
+        while (node && node.padre !== null) {
+          feeding.add(node.padre);
+          node = prog.nodos.find((n) => n.sectorId === node.padre);
+        }
+      }
+      // Un sector que está irrigando no puede ser "cañería" al mismo tiempo
+      activeSectorIds.forEach((id) => feeding.delete(id));
+      return feeding;
+    }
+
+    // --- Render: Estado ---
+    function renderStatus() {
+      const feedingIds = getFeedingSectors();
+      const manualIds = [];
+      for (let i = 1; i <= NUM_SECTORS; i++) {
+        if (isManualSectorActive(i)) manualIds.push(i);
+      }
+
+      const programIds = liveState.sectoresActivos.map((a) => a.sectorId);
+      const allActiveIds = [...new Set([...programIds, ...manualIds])];
+
+      const state = liveState.modoManual ? "MANUAL" : (liveState.estado || "IDLE");
       const statusMap = {
         IDLE:        { label: "Inactivo",     cls: "idle"    },
         MANUAL:      { label: "Manual",       cls: "running" },
@@ -1095,29 +1364,65 @@ const char INDEX_HTML[] PROGMEM = R"=====(
       const s = statusMap[state] || statusMap.IDLE;
       $("#statusLabel").textContent = s.label;
       $("#statusDot").className = "status-dot " + s.cls;
-      const activeSectors = normalizeActiveSectors(data);
 
-      $("#activeProgram").textContent =
-        data.programaActivo ? `#${data.programaActivo}` : "—";
-      $("#activeSector").textContent =
-        data.sectorActivo ? `S${data.sectorActivo}` : "—";
-      $("#activeSector").textContent =
-        activeSectors.length ? activeSectors.map((id) => `S${id}`).join(", ") : "—";
-      $("#remainingTime").textContent = formatTime(data.tiempoRestante);
+      const pendingIds = liveState.pendingActivations.map((p) => p.sectorId);
 
-      const pumpOn = !!data.bomba;
-      const pump = $("#pumpIndicator");
-      pump.classList.toggle("on", pumpOn);
+      $("#activeProgram").textContent = liveState.programaActivo ? `#${liveState.programaActivo}` : "—";
+
+      const activeLabels  = allActiveIds.map((id) => `S${id}`);
+      const pendingLabels = pendingIds
+        .filter((id) => !allActiveIds.includes(id))
+        .map((id) => `S${id}⏱`);
+      const queuedLabels  = liveState.queuedSectors
+        .map((q) => `S${q.sectorId}⏱`)
+        .filter((lbl, idx, arr) => arr.indexOf(lbl) === idx);
+      const allLabels = [...activeLabels, ...pendingLabels, ...queuedLabels];
+      $("#activeSector").textContent = allLabels.length ? allLabels.join(", ") : "—";
+
+      const maxRemaining = liveState.sectoresActivos.length > 0
+        ? Math.max(...liveState.sectoresActivos.map((a) => a.tiempoRestante))
+        : 0;
+      $("#remainingTime").textContent = formatTime(maxRemaining);
+
+      const pumpOn = liveState.bomba || manualSectorMask !== 0;
+      $("#pumpIndicator").classList.toggle("on", pumpOn);
       $("#pumpLabel").textContent = pumpOn ? "Encendida" : "Apagada";
 
-      // Update manual control state
-      manualSectorMask = Number(data.manualSectorMask || 0);
-
-      // Sectores: marcar el activo
       $$(".sector").forEach((el) => {
-        const id = parseInt(el.dataset.id, 10);
-        el.classList.toggle("active", activeSectors.includes(id));
+        const id        = parseInt(el.dataset.id, 10);
+        const isActive  = allActiveIds.includes(id);
+        const pendingInfo = liveState.pendingActivations.find((p) => p.sectorId === id);
+        const isPending = !!pendingInfo && !isActive;
+        const isQueued  = !isActive && !isPending && liveState.queuedSectors.some((q) => q.sectorId === id);
+        const isFeeding = !isActive && !isPending && !isQueued && feedingIds.has(id);
+
+        el.classList.toggle("active",  isActive);
+        el.classList.toggle("pending", isPending);
+        el.classList.toggle("queued",  isQueued);
+        el.classList.toggle("feeding", isFeeding);
+
+        const timerEl = el.querySelector(".sector-timer");
+        if (timerEl) {
+          if (isActive) {
+            const info = liveState.sectoresActivos.find((a) => a.sectorId === id);
+            timerEl.textContent = info ? formatTime(info.tiempoRestante) : "";
+          } else if (isPending) {
+            timerEl.textContent = `⏱ ${pendingInfo.delay}s`;
+          } else if (isQueued) {
+            timerEl.textContent = "en cola";
+          } else if (isFeeding) {
+            timerEl.textContent = "↓ cañería";
+          } else {
+            timerEl.textContent = "";
+          }
+        }
       });
+
+      // Actualizar chips del árbol en la lista de programas
+      renderPrograms(programs, liveState.programaActivo || 0);
+
+      // Árbol de flujo vertical
+      renderFlowTree();
     }
 
     function buildSectorsGrid() {
@@ -1130,28 +1435,55 @@ const char INDEX_HTML[] PROGMEM = R"=====(
         el.innerHTML = `
           <div class="name">Sector ${i}</div>
           <div class="icon">◉</div>
+          <div class="sector-timer"></div>
         `;
         el.addEventListener("click", () => toggleSectorManual(i));
         grid.appendChild(el);
       }
     }
 
-    // Toggle manual control for a sector
-    function toggleSectorManual(sectorId) {
-      const isActive = isManualSectorActive(sectorId);
-      const newState = isActive ? 0 : 1;  // toggle
-      fetch(`/control?type=sector&id=${sectorId}&state=${newState}`)
-        .then(r => r.json())
-        .then(data => {
-          if (data.ok) refreshStatus();
-        })
-        .catch(e => console.error(e));
+    async function toggleSectorManual(sectorId) {
+      const mask    = 1 << (sectorId - 1);
+      const turnOn  = (manualSectorMask & mask) === 0;
+      try {
+        const ok = await Api.controlSector(sectorId, turnOn ? 1 : 0);
+        if (!ok) { toast("No se pudo cambiar el sector", true); return; }
+      } catch (e) {
+        toast("Error de conexión", true);
+        return;
+      }
+      toast(turnOn
+        ? `Sector ${sectorId} encendido manualmente`
+        : `Sector ${sectorId} apagado`);
+      await refreshStatus();
     }
 
-    // Store manual state globally
-    let manualSectorMask = 0;
+    // --- Render: árbol visual en lista de programas ---
+    // Árbol de preview estático (chips neutros, sin estados de ejecución)
+    function buildTreeHtml(nodos, padre = null, _visited = new Set()) {
+      const children = nodos.filter((n) => n.padre === padre);
+      if (!children.length) return "";
 
-    // --- Render: Programas -------------------------------------------
+      return children.map((node) => {
+        if (_visited.has(node.sectorId)) return ""; // guard anti-ciclo (datos corruptos)
+        const visited = new Set(_visited);
+        visited.add(node.sectorId);
+        const delayBadge = (node.padre !== null && node.retardo > 0)
+          ? `<span class="delay-badge">⏱ ${node.retardo}s</span>`
+          : "";
+        const subTree = buildTreeHtml(nodos, node.sectorId, visited);
+        const childrenHtml = subTree ? `<div class="tree-children">${subTree}</div>` : "";
+        return `
+          <div class="tree-item">
+            <div class="tree-node-row">
+              ${delayBadge}<span class="chip">S${node.sectorId} · ${formatTime(node.tiempoRiego)}</span>
+            </div>
+            ${childrenHtml}
+          </div>
+        `;
+      }).join("");
+    }
+
     function renderPrograms(list, activeId) {
       const container = $("#programsList");
       if (!list.length) {
@@ -1160,41 +1492,48 @@ const char INDEX_HTML[] PROGMEM = R"=====(
       }
       container.innerHTML = "";
       list.forEach((p) => {
+        const consistency   = checkProgramConsistency(p, systemConfig.caudalBomba);
+        const hasDeadlock   = consistency.deadlocked.length > 0;
+        const hasCrowded    = consistency.crowded;
+        const isInconsistent = hasDeadlock || hasCrowded;
+
+        // Badge de estado
+        let badgeHtml = "";
+        if (hasDeadlock) {
+          const sects = consistency.deadlocked.map((s) => `S${s}`).join(", ");
+          badgeHtml = `<span class="prog-badge danger" title="${sects} tienen caudal mayor al de la bomba y nunca podrían activarse">⛔ ${sects} bloqueado${consistency.deadlocked.length > 1 ? "s" : ""}</span>`;
+        } else if (hasCrowded) {
+          badgeHtml = `<span class="prog-badge warn" title="La suma de sectores raíz supera el caudal de la bomba; algunos sectores irán a cola">⚠️ Raíces exceden bomba</span>`;
+        }
+
         const item = document.createElement("div");
         item.className = "program-item" + (p.id === activeId ? " active" : "");
-
-        const sectorChips = p.sectores
-          .slice()
-          .sort((a, b) => a.orden - b.orden)
-          .map(
-            (s) =>
-              `<span class="chip">S${s.id} · ${formatTime(s.tiempoRiego)}</span>`
-          )
-          .join("");
-
+        const treeHtml = buildTreeHtml(p.nodos);
         item.innerHTML = `
           <div class="program-item-header">
             <div>
-              <div class="program-title">Programa #${p.id} · ${p.horaInicio}</div>
+              <div class="program-title">
+                Programa #${p.id} · ${p.horaInicio}
+                ${badgeHtml}
+              </div>
               <div class="program-meta">
                 <span>${daysMaskToLabel(p.dias)}</span>
-                <span>Retardo ${p.retardoEntreSectores}s</span>
                 <span>${p.ciclico ? "Cíclico" : "Ejecución única"}</span>
               </div>
             </div>
             <div class="program-actions">
               <button class="btn small secondary" data-action="edit"   data-id="${p.id}">Editar</button>
-              <button class="btn small"           data-action="run"    data-id="${p.id}">Ejecutar</button>
+              <button class="btn small ${hasDeadlock ? "disabled" : ""}" data-action="run" data-id="${p.id}" ${hasDeadlock ? 'title="Corregí los caudales antes de ejecutar"' : ""}>Ejecutar</button>
               <button class="btn small danger"    data-action="delete" data-id="${p.id}">Borrar</button>
             </div>
           </div>
-          <div class="program-sectors">${sectorChips}</div>
+          <div class="program-tree">${treeHtml}</div>
         `;
         container.appendChild(item);
       });
     }
 
-    // --- Editor de programas -----------------------------------------
+    // --- Editor de programas ---
     function buildSectorConfigList() {
       const list = $("#sectorConfigList");
       list.innerHTML = "";
@@ -1204,67 +1543,271 @@ const char INDEX_HTML[] PROGMEM = R"=====(
         row.innerHTML = `
           <input type="checkbox" id="sec_${i}_enabled" data-sector="${i}">
           <label class="sector-name" for="sec_${i}_enabled">Sector ${i}</label>
+          <select class="parent-select" id="sec_${i}_parent" disabled title="Este sector arranca cuando el padre termina">
+            <option value="">Al inicio (raíz)</option>
+          </select>
+          <div class="delay-wrapper">
+            <input type="number" class="delay-input" id="sec_${i}_delay" min="0" max="3600" value="0" disabled title="Segundos de espera después de que el padre termina">
+            <span class="unit">s espera</span>
+          </div>
           <div class="time-wrapper">
-            <input type="number" id="sec_${i}_time" min="0" max="3600" value="60" disabled>
-            <span class="unit">seg</span>
+            <input type="number" id="sec_${i}_time" min="1" max="3600" value="60" disabled>
+            <span class="unit">s riego</span>
+          </div>
+          <div class="flow-wrapper">
+            <input type="number" id="sec_${i}_flow" min="1" max="50" step="1" value="6" disabled title="Caudal requerido por este sector (L/min)">
+            <span class="unit">L/min</span>
           </div>
         `;
         list.appendChild(row);
 
-        row.querySelector('input[type="checkbox"]').addEventListener("change", (e) => {
-          const t = $(`#sec_${i}_time`);
-          t.disabled = !e.target.checked;
+        const cb  = $(`#sec_${i}_enabled`);
+        const sel = $(`#sec_${i}_parent`);
+        const t   = $(`#sec_${i}_time`);
+        const d   = $(`#sec_${i}_delay`);
+        const fl  = $(`#sec_${i}_flow`);
+
+        cb.addEventListener("change", (e) => {
+          const checked = e.target.checked;
+          t.disabled  = !checked;
+          fl.disabled = !checked;
+          sel.disabled = !checked;
+          if (checked) {
+            // Caudal inicial inteligente: usar el espacio libre en la bomba para raíces,
+            // así no se pisan los valores que el usuario ya configuró en otros sectores.
+            // Por defecto el nuevo sector es raíz (sel todavía no tiene valor).
+            let usedByOtherRoots = 0;
+            for (let j = 1; j <= NUM_SECTORS; j++) {
+              if (j === i || !$(`#sec_${j}_enabled`)?.checked) continue;
+              const jSel = $(`#sec_${j}_parent`);
+              const jFl  = $(`#sec_${j}_flow`);
+              if (jSel && !jSel.value && jFl && !jFl.disabled) {
+                usedByOtherRoots += parseInt(jFl.value, 10) || 0;
+              }
+            }
+            const remaining = systemConfig.caudalBomba - usedByOtherRoots;
+            fl.value = remaining > 0 ? Math.min(6, remaining) : 1;
+          } else {
+            for (let j = 1; j <= NUM_SECTORS; j++) {
+              if (j === i) continue;
+              const jSel = $(`#sec_${j}_parent`);
+              if (jSel && jSel.value === String(i)) jSel.value = "";
+            }
+            d.disabled = true;
+            d.value = 0;
+          }
+          updateParentSelectors();
+          updateFlowConstraints(); // sin editingSectorId → solo actualiza maxes y UI
         });
+
+        sel.addEventListener("change", () => {
+          const hasParent = !!sel.value;
+          d.disabled = !hasParent;
+          if (!hasParent) d.value = 0;
+          updateFlowConstraints(); // sin editingSectorId → no clampea
+        });
+
+        // Cuando el caudal del padre cambia, propagar la restricción a sus hijos.
+        // Pasamos el id del sector para que solo se recorte ese campo si excede el max.
+        fl.addEventListener("input", () => updateFlowConstraints(i));
       }
     }
 
+    function updateParentSelectors() {
+      const enabled = [];
+      for (let i = 1; i <= NUM_SECTORS; i++) {
+        if ($(`#sec_${i}_enabled`).checked) enabled.push(i);
+      }
+
+      // Calcula qué sectores son descendientes de `sectorId` según las selecciones
+      // actuales. Usamos propagación iterativa para terminar siempre (sin recursión).
+      function getDescendants(sectorId) {
+        const result = new Set([sectorId]);
+        let changed = true;
+        while (changed) {
+          changed = false;
+          for (const id of enabled) {
+            if (result.has(id)) continue;
+            const pSel = $(`#sec_${id}_parent`);
+            const pVal = pSel ? parseInt(pSel.value, 10) : NaN;
+            if (!isNaN(pVal) && result.has(pVal)) {
+              result.add(id);
+              changed = true;
+            }
+          }
+        }
+        return result;
+      }
+
+      for (let i = 1; i <= NUM_SECTORS; i++) {
+        const sel = $(`#sec_${i}_parent`);
+        if (!sel) continue;
+        const prev        = sel.value;
+        const descendants = getDescendants(i); // sectores que NO pueden ser padre de i
+        sel.innerHTML = '<option value="">Al inicio (raíz)</option>';
+        enabled
+          .filter((id) => !descendants.has(id)) // excluye i mismo y sus descendientes
+          .forEach((id) => {
+            const opt = document.createElement("option");
+            opt.value = String(id);
+            opt.textContent = `Sector ${id}`;
+            sel.appendChild(opt);
+          });
+        // Restaurar selección anterior sólo si sigue siendo una opción válida (no forma ciclo)
+        if (prev && enabled.includes(parseInt(prev)) && !descendants.has(parseInt(prev))) {
+          sel.value = prev;
+        } else {
+          sel.value = "";
+        }
+      }
+    }
+
+    // Ajusta el max de caudal de cada sector descontando lo que ya consumen sus
+    // "hermanos" (mismos padre). Para raíces, la bomba actúa como padre común:
+    //   raíz.max   = caudalBomba  − suma_de_otras_raíces
+    //   hijo.max   = padre.caudal − suma_de_otros_hijos_del_mismo_padre
+    //
+    // editingSectorId: si se pasa, se permite recortar ese sector (el usuario lo
+    // está editando activamente con el spinner/teclado). Los demás nunca se tocan
+    // automáticamente para no destruir valores que el usuario ya configuró.
+    function updateFlowConstraints(editingSectorId = null) {
+      // Paso 1: acumular caudal por padre y caudal total de raíces
+      const childSumByParent = {};
+      let   rootCaudalSum    = 0;
+
+      for (let i = 1; i <= NUM_SECTORS; i++) {
+        const cb = $(`#sec_${i}_enabled`);
+        if (!cb || !cb.checked) continue;
+        const sel = $(`#sec_${i}_parent`);
+        const fl  = $(`#sec_${i}_flow`);
+        if (!sel || !fl || fl.disabled) continue;
+        const caudal = parseInt(fl.value, 10) || 0;
+        if (sel.value) {
+          const parentId = parseInt(sel.value, 10);
+          childSumByParent[parentId] = (childSumByParent[parentId] || 0) + caudal;
+        } else {
+          rootCaudalSum += caudal;
+        }
+      }
+
+      // Paso 2: fijar el max de cada sector.
+      // Solo recortar el valor del sector que el usuario está editando en este momento
+      // (editingSectorId). El resto mantiene su valor aunque sea mayor al max actual,
+      // para que el usuario pueda ver qué necesita ajustar sin que el sistema le pise
+      // los valores que ya configuró.
+      for (let i = 1; i <= NUM_SECTORS; i++) {
+        const cb = $(`#sec_${i}_enabled`);
+        if (!cb || !cb.checked) continue;
+        const sel = $(`#sec_${i}_parent`);
+        const fl  = $(`#sec_${i}_flow`);
+        if (!sel || !fl || fl.disabled) continue;
+
+        const myCaudal = parseInt(fl.value, 10) || 0;
+        let maxForThis;
+
+        if (sel.value) {
+          // Con padre: max = caudal_padre − suma_hermanos
+          const parentId     = parseInt(sel.value, 10);
+          const parentFl     = $(`#sec_${parentId}_flow`);
+          const parentCaudal = parentFl ? (parseInt(parentFl.value, 10) || systemConfig.caudalBomba) : systemConfig.caudalBomba;
+          const siblingsSum  = (childSumByParent[parentId] || 0) - myCaudal;
+          maxForThis = Math.min(systemConfig.caudalBomba, Math.max(1, parentCaudal - siblingsSum));
+        } else {
+          // Raíz: la bomba es el padre común — max = caudalBomba − suma_otras_raíces
+          const otherRootsSum = rootCaudalSum - myCaudal;
+          maxForThis = Math.max(1, systemConfig.caudalBomba - otherRootsSum);
+        }
+
+        fl.max = maxForThis;
+        // Recortar solo el sector que el usuario está editando activamente
+        if (editingSectorId === i && myCaudal > maxForThis) fl.value = maxForThis;
+      }
+
+      // Paso 3: actualizar indicador de suma de raíces
+      const sumEl  = $("#rootFlowSum");
+      const maxEl  = $("#rootFlowMax");
+      const iconEl = $("#rootFlowIcon");
+      const barEl  = $("#rootFlowBar");
+      if (sumEl)  sumEl.textContent  = rootCaudalSum;
+      if (maxEl)  maxEl.textContent  = systemConfig.caudalBomba;
+      if (iconEl) iconEl.textContent = rootCaudalSum > systemConfig.caudalBomba ? " ⚠️ excede la bomba" : "";
+      if (barEl)  barEl.style.color  = rootCaudalSum > systemConfig.caudalBomba
+                                         ? "var(--danger, #e74c3c)"
+                                         : "var(--text-soft)";
+    }
+
     function openEditor(program) {
-      $("#editorCard").classList.remove("collapsed");
-      $("#editorCard").scrollIntoView({ behavior: "smooth", block: "start" });
+      const card = $("#editorCard");
+      card.style.display = "";
+      card.scrollIntoView({ behavior: "smooth", block: "start" });
+
+      // Reset
+      for (let i = 1; i <= NUM_SECTORS; i++) {
+        $(`#sec_${i}_enabled`).checked  = false;
+        $(`#sec_${i}_time`).value       = 60;
+        $(`#sec_${i}_time`).disabled    = true;
+        $(`#sec_${i}_delay`).value      = 0;
+        $(`#sec_${i}_delay`).disabled   = true;
+        $(`#sec_${i}_flow`).value       = 6;
+        $(`#sec_${i}_flow`).disabled    = true;
+        const sel = $(`#sec_${i}_parent`);
+        if (sel) { sel.value = ""; sel.disabled = true; }
+      }
+
+      // Sincronizar hint de caudal de bomba
+      const hintEl = $("#flowHintValue");
+      if (hintEl) hintEl.textContent = systemConfig.caudalBomba;
+      const maxEl = $("#rootFlowMax");
+      if (maxEl) maxEl.textContent = systemConfig.caudalBomba;
 
       if (program) {
         editingId = program.id;
         $("#editorTitle").textContent = `Editar programa #${program.id}`;
-        $("#programId").value          = program.id;
-        $("#startTime").value          = program.horaInicio;
-        $("#delayBetween").value       = program.retardoEntreSectores;
-        $("#cyclic").value             = program.ciclico ? "true" : "false";
-        selectedDays                   = program.dias;
+        $("#programId").value = program.id;
+        $("#startTime").value = program.horaInicio;
+        $("#cyclic").value    = program.ciclico ? "true" : "false";
+        selectedDays = program.dias;
         updateDaysUI();
-        // Reset sector checkboxes
-        for (let i = 1; i <= NUM_SECTORS; i++) {
-          $(`#sec_${i}_enabled`).checked = false;
-          $(`#sec_${i}_time`).value = 60;
-          $(`#sec_${i}_time`).disabled = true;
-        }
-        program.sectores.forEach((s) => {
-          const cb = $(`#sec_${s.id}_enabled`);
-          const ti = $(`#sec_${s.id}_time`);
-          if (cb && ti) {
-            cb.checked = true;
-            ti.disabled = false;
-            ti.value = s.tiempoRiego;
+
+        program.nodos.forEach((n) => {
+          $(`#sec_${n.sectorId}_enabled`).checked  = true;
+          $(`#sec_${n.sectorId}_time`).disabled    = false;
+          $(`#sec_${n.sectorId}_time`).value       = n.tiempoRiego;
+          $(`#sec_${n.sectorId}_flow`).disabled    = false;
+          $(`#sec_${n.sectorId}_flow`).value       = n.caudal || 6;
+          const sel = $(`#sec_${n.sectorId}_parent`);
+          if (sel) sel.disabled = false;
+        });
+
+        updateParentSelectors();
+
+        // Asignar padres y retardos después de poblar el dropdown
+        program.nodos.forEach((n) => {
+          const sel = $(`#sec_${n.sectorId}_parent`);
+          if (sel) sel.value = n.padre != null ? String(n.padre) : "";
+          const d = $(`#sec_${n.sectorId}_delay`);
+          if (d) {
+            d.value    = n.retardo || 0;
+            d.disabled = n.padre === null;
           }
         });
+
+        // Aplicar restricciones de caudal padre→hijo
+        updateFlowConstraints();
       } else {
         editingId = null;
         $("#editorTitle").textContent = "Nuevo programa";
-        $("#programId").value    = "";
-        $("#startTime").value    = "07:00";
-        $("#delayBetween").value = 5;
-        $("#cyclic").value       = "false";
+        $("#programId").value = "";
+        $("#startTime").value = "07:00";
+        $("#cyclic").value    = "false";
         selectedDays = 0;
         updateDaysUI();
-        for (let i = 1; i <= NUM_SECTORS; i++) {
-          $(`#sec_${i}_enabled`).checked = false;
-          $(`#sec_${i}_time`).value = 60;
-          $(`#sec_${i}_time`).disabled = true;
-        }
+        updateFlowConstraints();
       }
     }
 
     function closeEditor() {
-      $("#editorCard").classList.add("collapsed");
+      $("#editorCard").style.display = "none";
       editingId = null;
     }
 
@@ -1276,108 +1819,360 @@ const char INDEX_HTML[] PROGMEM = R"=====(
     }
 
     function collectProgramFromForm() {
-      const sectores = [];
-      let orden = 1;
+      const nodos = [];
       for (let i = 1; i <= NUM_SECTORS; i++) {
-        if ($(`#sec_${i}_enabled`).checked) {
-          sectores.push({
-            id: i,
-            orden: orden++,
-            tiempoRiego: parseInt($(`#sec_${i}_time`).value, 10) || 0
-          });
-        }
+        if (!$(`#sec_${i}_enabled`).checked) continue;
+        const padreVal = $(`#sec_${i}_parent`).value;
+        const padre    = padreVal ? parseInt(padreVal, 10) : null;
+        nodos.push({
+          sectorId: i,
+          tiempoRiego: parseInt($(`#sec_${i}_time`).value, 10) || 0,
+          retardo: padre !== null ? (parseInt($(`#sec_${i}_delay`).value, 10) || 0) : 0,
+          padre,
+          caudal: Math.max(1, parseInt($(`#sec_${i}_flow`).value, 10) || 6)
+        });
       }
       return {
-        id: editingId || null,
-        horaInicio:           $("#startTime").value,
-        dias:                 selectedDays,
-        retardoEntreSectores: parseInt($("#delayBetween").value, 10) || 0,
-        ciclico:              $("#cyclic").value === "true",
-        sectores
+        id:        editingId || null,
+        horaInicio: $("#startTime").value,
+        dias:       selectedDays,
+        ciclico:    $("#cyclic").value === "true",
+        nodos
       };
     }
 
     async function saveProgram() {
       const prog = collectProgramFromForm();
-      if (!prog.horaInicio) {
-        toast("Indicá una hora de inicio", true);
+      if (!prog.horaInicio) { toast("Indicá una hora de inicio", true); return; }
+      if (!prog.dias)        { toast("Elegí al menos un día", true); return; }
+      if (!prog.nodos.length){ toast("Agregá al menos un sector", true); return; }
+
+      const roots = prog.nodos.filter((n) => n.padre === null);
+      if (!roots.length) {
+        toast("Al menos un sector debe ser raíz (padre: Al inicio)", true);
         return;
       }
-      if (!prog.dias) {
-        toast("Elegí al menos un día", true);
+
+      const sectorIds = new Set(prog.nodos.map((n) => n.sectorId));
+      for (const nodo of prog.nodos) {
+        if (nodo.padre !== null && !sectorIds.has(nodo.padre)) {
+          toast(`El padre del sector ${nodo.sectorId} no está en el programa`, true);
+          return;
+        }
+      }
+
+      // Detectar referencias circulares (S2→S3→S2, etc.).
+      // Para cada nodo, seguimos la cadena de padres; si pasamos dos veces por el
+      // mismo sectorId antes de llegar a null, hay un ciclo.
+      {
+        const nodeMap0 = Object.fromEntries(prog.nodos.map((n) => [n.sectorId, n]));
+        for (const nodo of prog.nodos) {
+          const visited = new Set();
+          let cur = nodo;
+          while (cur && cur.padre !== null) {
+            if (visited.has(cur.sectorId)) {
+              toast(
+                `Referencia circular: S${cur.sectorId} es ancestor de sí mismo. ` +
+                `Revisá la cadena de padres.`,
+                true
+              );
+              return;
+            }
+            visited.add(cur.sectorId);
+            cur = nodeMap0[cur.padre];
+          }
+        }
+      }
+
+      // Ningún sector puede pedir más caudal que la bomba: nunca podría activarse.
+      for (const nodo of prog.nodos) {
+        if (nodo.caudal > systemConfig.caudalBomba) {
+          toast(
+            `S${nodo.sectorId} pide ${nodo.caudal} L/min pero la bomba solo tiene ${systemConfig.caudalBomba} L/min — nunca podría activarse`,
+            true
+          );
+          return;
+        }
+      }
+
+      // La suma de los sectores raíz no puede superar la bomba:
+      // todos arrancan simultáneamente y la bomba es su cañería común.
+      const rootNodos   = prog.nodos.filter((n) => n.padre === null);
+      const rootCaudalSum = rootNodos.reduce((s, n) => s + n.caudal, 0);
+      if (rootCaudalSum > systemConfig.caudalBomba) {
+        const detalle = rootNodos.map((n) => `S${n.sectorId}(${n.caudal})`).join(" + ");
+        toast(
+          `Los sectores raíz suman ${rootCaudalSum} L/min pero la bomba solo tiene ${systemConfig.caudalBomba} L/min (${detalle})`,
+          true
+        );
         return;
       }
-      if (!prog.sectores.length) {
-        toast("Agregá al menos un sector", true);
+
+      // El padre es la cañería que alimenta a todos sus hijos simultáneamente.
+      // La suma de caudales de los hijos directos no puede superar el caudal del padre.
+      const nodeMap = Object.fromEntries(prog.nodos.map((n) => [n.sectorId, n]));
+      const childSumByParent = {};
+      for (const nodo of prog.nodos) {
+        if (nodo.padre !== null) {
+          childSumByParent[nodo.padre] = (childSumByParent[nodo.padre] || 0) + nodo.caudal;
+        }
+      }
+      for (const [padreId, suma] of Object.entries(childSumByParent)) {
+        const padre = nodeMap[Number(padreId)];
+        if (padre && suma > padre.caudal) {
+          const detalle = prog.nodos
+            .filter((n) => n.padre === Number(padreId))
+            .map((n) => `S${n.sectorId}(${n.caudal})`)
+            .join(" + ");
+          toast(
+            `S${padreId} tiene ${padre.caudal} L/min pero sus hijos suman ${suma} L/min (${detalle})`,
+            true
+          );
+          return;
+        }
+      }
+
+      // El firmware asigna/conserva el id; se envía null para crear uno nuevo.
+      try {
+        const res = await Api.savePrograma(prog);
+        if (!res.httpOk || res.ok === false) {
+          toast(res.error || "No se pudo guardar el programa", true);
+          return;
+        }
+      } catch (e) {
+        toast("Error de conexión al guardar", true);
         return;
       }
-      const res = await api("POST", "/configuracion", { programa: prog });
-      if (res && res.ok) {
-        toast("Programa guardado");
-        closeEditor();
-        loadPrograms();
-      } else {
-        toast("No se pudo guardar", true);
-      }
+      toast("Programa guardado");
+      closeEditor();
+      await loadPrograms();
+      await refreshStatus();
     }
 
     async function loadPrograms() {
-      const res = await api("GET", "/programas");
-      programs = (res && res.programas) || [];
-      const st = await api("GET", "/estado");
-      renderPrograms(programs, st.programaActivo || 0);
+      programs = await Api.getProgramas();
+      renderPrograms(programs, liveState.programaActivo || 0);
     }
 
     async function runProgram(id) {
-      const res = await api("POST", "/configuracion", { ejecutar: id });
-      if (res && res.ok !== false) {
-        toast(`Ejecutando programa #${id}`);
-        // En modo demo, forzamos el estado
-        if (demoMode) {
-          demoState.estado = "RUNNING";
-          demoState.programaActivo = id;
-          const p = demoPrograms.find((x) => x.id === id);
-          if (p && p.sectores.length) {
-            demoState.sectorActivo = p.sectores[0].id;
-            demoState.sectoresActivos = [p.sectores[0].id];
-            demoState.tiempoRestante = p.sectores[0].tiempoRiego;
-            demoState.bomba = true;
-          }
-        }
-      } else {
-        toast("No se pudo ejecutar", true);
+      const p = programs.find((x) => x.id === id);
+      if (!p || !p.nodos.length) { toast("Programa sin sectores", true); return; }
+
+      // Bloquear ejecución si algún sector tiene caudal > bomba (jamás se activaría)
+      const { deadlocked } = checkProgramConsistency(p, systemConfig.caudalBomba);
+      if (deadlocked.length) {
+        const sects = deadlocked.map((s) => `S${s}`).join(", ");
+        toast(
+          `No se puede ejecutar: ${sects} tiene${deadlocked.length > 1 ? "n" : ""} un caudal mayor al de la bomba (${systemConfig.caudalBomba} L/min). ` +
+          `Editá el programa para corregir los caudales.`,
+          true
+        );
+        return;
       }
+
+      try {
+        const res = await Api.runPrograma(id);
+        if (!res.httpOk || res.ok === false) {
+          toast(res.error || "No se pudo ejecutar el programa", true);
+          return;
+        }
+      } catch (e) {
+        toast("Error de conexión", true);
+        return;
+      }
+      toast(`Ejecutando programa #${id}`);
+      await refreshStatus();
     }
 
     async function deleteProgram(id) {
       if (!confirm(`¿Borrar el programa #${id}?`)) return;
-      if (demoMode) {
-        const idx = demoPrograms.findIndex((p) => p.id === id);
-        if (idx >= 0) demoPrograms.splice(idx, 1);
-      } else {
-        await api("POST", "/configuracion", { borrar: id });
+      try {
+        const res = await Api.deletePrograma(id);
+        if (!res.httpOk || res.ok === false) {
+          toast(res.error || "No se pudo borrar el programa", true);
+          return;
+        }
+      } catch (e) {
+        toast("Error de conexión", true);
+        return;
       }
       toast("Programa borrado");
-      loadPrograms();
+      await loadPrograms();
+      await refreshStatus();
     }
 
     async function manualStop() {
-      if (!confirm("¿Confirmás la parada manual inmediata?")) return;
-      const res = await api("POST", "/parada");
-      if (res && res.ok !== false) toast("Sistema detenido");
-      else toast("No se pudo detener", true);
-      refreshStatus();
+      try {
+        if (!(await Api.parada())) { toast("No se pudo detener", true); return; }
+      } catch (e) {
+        toast("Error de conexión", true);
+        return;
+      }
+      toast("Sistema detenido");
+      await refreshStatus();
     }
 
-    // --- Polling ------------------------------------------------------
+    // --- Config editor ---
+    function openSystemConfigModal() {
+      $("#pumpFlow").value = systemConfig.caudalBomba;
+      // Resetear warning de sesión anterior
+      const w = $("#configImpactWarning");
+      if (w) { w.style.display = "none"; w.innerHTML = ""; w.style.background = ""; w.style.borderColor = ""; w.style.color = ""; }
+      $("#systemConfigModal").classList.add("show");
+    }
+
+    function closeSystemConfigModal() {
+      $("#systemConfigModal").classList.remove("show");
+    }
+
+    // --- Chequeo de consistencia programa ↔ caudal de bomba ---
+    // Devuelve: { deadlocked: [sectorIds], crowded: bool }
+    //   deadlocked → algún sector tiene caudal > caudalBomba: nunca podría activarse
+    //   crowded    → la suma de raíces > caudalBomba: el programa funciona pero con más cola
+    function checkProgramConsistency(prog, caudalBomba) {
+      const deadlocked = prog.nodos
+        .filter((n) => n.caudal > caudalBomba)
+        .map((n) => n.sectorId);
+      const rootSum = prog.nodos
+        .filter((n) => n.padre === null)
+        .reduce((s, n) => s + n.caudal, 0);
+      return { deadlocked, crowded: rootSum > caudalBomba };
+    }
+
+    async function saveSystemConfig() {
+      const val = Math.max(1, parseInt($("#pumpFlow").value, 10) || 20);
+
+      // Detectar programas que quedarían inconsistentes con el nuevo límite
+      const affected = programs.map((p) => {
+        const c = checkProgramConsistency(p, val);
+        return { prog: p, ...c };
+      }).filter((x) => x.deadlocked.length > 0 || x.crowded);
+
+      if (affected.length > 0) {
+        // Construir descripción del impacto
+        const lines = affected.map(({ prog, deadlocked, crowded }) => {
+          const parts = [];
+          if (deadlocked.length) {
+            parts.push(`S${deadlocked.join(", S")} nunca podrían activarse (caudal > ${val} L/min)`);
+          }
+          if (crowded && !deadlocked.length) {
+            parts.push(`sus raíces suman más de ${val} L/min (irán a cola)`);
+          } else if (crowded) {
+            parts.push(`además sus raíces suman más de ${val} L/min`);
+          }
+          return `• Programa #${prog.id}: ${parts.join("; ")}`;
+        });
+
+        const warningEl = $("#configImpactWarning");
+        if (warningEl) {
+          const hasDeadlock = affected.some((x) => x.deadlocked.length > 0);
+          warningEl.innerHTML = `
+            <strong>${hasDeadlock ? "⚠️ Atención" : "ℹ️ Info"}</strong> — con ${val} L/min algunos programas quedan inconsistentes:<br>
+            <div style="margin-top:0.4rem; line-height:1.7;">${lines.join("<br>")}</div>
+            <div style="margin-top:0.5rem;">
+              ${hasDeadlock
+                ? "Los programas marcados con ⛔ no podrán ejecutarse hasta que corrijas sus caudales."
+                : "Los programas marcados con ⚠️ seguirán funcionando pero con más sectores en cola."}
+            </div>
+          `;
+          warningEl.style.display = "block";
+          if (hasDeadlock) {
+            warningEl.style.background = "color-mix(in srgb,#e74c3c 10%,transparent)";
+            warningEl.style.borderColor = "#e74c3c";
+            warningEl.style.color       = "#a93226";
+          }
+        }
+        // Preguntar confirmación solo cuando hay sectores bloqueados de forma permanente
+        const hasDeadlock = affected.some((x) => x.deadlocked.length > 0);
+        if (hasDeadlock) {
+          if (!confirm(`⚠️ Con ${val} L/min, algunos sectores de ${affected.length} programa(s) nunca podrían activarse. ¿Guardar de todas formas?`)) {
+            return; // usuario canceló
+          }
+        }
+        // Si solo hay crowded (sin deadlock), guardar silenciosamente con badges
+      }
+
+      try {
+        const res = await Api.setCaudalBomba(val);
+        if (!res.httpOk || res.ok === false) {
+          toast(res.error || "No se pudo guardar la configuración", true);
+          return;
+        }
+      } catch (e) {
+        toast("Error de conexión", true);
+        return;
+      }
+
+      systemConfig.caudalBomba = val;
+      const hintEl = $("#flowHintValue");
+      if (hintEl) hintEl.textContent = val;
+      const maxEl = $("#rootFlowMax");
+      if (maxEl) maxEl.textContent = val;
+      updateFlowConstraints();
+      renderPrograms(programs, liveState.programaActivo || 0); // actualizar badges
+      toast("✓ Configuración guardada");
+      closeSystemConfigModal();
+    }
+
+    // --- RTC editor ---
+    function openTimeEditor(rtcData) {
+      if (!rtcData) return;
+      const dateStr = String(rtcData.year).padStart(4, "0") + "-" +
+                      String(rtcData.month).padStart(2, "0") + "-" +
+                      String(rtcData.day).padStart(2, "0");
+      const timeStr = String(rtcData.hour).padStart(2, "0") + ":" +
+                      String(rtcData.minute).padStart(2, "0") + ":" +
+                      String(rtcData.second).padStart(2, "0");
+      $("#timeEditorDate").value = dateStr;
+      $("#timeEditorTime").value = timeStr;
+      $("#timeEditorModal").classList.add("show");
+    }
+
+    function closeTimeEditor() { $("#timeEditorModal").classList.remove("show"); }
+
+    async function saveRTCTime() {
+      const dateVal = $("#timeEditorDate").value;
+      const timeVal = $("#timeEditorTime").value;
+      if (!dateVal || !timeVal) { toast("Por favor seleccioná fecha y hora", true); return; }
+      const [year, month, day] = dateVal.split("-").map(Number);
+      const parts = timeVal.split(":").map(Number);
+      try {
+        const ok = await Api.setRTC({
+          year, month, day,
+          hour: parts[0], minute: parts[1], second: parts[2] || 0
+        });
+        if (!ok) { toast("No se pudo configurar la hora", true); return; }
+      } catch (e) {
+        toast("Error de conexión", true);
+        return;
+      }
+      toast("✓ Hora configurada");
+      closeTimeEditor();
+      await refreshTime();
+    }
+
+    async function refreshTime() {
+      try {
+        lastRTC = await Api.getRTC();
+        $("#timeValue").textContent = formatDateTime(lastRTC);
+      } catch (e) {
+        $("#timeValue").textContent = "--:-- --/--/--";
+      }
+    }
+
+    // --- Polling ---
     async function refreshStatus() {
-      const data = await api("GET", "/estado");
-      if (data) renderStatus(data);
+      try {
+        liveState = await Api.getEstado();
+        manualSectorMask = liveState.manualSectorMask || 0;
+      } catch (e) {
+        // Sin conexión: se conserva el último estado conocido.
+      }
+      renderStatus();
     }
 
-    // --- Bootstrap ----------------------------------------------------
+    // --- Bootstrap ---
     function wireEvents() {
-      // Days picker
       $$("#daysPicker .day-toggle").forEach((btn) => {
         btn.addEventListener("click", () => {
           const bit = parseInt(btn.dataset.bit, 10);
@@ -1386,26 +2181,23 @@ const char INDEX_HTML[] PROGMEM = R"=====(
         });
       });
 
-      // Botones del formulario
       $("#btnSaveProg").addEventListener("click", saveProgram);
       $("#btnCancel").addEventListener("click", closeEditor);
-
-      // Nuevo programa
       $("#btnNewProgram").addEventListener("click", () => openEditor(null));
-
-      // Toggle editor
-      $("#editorToggle").addEventListener("click", () => {
-        $("#editorCard").classList.toggle("collapsed");
-      });
-
-      // Parada manual
       $("#btnStop").addEventListener("click", manualStop);
 
-      // Delegación de eventos en la lista de programas
+      // Modal de configuración del sistema
+      $("#headerConfig").addEventListener("click", openSystemConfigModal);
+      $("#btnConfigCancel").addEventListener("click", closeSystemConfigModal);
+      $("#btnConfigSave").addEventListener("click", saveSystemConfig);
+      $("#systemConfigModal").addEventListener("click", (e) => {
+        if (e.target === $("#systemConfigModal")) closeSystemConfigModal();
+      });
+
       $("#programsList").addEventListener("click", (e) => {
         const btn = e.target.closest("button[data-action]");
         if (!btn) return;
-        const id = parseInt(btn.dataset.id, 10);
+        const id     = parseInt(btn.dataset.id, 10);
         const action = btn.dataset.action;
         if (action === "edit") {
           const prog = programs.find((p) => p.id === id);
@@ -1417,33 +2209,29 @@ const char INDEX_HTML[] PROGMEM = R"=====(
         }
       });
 
-      // Time editor events
-      $("#headerTime").addEventListener("click", async () => {
-        const rtcData = await fetchRTCTime();
-        openTimeEditor(rtcData);
-      });
-
+      $("#headerTime").addEventListener("click", () => openTimeEditor(lastRTC));
       $("#btnTimeCancel").addEventListener("click", closeTimeEditor);
       $("#btnTimeSave").addEventListener("click", saveRTCTime);
-
-      // Close modal when clicking outside
       $("#timeEditorModal").addEventListener("click", (e) => {
-        if (e.target === $("#timeEditorModal")) {
-          closeTimeEditor();
-        }
+        if (e.target === $("#timeEditorModal")) closeTimeEditor();
       });
-
     }
 
-    function init() {
+    async function init() {
       buildSectorsGrid();
       buildSectorConfigList();
       wireEvents();
-      loadPrograms();
-      refreshStatus();
-      fetchRTCTime();
+      await loadPrograms();
+      // Sincronizar el input de caudal de bomba con el valor leído del ESP32
+      $("#pumpFlow").value = systemConfig.caudalBomba;
+      const hintEl = $("#flowHintValue");
+      if (hintEl) hintEl.textContent = systemConfig.caudalBomba;
+      const maxEl = $("#rootFlowMax");
+      if (maxEl) maxEl.textContent = systemConfig.caudalBomba;
+      await refreshStatus();
+      await refreshTime();
       setInterval(refreshStatus, POLL_INTERVAL_MS);
-      setInterval(fetchRTCTime, POLL_INTERVAL_MS);
+      setInterval(refreshTime,   TIME_INTERVAL_MS);
     }
 
     document.addEventListener("DOMContentLoaded", init);

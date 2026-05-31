@@ -349,6 +349,36 @@ void test_engine_validations(void) {
     TEST_ASSERT_EQUAL(0, sys.saveProgram(childrenTooMuch));
 }
 
+void test_seed_programs_tree_shape(void) {
+    //El seed por defecto debe quedar como árboles bien formados y ejecutables.
+    IrrigationSystem sys; // InitMode::WITH_SEED
+    sys.begin();
+
+    //Programa 1: S1 raíz con dos hijos (S2, S3); S5 cuelga del árbol.
+    const Program &p1 = sys.programAt(0);
+    TEST_ASSERT_TRUE(p1.isValid());
+    TEST_ASSERT_EQUAL(1, p1.getId());
+    TEST_ASSERT_EQUAL(5, p1.getSectorCount());
+    TEST_ASSERT_EQUAL(1, p1.getRootCount());
+    TEST_ASSERT_EQUAL(2, p1.getChildCount(1)); // S2 y S3 cuelgan de S1
+    TEST_ASSERT_TRUE(p1.hasNode(5));
+    const ProgramNode *root = p1.findNodeBySectorId(1);
+    TEST_ASSERT_NOT_NULL(root);
+    TEST_ASSERT_EQUAL(0, root->parentSectorId);
+    TEST_ASSERT_EQUAL(12, root->flow);
+
+    //Es ejecutable: al arrancar, solo la raíz S1 riega.
+    TEST_ASSERT_TRUE(sys.startProgramById(1));
+    SystemStateSnapshot s = sys.getStateSnapshot();
+    TEST_ASSERT_EQUAL(1, s.activeCount);
+    TEST_ASSERT_EQUAL(1, s.active[0].sectorId);
+
+    //Programa 3: tres raíces en paralelo.
+    const Program &p3 = sys.programAt(2);
+    TEST_ASSERT_EQUAL(3, p3.getId());
+    TEST_ASSERT_EQUAL(3, p3.getRootCount());
+}
+
 int main(int argc, char **argv) {
     UNITY_BEGIN();
     RUN_TEST(test_valve_open_close);
@@ -363,5 +393,6 @@ int main(int argc, char **argv) {
     RUN_TEST(test_engine_feeding_valve_blinks);
     RUN_TEST(test_engine_cyclic_restarts_roots);
     RUN_TEST(test_engine_validations);
+    RUN_TEST(test_seed_programs_tree_shape);
     return UNITY_END();
 }

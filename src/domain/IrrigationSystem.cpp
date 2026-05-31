@@ -55,30 +55,45 @@ void IrrigationSystem::seedDefaultPrograms() {
   for (uint8_t i = 0; i < Config::MAX_PROGRAMAS; i++) {
     _programs[i] = Program();
   }
+  _pumpFlow = Config::CAUDAL_BOMBA_DEFAULT; // los demos están diseñados para 20 L/min
 
-  // Programa 1: lunes a viernes a las 07:00, cíclico, 4 sectores
-  // Nodos: {sectorId, irrigationTime, delay, parentSectorId, flow}
+  // Nodos: {sectorId, irrigationTime, delay, parentSectorId, flow} (padre 0 = raíz)
+
+  // Programa 1: árbol S1→{S2,S3}; S2→S4; S3→S5. Cíclico, lun-vie 07:00.
+  // S1 alimenta S2+S3 en paralelo (caudal S1 = 6+6 = 12); cada hoja iguala a su padre.
   _programs[0].setValid(true);
   _programs[0].setId(1);
   _programs[0].setStartTime("07:00");
-  _programs[0].setDays(0b0111110);  // lun=bit0 … vie=bit4
+  _programs[0].setDays(62);          // lun-vie
   _programs[0].setCyclic(true);
-  _programs[0].addNode({1,  60, 0, 0, 10});
-  _programs[0].addNode({2,  90, 5, 0, 10});
-  _programs[0].addNode({3, 120, 5, 0, 10});
-  _programs[0].addNode({5,  45, 5, 0, 10});
+  _programs[0].addNode({1, 15, 0, 0, 12});
+  _programs[0].addNode({2, 12, 3, 1, 6});
+  _programs[0].addNode({3, 18, 3, 1, 6});
+  _programs[0].addNode({4, 10, 2, 2, 6});
+  _programs[0].addNode({5, 12, 2, 3, 6});
 
-  // Programa 2: sábado y domingo a las 19:30, no cíclico, 3 sectores
+  // Programa 2: dos raíces (S4, S6 = 7 L/min c/u → 14 ≤ 20) con un hijo cada una.
   _programs[1].setValid(true);
   _programs[1].setId(2);
   _programs[1].setStartTime("19:30");
-  _programs[1].setDays(0b1100000);  // sáb=bit5, dom=bit6
+  _programs[1].setDays(96);          // sáb-dom
   _programs[1].setCyclic(false);
-  _programs[1].addNode({4, 180,  0, 0, 10});
-  _programs[1].addNode({6, 180, 10, 0, 10});
-  _programs[1].addNode({8,  90, 10, 0, 10});
+  _programs[1].addNode({4, 20, 0, 0, 7});
+  _programs[1].addNode({6, 20, 0, 0, 7});
+  _programs[1].addNode({7, 15, 3, 4, 6});
+  _programs[1].addNode({8, 18, 3, 6, 6});
 
-   _nextProgramId = 3;
+  // Programa 3: tres raíces en paralelo (3 × 6 = 18 ≤ 20), sin cola.
+  _programs[2].setValid(true);
+  _programs[2].setId(3);
+  _programs[2].setStartTime("12:00");
+  _programs[2].setDays(127);         // todos los días
+  _programs[2].setCyclic(false);
+  _programs[2].addNode({1, 10, 0, 0, 6});
+  _programs[2].addNode({2, 10, 0, 0, 6});
+  _programs[2].addNode({3, 10, 0, 0, 6});
+
+  _nextProgramId = 4;
 }
 
 // ============================================================

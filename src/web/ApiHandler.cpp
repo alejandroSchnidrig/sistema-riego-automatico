@@ -172,16 +172,44 @@ void ApiHandler::handleRTC() {
 String ApiHandler::buildStatusJson() const {
   const SystemStateSnapshot snap = _sys.getStateSnapshot();
   String json = "{";
-  json += "\"estado\":\""         + String(snap.stateName)                      + "\",";
-  json += "\"programaActivo\":"   + String(snap.activeProgramId)                + ",";
-  json += "\"sectorActivo\":"     + String(snap.activeSectorId)                 + ",";
-  json += "\"sectoresActivos\":"  + buildSectorArrayJson(snap.activeSectorMask) + ",";
-  json += "\"tiempoRestante\":"   + String(snap.remainingTimeSec)               + ",";
-  json += "\"bomba\":"            + boolToJson(snap.pumpOn)                     + ",";
-  json += "\"modoManual\":"       + boolToJson(snap.manualActive)               + ",";
-  json += "\"manualSectorMask\":" + String(snap.manualSectorMask)               + ",";
-  json += "\"manualSectorId\":"   + String(snap.firstManualSectorId)            + ",";
-  json += "\"manualPumpOn\":false";
+  json += "\"estado\":\""       + String(snap.stateName)       + "\",";
+  json += "\"programaActivo\":" + String(snap.activeProgramId)  + ",";
+
+  // Sectores regando (válvula abierta).
+  json += "\"sectoresActivos\":[";
+  for (uint8_t i = 0; i < snap.activeCount; i++) {
+    if (i > 0) json += ",";
+    json += "{\"sectorId\":"      + String(snap.active[i].sectorId);
+    json += ",\"tiempoRestante\":" + String(snap.active[i].remainingTimeSec);
+    json += ",\"caudal\":"        + String(snap.active[i].flow) + "}";
+  }
+  json += "],";
+
+  // Sectores esperando su retardo (caudal reservado, válvula cerrada).
+  json += "\"pendingActivations\":[";
+  for (uint8_t i = 0; i < snap.pendingCount; i++) {
+    if (i > 0) json += ",";
+    json += "{\"sectorId\":" + String(snap.pending[i].sectorId);
+    json += ",\"delay\":"    + String(snap.pending[i].delaySec);
+    json += ",\"caudal\":"   + String(snap.pending[i].flow) + "}";
+  }
+  json += "],";
+
+  // Sectores en cola FIFO (sin caudal libre).
+  json += "\"queuedSectors\":[";
+  for (uint8_t i = 0; i < snap.queuedCount; i++) {
+    if (i > 0) json += ",";
+    json += "{\"sectorId\":"    + String(snap.queued[i].sectorId);
+    json += ",\"tiempoRiego\":" + String(snap.queued[i].irrigationTime);
+    json += ",\"retardo\":"     + String(snap.queued[i].delaySec);
+    json += ",\"caudal\":"      + String(snap.queued[i].flow) + "}";
+  }
+  json += "],";
+
+  json += "\"completedSectors\":" + buildSectorArrayJson(snap.completedMask) + ",";
+  json += "\"bomba\":"            + boolToJson(snap.pumpOn)                  + ",";
+  json += "\"modoManual\":"       + boolToJson(snap.manualActive)            + ",";
+  json += "\"manualSectorMask\":" + String(snap.manualSectorMask);
   json += "}";
   return json;
 }

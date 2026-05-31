@@ -55,7 +55,7 @@ struct SystemStateSnapshot {
   uint8_t     firstManualSectorId; // primer bit encendido de manualSectorMask (para UI)
   uint16_t    pumpFlow;            // caudal máximo de la bomba (L/min)
 
-  // Resumen escalar (compatibilidad con /estado lineal; se retira en E3)
+  // Resumen escalar (usado por el debug serial de main.cpp; /estado usa las listas)
   uint8_t     activeSectorId;
   uint16_t    activeSectorMask;    // máscara combinada: manual | programático
   uint32_t    remainingTimeSec;

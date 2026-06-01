@@ -1,4 +1,5 @@
 #pragma once
+#include <DNSServer.h>
 #include <WebServer.h>
 #include <WiFi.h>
 #include "ApiHandler.h"
@@ -16,6 +17,7 @@ public:
   void handleClient();
 
 private:
+  DNSServer  _dnsServer;
   WebServer  _server;   // instancia del WebServer del ESP32 en puerto 80; declarado antes que _api
   ApiHandler _api;
 };

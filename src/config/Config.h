@@ -39,6 +39,7 @@ namespace Config {
   constexpr char AP_SSID[]     = "Riego-ESP32";
   constexpr char AP_PASSWORD[] = "riego12345";
   constexpr char AP_IP[]       = "192.168.4.1";
+  constexpr char AP_DNS_NAME[] = "riego.local";
 
   // ----------------------------------------------------------
   // Límites de almacenamiento

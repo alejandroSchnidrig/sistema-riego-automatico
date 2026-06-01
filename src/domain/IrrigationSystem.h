@@ -127,7 +127,6 @@ private:
   uint16_t     _completedMask;
 
   uint16_t      _manualSectorMask;
-  bool          _blinkPhase;          // alterna cada paso de 1 s (titileo cañería)
   unsigned long _lastStepMs;          // marca del último paso de 1 s procesado
 
   // Motor de ejecución
@@ -147,11 +146,11 @@ private:
                  uint16_t delaySec, uint16_t flow);
   void clearRuntimeLists();
 
-  // Salidas (válvulas, bomba, titileo de cañería)
+  // Salidas (válvulas, bomba). La cañería abre la válvula fija (no titila).
   uint16_t computeActiveMask() const;
   uint16_t computeFeedingMask() const;
   void applyOutputsFromState();
-  void setSectorHardware(uint16_t solidMask, uint16_t blinkMask);
+  void setSectorHardware(uint16_t openMask);
 
   void stopRuntime(SystemState newState);
 

@@ -24,7 +24,6 @@ IrrigationSystem::IrrigationSystem(InitMode mode)
     _queueCount(0),
     _completedMask(0),
     _manualSectorMask(0),
-    _blinkPhase(false),
     _lastStepMs(0)
 {
   clearPrograms();
@@ -171,8 +170,7 @@ void IrrigationSystem::stepOneSecond() {
     }
   }
 
-  // 7) Alternar fase de titileo y refrescar salidas (válvulas, cañería, bomba).
-  _blinkPhase = !_blinkPhase;
+  // 7) Refrescar salidas (válvulas, cañería, bomba).
   applyOutputsFromState();
 }
 
@@ -251,7 +249,6 @@ bool IrrigationSystem::startProgramById(uint16_t id) {
   _state               = SystemState::RUNNING;
   _activeProgramId     = p.getId();
   _runningProgramIndex = index;
-  _blinkPhase          = true;
   startRoots(index);
   _lastStepMs          = hal_millis();
 
@@ -403,7 +400,7 @@ const char* IrrigationSystem::stateToString(SystemState state) {
 }
 
 // ============================================================
-// Salidas: válvulas, cañería (titileo) y bomba
+// Salidas: válvulas, cañería (válvula abierta fija) y bomba
 // ============================================================
 
 uint16_t IrrigationSystem::computeActiveMask() const {
@@ -432,23 +429,21 @@ uint16_t IrrigationSystem::computeFeedingMask() const {
 
 void IrrigationSystem::applyOutputsFromState() {
   const uint16_t activeMask  = computeActiveMask();
-  const uint16_t solidMask   = _manualSectorMask | activeMask;
   const uint16_t feedingMask = computeFeedingMask();
-  const uint16_t blinkMask   = feedingMask & (uint16_t)~solidMask;
+  // Una válvula está abierta si riega, está en manual, o conduce agua hacia un
+  // hijo (cañería). En los tres casos la solenoide queda físicamente abierta.
+  const uint16_t openMask    = _manualSectorMask | activeMask | feedingMask;
 
-  setSectorHardware(solidMask, blinkMask);
+  setSectorHardware(openMask);
 
   if ((activeMask | _manualSectorMask) != 0) _pump.on(); else _pump.off();
 }
 
-void IrrigationSystem::setSectorHardware(uint16_t solidMask, uint16_t blinkMask) {
+void IrrigationSystem::setSectorHardware(uint16_t openMask) {
   for (uint8_t i = 0; i < Config::NUM_SECTORES; i++) {
     const uint16_t bit = sectorIdToMask(i + 1);
-    // Sólido → siempre abierto. Cañería → abierto sólo en la fase de titileo.
-    const bool open = (solidMask & bit) != 0 ||
-                      ((blinkMask & bit) != 0 && _blinkPhase);
-    if (open) _sectors[i].activate();
-    else      _sectors[i].deactivate();
+    if ((openMask & bit) != 0) _sectors[i].activate();
+    else                       _sectors[i].deactivate();
   }
 }
 
@@ -462,7 +457,6 @@ void IrrigationSystem::stopRuntime(SystemState newState) {
   _runningProgramIndex = -1;
   clearRuntimeLists();
   _completedMask       = 0;
-  _blinkPhase          = false;
   _lastStepMs          = hal_millis();
   applyOutputsFromState();
 }

@@ -257,8 +257,9 @@ void test_engine_fifo_queue_and_drain(void) {
     TEST_ASSERT_EQUAL(4, s.active[0].sectorId);
 }
 
-void test_engine_feeding_valve_blinks(void) {
-    //s2 raíz (2 s); s3 hijo de s2 (4 s). Mientras s3 riega, s2 (cañería) titila.
+void test_engine_feeding_valve_stays_open(void) {
+    //s2 raíz (2 s); s3 hijo de s2 (4 s). Mientras s3 riega, s2 actúa de cañería:
+    //su válvula queda FIJA abierta (la solenoide no cicla), no titila.
     IrrigationSystem sys(IrrigationSystem::InitMode::EMPTY);
     sys.begin();
 
@@ -275,16 +276,16 @@ void test_engine_feeding_valve_blinks(void) {
     TEST_ASSERT_EQUAL(1, s.activeCount);
     TEST_ASSERT_EQUAL(3, s.active[0].sectorId);
     TEST_ASSERT_EQUAL(1, mock_pin_states[PIN_S3]); // s3 activo: abierto fijo
-    TEST_ASSERT_EQUAL(1, mock_pin_states[PIN_S2]); // s2 cañería: fase encendida
+    TEST_ASSERT_EQUAL(1, mock_pin_states[PIN_S2]); // s2 cañería: abierto fijo
 
-    //Un paso más: la fase de titileo cambia y la válvula de cañería se cierra.
+    //Pasos sucesivos: la cañería NO titila, se mantiene abierta mientras s3 riega.
     advanceSeconds(sys, 1);
-    TEST_ASSERT_EQUAL(1, mock_pin_states[PIN_S3]); // s3 sigue regando fijo
-    TEST_ASSERT_EQUAL(0, mock_pin_states[PIN_S2]); // s2 cañería: fase apagada
+    TEST_ASSERT_EQUAL(1, mock_pin_states[PIN_S3]);
+    TEST_ASSERT_EQUAL(1, mock_pin_states[PIN_S2]); // sigue abierto fijo
 
-    //Otro paso: vuelve a encender (titileo 1 s ON / 1 s OFF).
     advanceSeconds(sys, 1);
-    TEST_ASSERT_EQUAL(1, mock_pin_states[PIN_S2]);
+    TEST_ASSERT_EQUAL(1, mock_pin_states[PIN_S3]);
+    TEST_ASSERT_EQUAL(1, mock_pin_states[PIN_S2]); // sigue abierto fijo
 }
 
 void test_engine_cyclic_restarts_roots(void) {
@@ -390,7 +391,7 @@ int main(int argc, char **argv) {
     RUN_TEST(test_engine_root_then_child_with_delay);
     RUN_TEST(test_engine_parallel_children_by_flow);
     RUN_TEST(test_engine_fifo_queue_and_drain);
-    RUN_TEST(test_engine_feeding_valve_blinks);
+    RUN_TEST(test_engine_feeding_valve_stays_open);
     RUN_TEST(test_engine_cyclic_restarts_roots);
     RUN_TEST(test_engine_validations);
     RUN_TEST(test_seed_programs_tree_shape);

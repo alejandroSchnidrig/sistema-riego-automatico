@@ -46,12 +46,20 @@ namespace Config {
   // ----------------------------------------------------------
   constexpr uint8_t MAX_PROGRAMAS = 10;  // cantidad máxima de programas guardados
 
+  // Longitud máxima del nombre de un programa (incluye el '\0' final).
+  constexpr uint8_t NOMBRE_PROGRAMA_MAX_LEN = 32;
+
   // ----------------------------------------------------------
   // Caudal de la bomba (modelo árbol + caudal)
   // Límite global de caudal simultáneo en L/min; gobierna la
   // concurrencia de sectores y la cola FIFO.
   // ----------------------------------------------------------
   constexpr uint16_t CAUDAL_BOMBA_DEFAULT = 20;
+
+  // Caudal asumido (L/min) al encender un sector en modo manual. Un sector
+  // manual no tiene caudal propio (ese vive en el ProgramNode), así que se
+  // asume este consumo por sector para respetar el límite de la bomba.
+  constexpr uint16_t CAUDAL_MANUAL_DEFAULT = 2;
 
   // ----------------------------------------------------------
   // Intervalos de temporización (milisegundos)

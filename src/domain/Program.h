@@ -14,8 +14,17 @@ public:
   uint16_t getId() const;
   void setId(uint16_t id);
 
+  // Nombre legible del programa (puede estar vacío → la UI usa "Programa #id").
+  const char* getName() const;
+  void setName(const char* name);
+
   const char* getStartTime() const;
   void setStartTime(const char* time);
+
+  // Hora de finalización "HH:MM" del rango de repetición de un programa cíclico.
+  // Vacío ("") = sin fin (repetición indefinida, comportamiento legacy).
+  const char* getEndTime() const;
+  void setEndTime(const char* time);
 
   uint8_t getDays() const;
   void setDays(uint8_t days);
@@ -45,7 +54,9 @@ public:
 private:
   bool        _valid;
   uint16_t    _id;
+  char        _name[Config::NOMBRE_PROGRAMA_MAX_LEN]; // nombre legible ("" = sin nombre)
   char        _startTime[6]; // formato "HH:MM\0"
+  char        _endTime[6];   // formato "HH:MM\0" ("" = sin fin), solo cíclicos
   uint8_t     _days;          // bitmask: bit0=lunes … bit6=domingo
   bool        _cyclic;
   uint8_t     _sectorCount;

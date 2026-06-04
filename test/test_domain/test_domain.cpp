@@ -380,6 +380,56 @@ void test_seed_programs_tree_shape(void) {
     TEST_ASSERT_EQUAL(3, p3.getRootCount());
 }
 
+//Igual que advanceSeconds, pero pasando la hora actual (minutos desde medianoche)
+//al motor, para ejercitar el gate de horaFin de los programas cíclicos.
+static void advanceSecondsAt(IrrigationSystem &sys, int n, int nowMinutes) {
+    for (int i = 0; i < n; i++) {
+        mock_millis_value += 1000;
+        sys.tick(nowMinutes);
+    }
+}
+
+void test_irrigation_system_manual_flow_limit(void) {
+    //La bomba da 5 L/min; cada sector manual consume 2 L/min por defecto.
+    //Entran dos sectores (4 ≤ 5); el tercero (6 > 5) se rechaza.
+    IrrigationSystem sys(IrrigationSystem::InitMode::EMPTY);
+    sys.begin();
+    sys.setPumpFlow(5);
+
+    TEST_ASSERT_TRUE(sys.setManualSector(1, true));   // 2 ≤ 5
+    TEST_ASSERT_TRUE(sys.setManualSector(2, true));   // 4 ≤ 5
+    TEST_ASSERT_FALSE(sys.setManualSector(3, true));  // 6 > 5 → rechazado
+    TEST_ASSERT_FALSE(sys.isSectorActive(3));
+
+    //Apagar siempre se permite y libera caudal para que el tercero entre.
+    TEST_ASSERT_TRUE(sys.setManualSector(1, false));
+    TEST_ASSERT_TRUE(sys.setManualSector(3, true));   // 2 + 2 = 4 ≤ 5
+    TEST_ASSERT_TRUE(sys.isSectorActive(3));
+}
+
+void test_engine_cyclic_stops_after_endtime(void) {
+    //Programa cíclico con horaFin 08:00 (480 min): reinicia dentro de la ventana,
+    //pero pasada la horaFin no vuelve a arrancar (deja terminar el ciclo en curso).
+    IrrigationSystem sys(IrrigationSystem::InitMode::EMPTY);
+    sys.begin();
+
+    Program p;
+    p.setCyclic(true);
+    p.setEndTime("08:00");
+    p.addNode({2, 2, 0, 0, 6});
+    uint16_t id = sys.saveProgram(p);
+    TEST_ASSERT_NOT_EQUAL(0, id);
+    TEST_ASSERT_TRUE(sys.startProgramById(id));
+
+    //07:00 (420 < 480): al vaciarse, reinicia el ciclo.
+    advanceSecondsAt(sys, 2, 420);
+    TEST_ASSERT_TRUE(sys.isRunning());
+
+    //08:30 (510 ≥ 480): al vaciarse, no reinicia → el programa termina.
+    advanceSecondsAt(sys, 2, 510);
+    TEST_ASSERT_FALSE(sys.isRunning());
+}
+
 int main(int argc, char **argv) {
     UNITY_BEGIN();
     RUN_TEST(test_valve_open_close);
@@ -393,6 +443,8 @@ int main(int argc, char **argv) {
     RUN_TEST(test_engine_fifo_queue_and_drain);
     RUN_TEST(test_engine_feeding_valve_stays_open);
     RUN_TEST(test_engine_cyclic_restarts_roots);
+    RUN_TEST(test_engine_cyclic_stops_after_endtime);
+    RUN_TEST(test_irrigation_system_manual_flow_limit);
     RUN_TEST(test_engine_validations);
     RUN_TEST(test_seed_programs_tree_shape);
     return UNITY_END();

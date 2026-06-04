@@ -25,6 +25,14 @@
 
     * { box-sizing: border-box; }
 
+    /* Ícono SVG base: tamaño relativo al font-size del contenedor, color heredado */
+    .ic {
+      width: 1em; height: 1em;
+      stroke: currentColor; fill: none;
+      stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+      vertical-align: -0.15em; flex-shrink: 0;
+    }
+
     html, body {
       margin: 0; padding: 0;
       background: var(--bg);
@@ -139,6 +147,11 @@
       color: var(--text-soft); letter-spacing: 0.5px; margin-bottom: 0.25rem;
     }
     .status-cell .value { font-size: 1.35rem; font-weight: 600; color: var(--text); }
+    /* El nombre del programa activo puede ser largo: achicar y permitir 2 líneas */
+    #activeProgram {
+      font-size: 1.05rem; line-height: 1.2; overflow-wrap: anywhere;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
     .status-cell .value.big { font-size: 1.6rem; color: var(--primary-dark); }
 
     .pump-indicator {
@@ -151,6 +164,47 @@
       width: 12px; height: 12px; border-radius: 50%; background: #ccc;
     }
     .pump-indicator.on .dot { background: var(--primary); box-shadow: 0 0 6px var(--primary); }
+
+    /* Uso de caudal de la bomba (suma de sectores en riego + manuales) */
+    .pump-flow { margin-top: 0.45rem; }
+    .pump-flow-text {
+      font-size: 0.78rem; color: var(--text-soft);
+      font-family: 'Courier New', monospace;
+    }
+    .pump-flow-bar {
+      display: block; width: 100%; height: 6px; margin-top: 0.25rem;
+      background: #e3eae8; border-radius: 999px; overflow: hidden;
+    }
+    .pump-flow-fill {
+      display: block; height: 100%; width: 0;
+      background: var(--primary); border-radius: 999px;
+      transition: width 0.3s, background 0.2s;
+    }
+    .pump-flow-fill.over { background: var(--danger); }
+
+    /* Grilla de caudal manual por sector (modal de configuración) */
+    .manual-flow-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.5rem 0.6rem;
+      margin-top: 0.4rem;
+    }
+    @media (max-width: 480px) { .manual-flow-grid { grid-template-columns: repeat(2, 1fr); } }
+    .manual-flow-item { display: flex; align-items: center; gap: 0.35rem; }
+    .manual-flow-item label {
+      font-size: 0.78rem; font-weight: 600; color: var(--text-soft);
+      width: 1.7rem; flex-shrink: 0;
+    }
+    .manual-flow-item input {
+      width: 100%; min-width: 0;
+      border: 1px solid var(--panel-border); border-radius: 6px;
+      padding: 0.4rem 0.45rem; font-size: 0.85rem;
+      background: #fff; color: var(--text); font-family: inherit;
+    }
+    .manual-flow-item input:focus {
+      outline: none; border-color: var(--primary);
+      box-shadow: 0 0 0 2px var(--primary-soft);
+    }
 
     /* --- Sectores --- */
     .sectors-grid {
@@ -178,8 +232,11 @@
     }
     .sector:hover { border-color: var(--primary); background: #f0f5f3; }
     .sector .name { font-size: 0.75rem; font-weight: 600; color: var(--text-soft); text-transform: uppercase; }
-    .sector .icon { font-size: 1.8rem; margin: 0.25rem 0; color: #c8d2d0; transition: transform 0.15s; }
+    .sector .icon { font-size: 1.7rem; margin: 0.3rem 0; color: #c8d2d0; transition: transform 0.15s; line-height: 0; }
+    .sector .icon .ic { stroke-width: 1.7; }
     .sector:active .icon { transform: scale(1.15); }
+    /* Sector irrigando: gota "llena" */
+    .sector.active .icon .ic { fill: currentColor; }
     .sector .sector-timer {
       font-size: 0.7rem; font-family: 'Courier New', monospace;
       color: #a0b0ad; min-height: 1.1em; margin-top: 0.1rem;
@@ -225,6 +282,19 @@
       50%      { opacity: 0.65; }
     }
 
+    /* --- Leyenda de estados --- */
+    .state-legend {
+      margin-top: 0.75rem;
+      display: flex; flex-wrap: wrap; gap: 0.4rem 0.5rem;
+    }
+    .legend-item {
+      display: inline-flex; align-items: center; gap: 0.35rem;
+      font-size: 0.72rem; color: var(--text-soft);
+      background: #f4f6f5; border: 1px solid var(--panel-border);
+      border-radius: 999px; padding: 0.2rem 0.6rem;
+    }
+    .legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
     /* --- Botones --- */
     .btn {
       display: inline-flex; align-items: center; justify-content: center;
@@ -259,15 +329,29 @@
     .program-item-header {
       display: flex; justify-content: space-between; align-items: flex-start;
       flex-wrap: wrap; gap: 0.5rem;
+      cursor: pointer; user-select: none;
     }
+    .program-title-wrap { min-width: 0; }
 
     .program-title { font-weight: 600; font-size: 1rem; display: flex; align-items: center; flex-wrap: wrap; gap: 0.45rem; }
+    .program-time { font-weight: 400; color: var(--text-soft); font-size: 0.9rem; }
+    /* Chevron de expandir/colapsar */
+    .prog-chevron { display: inline-flex; color: var(--text-soft); transition: transform 0.18s; }
+    .prog-chevron .ic { width: 0.95em; height: 0.95em; }
+    .program-item:not(.collapsed) .prog-chevron { transform: rotate(90deg); }
+    /* Colapsado: ocultar el árbol de preview */
+    .program-item.collapsed .program-tree { display: none; }
     .prog-badge {
       display: inline-flex; align-items: center; font-size: 0.72rem; font-weight: 600;
       padding: 0.15rem 0.5rem; border-radius: 20px; white-space: nowrap; cursor: default;
     }
     .prog-badge.warn   { background: color-mix(in srgb,#e67e22 15%,transparent); color: #a04000; border: 1px solid #e67e22; }
     .prog-badge.danger { background: color-mix(in srgb,#e74c3c 15%,transparent); color: #922b21; border: 1px solid #e74c3c; }
+    .prog-badge.running { background: var(--primary-soft); color: var(--primary-dark); border: 1px solid var(--primary); gap: 0.35rem; }
+    .prog-badge.running .run-dot {
+      width: 7px; height: 7px; border-radius: 50%; background: var(--primary);
+      animation: pulse 1.4s ease-in-out infinite;
+    }
     .btn.disabled { opacity: 0.45; pointer-events: none; cursor: not-allowed; }
     .program-meta {
       font-size: 0.8rem; color: var(--text-soft); margin-top: 0.25rem;
@@ -328,14 +412,22 @@
       white-space: nowrap;
     }
 
+    /* Chip del preview — mismo lenguaje visual que el editor (.ed-chip) */
     .chip {
-      background: #f4f6f5;
-      border: 1px solid #d4dbd9;
-      border-radius: 999px;
-      padding: 0.18rem 0.55rem;
-      font-size: 0.74rem;
-      color: var(--text-soft);
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      background: #f8faf9;
+      border: 1px solid var(--panel-border);
+      border-radius: 8px;
+      padding: 0.3rem 0.6rem;
+      font-size: 0.8rem; font-weight: 600;
+      color: var(--text);
     }
+    .chip .chip-meta { font-weight: 400; color: var(--text-soft); }
+    .tree-dot {
+      width: 9px; height: 9px; border-radius: 50%;
+      background: var(--primary); flex-shrink: 0;
+    }
+    .tree-dot.child { background: #4a8ec4; }
 
     /* --- Árbol de flujo vertical --- */
     #flowCard {
@@ -506,60 +598,175 @@
       justify-content: center; transition: all 0.15s;
     }
     .day-toggle.on { background: var(--primary); color: #fff; border-color: var(--primary); }
+    /* Botón rápido "Todos / Ninguno" — pastilla, separado de los días */
+    .day-all {
+      height: 34px; padding: 0 0.85rem; border-radius: 999px;
+      border: 1px dashed var(--panel-border); background: #fff;
+      color: var(--text-soft); font-size: 0.72rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.3px;
+      cursor: pointer; transition: all 0.15s; margin-left: 0.35rem;
+    }
+    .day-all:hover { border-color: var(--primary); color: var(--primary-dark); }
+    .day-all.on {
+      background: var(--primary-soft); border-style: solid;
+      border-color: var(--primary); color: var(--primary-dark);
+    }
 
-    .sector-config-list { display: grid; gap: 0.5rem; }
+    /* --- Editor visual de árbol --------------------------------------------- */
+    .editor-tree { display: flex; flex-direction: column; gap: 0.4rem; }
 
-    .sector-config-row {
-      display: grid;
-      grid-template-columns: auto 1fr auto auto auto auto;
-      align-items: center;
-      gap: 0.55rem;
-      padding: 0.55rem 0.7rem;
+    /* Nodo "Bomba": raíz visual del árbol y presupuesto de caudal */
+    .ed-bomba {
+      display: flex; align-items: center; flex-wrap: wrap;
+      gap: 0.6rem 0.9rem;
+      padding: 0.55rem 0.75rem;
+      background: var(--primary-soft);
+      border: 1px solid var(--panel-border);
+      border-radius: 8px;
+    }
+    .ed-bomba-label { font-weight: 700; font-size: 0.92rem; color: var(--primary-dark); }
+
+    /* Indicador de presupuesto (raíces sobre bomba / hijos sobre padre) */
+    .ed-budget {
+      display: inline-flex; align-items: center; gap: 0.45rem;
+      font-size: 0.74rem; color: var(--text-soft); white-space: nowrap;
+    }
+    .ed-budget .ed-bar {
+      display: inline-block; width: 84px; height: 7px;
+      background: #e3eae8; border-radius: 999px; overflow: hidden;
+    }
+    .ed-budget .ed-bar-fill {
+      display: block; height: 100%; width: 0;
+      background: var(--primary); border-radius: 999px;
+      transition: width 0.2s, background 0.2s;
+    }
+    .ed-budget.over { color: var(--danger); font-weight: 600; }
+    .ed-budget.over .ed-bar-fill { background: var(--danger); }
+
+    .ed-tree-root {
+      display: flex; flex-direction: column; gap: 0.4rem;
+      margin-top: 0.2rem;
+    }
+
+    /* Hijos: sangría + conector vertical (mismo lenguaje que el árbol read-only) */
+    .ed-children {
+      margin-left: 18px; padding-left: 14px;
+      border-left: 2px solid #cdd8d5;
+      display: flex; flex-direction: column; gap: 0.4rem;
+      margin-top: 0.4rem;
+    }
+    .ed-node { position: relative; }
+
+    .ed-node-row {
+      display: flex; align-items: center; gap: 0.5rem;
+      flex-wrap: wrap;
+      padding: 0.45rem 0.6rem;
       background: #f8faf9;
       border: 1px solid var(--panel-border);
-      border-radius: 6px;
+      border-radius: 8px;
+      position: relative;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .ed-children > .ed-node > .ed-node-row::before {
+      content: ""; position: absolute; left: -16px; top: 50%;
+      width: 12px; height: 2px; background: #cdd8d5;
+    }
+    .ed-node-row.selected {
+      border-color: var(--primary);
+      background: #fff;
+      box-shadow: 0 0 0 2px var(--primary-soft);
+    }
+    /* Nodo en conflicto de caudal: el usuario debe ajustar su caudal (o el de un hermano) */
+    .ed-node-row.flow-over {
+      border-color: var(--warning);
+      background: color-mix(in srgb, var(--warning) 9%, transparent);
+    }
+    .ed-node-row.flow-over.selected {
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--warning) 35%, transparent);
+    }
+    .ed-warn { color: var(--warning); font-size: 0.95rem; cursor: help; flex-shrink: 0; }
+
+    .ed-chip {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-size: 0.88rem; font-weight: 600; color: var(--text);
+      flex: 1 1 auto;
+    }
+    .ed-chip .ed-dot {
+      width: 9px; height: 9px; border-radius: 50%;
+      background: var(--primary); flex-shrink: 0;
+    }
+    .ed-chip .ed-dot.child { background: #4a8ec4; }
+    .ed-chip .ed-meta { font-weight: 400; color: var(--text-soft); font-size: 0.82rem; }
+    .ed-chip .ed-delay {
+      font-size: 0.68rem; font-family: 'Courier New', monospace;
+      color: #8a5a10; background: #fff8e6; border: 1px solid #f0d9a8;
+      border-radius: 4px; padding: 0.05rem 0.35rem;
     }
 
-    .sector-config-row .delay-wrapper {
-      display: flex; align-items: center; gap: 0.3rem;
+    .ed-node-actions { display: flex; gap: 0.3rem; flex-shrink: 0; }
+    .ed-node-actions button {
+      display: inline-flex; align-items: center; justify-content: center;
+      border: 1px solid var(--panel-border); background: #fff;
+      color: var(--text-soft); border-radius: 6px; cursor: pointer;
+      font-size: 0.82rem; font-weight: 600; padding: 0.3rem 0.55rem;
+      font-family: inherit; transition: all 0.12s;
     }
-    .sector-config-row input.delay-input {
-      width: 56px; border: 1px solid var(--panel-border);
-      border-radius: 6px; padding: 0.35rem 0.4rem;
-      font-size: 0.85rem; text-align: right;
-    }
-    .sector-config-row input.delay-input:disabled { opacity: 0.35; }
+    .ed-node-actions button .ic { width: 1.15em; height: 1.15em; }
+    .ed-node-actions button:hover { border-color: var(--primary); color: var(--primary-dark); }
+    .ed-node-actions button.ed-del:hover { border-color: var(--danger); color: var(--danger); }
 
-    .sector-config-row .flow-wrapper {
-      display: flex; align-items: center; gap: 0.3rem;
-    }
-    .sector-config-row .flow-wrapper input {
-      width: 56px; border: 1px solid var(--panel-border);
-      border-radius: 6px; padding: 0.35rem 0.4rem;
-      font-size: 0.85rem; text-align: right;
-    }
-    .sector-config-row .flow-wrapper input:disabled { opacity: 0.35; }
-    /* Resalta en naranja cuando el valor supera el máximo permitido (bomba/padre) */
-    .sector-config-row .flow-wrapper input:not(:disabled):invalid {
-      border-color: var(--warning, #e67e22);
-      background: color-mix(in srgb, var(--warning, #e67e22) 8%, transparent);
-      color: var(--warning, #e67e22);
+    /* Presupuesto de un padre con hijos */
+    .ed-budget-child {
+      margin: 0.3rem 0 0 0.4rem;
+      font-size: 0.72rem;
     }
 
-    .sector-config-row input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary); }
-    .sector-config-row .sector-name { font-weight: 600; font-size: 0.9rem; }
-
-    .sector-config-row select.parent-select {
+    /* Acordeón de edición inline */
+    .ed-edit {
+      margin-top: 0.4rem;
+      padding: 0.7rem 0.8rem;
+      background: var(--primary-soft);
+      border: 1px solid var(--panel-border);
+      border-radius: 8px;
+    }
+    .ed-edit-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
+      gap: 0.7rem 0.9rem;
+    }
+    .ed-edit-field { display: flex; flex-direction: column; gap: 0.25rem; }
+    .ed-edit-field > span:first-child {
+      font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.3px;
+      color: var(--text-soft); font-weight: 600;
+    }
+    .ed-edit-field input,
+    .ed-edit-field select {
       border: 1px solid var(--panel-border); border-radius: 6px;
-      padding: 0.3rem 0.35rem; font-size: 0.78rem;
+      padding: 0.45rem 0.55rem; font-size: 0.88rem;
       background: #fff; color: var(--text); font-family: inherit;
-      max-width: 140px;
+    }
+    .ed-edit-field input:focus,
+    .ed-edit-field select:focus {
+      outline: none; border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(46,139,87,0.15);
+    }
+    .ed-edit-field .ed-unit { font-size: 0.72rem; color: var(--text-soft); font-weight: 400; }
+    .ed-edit-field .ed-maxhint { font-size: 0.7rem; color: var(--text-soft); }
+    .ed-edit-field .ed-maxhint.over { color: var(--danger); font-weight: 600; }
+    .ed-edit-field input.over {
+      border-color: var(--warning);
+      background: color-mix(in srgb, var(--warning) 8%, transparent);
+    }
+    .ed-edit-foot {
+      display: flex; gap: 0.5rem; justify-content: flex-end;
+      margin-top: 0.75rem;
     }
 
-    .sector-config-row .unit {
-      font-size: 0.75rem;
-      color: var(--text-soft);
+    .ed-add {
+      align-self: flex-start;
+      border-style: dashed !important;
     }
+    .ed-empty { font-size: 0.85rem; color: var(--text-soft); font-style: italic; margin: 0.3rem 0; }
 
     /* --- Time Editor Modal ------------------------------------------------- */
     .modal {
@@ -632,13 +839,6 @@
       box-shadow: 0 0 0 2px var(--primary-soft);
     }
 
-    .sector-config-row input[type="number"] {
-      width: 72px; border: 1px solid var(--panel-border);
-      border-radius: 6px; padding: 0.35rem 0.5rem;
-      font-size: 0.85rem; text-align: right;
-    }
-    .sector-config-row .unit { font-size: 0.75rem; color: var(--text-soft); }
-
     .form-actions {
       display: flex;
       gap: 0.5rem;
@@ -709,32 +909,14 @@
       header h1 { font-size: 1rem; }
       main { padding: 0.9rem; gap: 0.9rem; }
       .card { padding: 1rem; }
-      .sector-config-row {
-        grid-template-columns: auto 1fr;
-        grid-template-areas:
-          "check  name"
-          "parent parent"
-          "delay  time"
-          "flow   flow";
-      }
-      .sector-config-row input[type="checkbox"]  { grid-area: check; }
-      .sector-config-row .sector-name            { grid-area: name; }
-      .sector-config-row .parent-select          { grid-area: parent; max-width: 100%; }
-      .sector-config-row .delay-wrapper          { grid-area: delay; }
-      .sector-config-row .time-wrapper {
-        grid-area: time;
-        display: flex; align-items: center; gap: 0.5rem; justify-content: flex-end;
-      }
-      .sector-config-row .flow-wrapper           { grid-area: flow; }
-      .sector-config-row .unit { display: inline; }
+      .ed-node-row { gap: 0.4rem 0.5rem; }
+      .ed-chip { flex: 1 1 100%; }
+      .ed-node-actions { width: 100%; justify-content: flex-end; }
+      .ed-children { margin-left: 10px; padding-left: 10px; }
     }
   </style>
 </head>
 <body>
-
-  <div class="demo-banner">
-    PROTOTIPO — datos simulados, no requiere ESP32
-  </div>
 
   <header>
     <h1>Sistema de Riego Automático</h1>
@@ -743,10 +925,12 @@
       <span id="statusLabel">Inactivo</span>
     </div>
     <div class="header-controls">
-      <div id="headerConfig" class="header-config" title="Configuración del sistema">⚙</div>
+      <div id="headerConfig" class="header-config" title="Configuración del sistema">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
+      </div>
       <div id="headerTime" class="header-time" title="Click para editar la hora">
         <span class="time-value" id="timeValue">--:--</span>
-        <span class="pencil">✎</span>
+        <svg class="ic pencil" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
       </div>
     </div>
   </header>
@@ -776,21 +960,24 @@
               <span class="dot"></span><span id="pumpLabel">Apagada</span>
             </span>
           </div>
+          <div class="pump-flow">
+            <div class="pump-flow-text"><span id="pumpFlowUsed">0</span> / <span id="pumpFlowMax">20</span> L/min</div>
+            <span class="pump-flow-bar"><span class="pump-flow-fill" id="pumpFlowFill"></span></span>
+          </div>
         </div>
       </div>
 
       <div style="margin-top: 1rem;">
         <div class="label" style="font-size: 0.7rem; text-transform: uppercase; color: var(--text-soft); margin-bottom: 0.5rem;">
-          Sectores (click para encender/apagar manualmente)
+          Sectores (click para encender/apagar manualmente — limitado por el caudal de la bomba)
         </div>
         <div id="sectorsGrid" class="sectors-grid"></div>
-        <div style="margin-top: 0.65rem; display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center;">
-          <span style="font-size: 0.7rem; color: var(--text-soft); text-transform: uppercase; letter-spacing: 0.4px; margin-right: 0.2rem;">Estados:</span>
-          <span style="display:inline-flex;align-items:center;gap:0.3rem;font-size:0.75rem;color:#236b42"><span style="width:10px;height:10px;border-radius:50%;background:var(--primary);display:inline-block"></span>Irrigando</span>
-          <span style="display:inline-flex;align-items:center;gap:0.3rem;font-size:0.75rem;color:#006064"><span style="width:10px;height:10px;border-radius:50%;background:#00acc1;display:inline-block"></span>Cañería abierta</span>
-          <span style="display:inline-flex;align-items:center;gap:0.3rem;font-size:0.75rem;color:#1a4a70"><span style="width:10px;height:10px;border-radius:50%;background:#4a8ec4;display:inline-block"></span>Retardo</span>
-          <span style="display:inline-flex;align-items:center;gap:0.3rem;font-size:0.75rem;color:#8a5a10"><span style="width:10px;height:10px;border-radius:50%;background:var(--warning);display:inline-block"></span>En cola</span>
-          <span style="display:inline-flex;align-items:center;gap:0.3rem;font-size:0.75rem;color:var(--text-soft)"><span style="width:10px;height:10px;border-radius:50%;background:#c8d2d0;display:inline-block"></span>Inactivo</span>
+        <div class="state-legend">
+          <span class="legend-item"><span class="legend-dot" style="background:var(--primary)"></span>Irrigando</span>
+          <span class="legend-item"><span class="legend-dot" style="background:#00acc1"></span>Cañería abierta</span>
+          <span class="legend-item"><span class="legend-dot" style="background:#4a8ec4"></span>Retardo</span>
+          <span class="legend-item"><span class="legend-dot" style="background:var(--warning)"></span>En cola</span>
+          <span class="legend-item"><span class="legend-dot" style="background:#c8d2d0"></span>Inactivo</span>
         </div>
       </div>
     </section>
@@ -805,7 +992,7 @@
 
     <!-- ============ Parada manual ============ -->
     <section class="card">
-      <button id="btnStop" class="btn danger btn-stop">⏹ Parada manual inmediata</button>
+      <button id="btnStop" class="btn danger btn-stop">Parada manual inmediata</button>
     </section>
 
     <!-- ============ Programas guardados ============ -->
@@ -828,10 +1015,23 @@
         <form id="programForm" onsubmit="return false;">
           <input type="hidden" id="programId" value="">
 
+          <div class="form-field" style="margin-bottom: 0.85rem;">
+            <label for="progName">Nombre del programa</label>
+            <input type="text" id="progName" maxlength="30" placeholder="Ej: Jardín delantero">
+          </div>
+
           <div class="form-grid">
             <div class="form-field">
               <label for="startTime">Hora de inicio</label>
               <input type="time" id="startTime" value="07:00" required>
+            </div>
+            <!-- Solo visible para programas cíclicos: define el fin del rango horario -->
+            <div class="form-field" id="endTimeField" style="display:none;">
+              <label for="endTime">Hora de finalización</label>
+              <input type="time" id="endTime" value="09:00">
+              <span class="ed-unit" style="font-size:0.72rem; color:var(--text-soft);">
+                Se repite el ciclo dentro del rango; al pasar esta hora, se detiene.
+              </span>
             </div>
             <div class="form-field">
               <label for="cyclic">Repetición</label>
@@ -852,17 +1052,14 @@
               <button type="button" class="day-toggle" data-bit="4">V</button>
               <button type="button" class="day-toggle" data-bit="5">S</button>
               <button type="button" class="day-toggle" data-bit="6">D</button>
+              <button type="button" class="day-all" id="dayWeek">L–V</button>
+              <button type="button" class="day-all" id="dayAll">Todos</button>
             </div>
           </div>
 
           <div class="form-field" style="margin-top: 1rem;">
-            <label>Sectores — seleccioná y configurá el árbol de riego</label>
-            <div id="rootFlowBar" style="font-size:0.8rem; margin-bottom:0.5rem; color:var(--text-soft);">
-              Bomba: <strong id="flowHintValue">20</strong> L/min —
-              raíces: <strong id="rootFlowSum">0</strong>&thinsp;/&thinsp;<strong id="rootFlowMax">20</strong> L/min
-              <span id="rootFlowIcon"></span>
-            </div>
-            <div id="sectorConfigList" class="sector-config-list"></div>
+            <label>Sectores — armá el árbol de riego</label>
+            <div id="editorTree" class="editor-tree"></div>
           </div>
 
           <div class="form-actions">
@@ -876,7 +1073,7 @@
     <!-- ============ System Config Modal ============ -->
     <div id="systemConfigModal" class="modal">
       <div class="modal-content">
-        <div class="modal-header">⚙ Configuración del sistema</div>
+        <div class="modal-header">Configuración del sistema</div>
         <div class="modal-body">
           <div class="form-field" style="margin:0;">
             <label for="pumpFlow" style="font-size:0.75rem; text-transform:uppercase; color:var(--text-soft);">Caudal de la bomba</label>
@@ -886,6 +1083,13 @@
             </div>
             <p class="muted" style="margin:0.5rem 0 0; font-size:0.8rem;">
               Limita cuántos sectores pueden regar simultáneamente según su demanda de caudal.
+            </p>
+          </div>
+          <div class="form-field" style="margin:0;">
+            <label style="font-size:0.75rem; text-transform:uppercase; color:var(--text-soft);">Caudal por sector en modo manual</label>
+            <div id="manualFlowGrid" class="manual-flow-grid"></div>
+            <p class="muted" style="margin:0.5rem 0 0; font-size:0.8rem;">
+              Consumo que se asume al encender los sectores manualmente (L/min, hasta el caudal de la bomba).
             </p>
           </div>
           <!-- Advertencia de impacto en programas — se muestra/oculta dinámicamente -->
@@ -904,7 +1108,7 @@
     <!-- ============ Time Editor Modal ============ -->
     <div id="timeEditorModal" class="modal">
       <div class="modal-content">
-        <div class="modal-header">🗓️ Establecer fecha y hora</div>
+        <div class="modal-header">Establecer fecha y hora</div>
         <div class="modal-body">
           <div class="datetime-row">
             <div class="form-field">
@@ -940,16 +1144,40 @@
 
     const NUM_SECTORS      = 8;
     const POLL_INTERVAL_MS = 1000;
-    const STORAGE_KEY      = "riego.programas.v10";
+    const STORAGE_KEY      = "riego.programas.v13";
+    // Un sector encendido manualmente no tiene caudal propio (eso vive en el
+    // ProgramNode), así que asumimos un consumo por sector (configurable por el
+    // usuario) para poder respetar el límite de la bomba igual que el automático.
+    const MANUAL_SECTOR_FLOW_DEFAULT = 2;  // L/min por sector en modo manual
+
+    // Normaliza el caudal manual guardado a un arreglo de NUM_SECTORS valores.
+    // Acepta el formato viejo (un único número) y lo replica en todos los sectores.
+    function normalizeManualFlows(raw) {
+      const arr = Array(NUM_SECTORS).fill(MANUAL_SECTOR_FLOW_DEFAULT);
+      if (Array.isArray(raw)) {
+        for (let i = 0; i < NUM_SECTORS; i++) {
+          if (raw[i] != null) arr[i] = Math.max(1, Number(raw[i]) || MANUAL_SECTOR_FLOW_DEFAULT);
+        }
+      } else if (typeof raw === "number" && raw > 0) {
+        arr.fill(Math.max(1, raw));  // formato viejo: un único valor global
+      }
+      return arr;
+    }
 
     // --- Estado global ---
     let programs     = [];
     let editingId    = null;
     let selectedDays = 0;
     let manualSectorMask = 0;
+    // Ids de programas expandidos en la lista (persiste entre re-renders del polling)
+    let expandedPrograms = new Set();
 
     // --- Configuración física del sistema ---
-    let systemConfig = { caudalBomba: 20 }; // L/min
+    // caudalManual: arreglo de NUM_SECTORS valores (L/min por sector en manual)
+    let systemConfig = {
+      caudalBomba: 20,
+      caudalManual: Array(NUM_SECTORS).fill(MANUAL_SECTOR_FLOW_DEFAULT)
+    };
 
     // --- Estado de la simulación ---
     const fakeState = {
@@ -967,12 +1195,13 @@
     // --- Seed con estructura de árbol ---
     const DEFAULT_SEED = {
       caudalBomba: 20,  // L/min — restricción física de la bomba
+      caudalManual: Array(NUM_SECTORS).fill(MANUAL_SECTOR_FLOW_DEFAULT),  // L/min por sector en manual
       programas: [
         {
           // Árbol S1→S2,S3→S4,S5.
           // S1 alimenta S2+S3 simultáneamente → caudal S1 = S2+S3 = 12.
           // Cada hoja iguala al padre directo (cañería exacta, sin desperdicio).
-          id: 1, horaInicio: "07:00", dias: 62, ciclico: true,
+          id: 1, nombre: "Jardín delantero", horaInicio: "07:00", horaFin: "09:00", dias: 62, ciclico: true,
           nodos: [
             { sectorId: 1, tiempoRiego: 15, retardo: 0, padre: null, caudal: 12 },
             { sectorId: 2, tiempoRiego: 12, retardo: 3, padre: 1,    caudal: 6  },
@@ -983,7 +1212,7 @@
         },
         {
           // S4 y S6 son raíces (7 L/min c/u → 14 ≤ 20), sus hijos también caben.
-          id: 2, horaInicio: "19:30", dias: 96, ciclico: false,
+          id: 2, nombre: "Huerta (noche)", horaInicio: "19:30", dias: 96, ciclico: false,
           nodos: [
             { sectorId: 4, tiempoRiego: 20, retardo: 0, padre: null, caudal: 7 },
             { sectorId: 6, tiempoRiego: 20, retardo: 0, padre: null, caudal: 7 },
@@ -993,7 +1222,7 @@
         },
         {
           // 3 raíces × 6 L/min = 18 ≤ 20, todas arrancan juntas sin cola.
-          id: 3, horaInicio: "12:00", dias: 127, ciclico: false,
+          id: 3, nombre: "Césped lateral", horaInicio: "12:00", dias: 127, ciclico: false,
           nodos: [
             { sectorId: 1, tiempoRiego: 10, retardo: 0, padre: null, caudal: 6 },
             { sectorId: 2, tiempoRiego: 10, retardo: 0, padre: null, caudal: 6 },
@@ -1011,7 +1240,7 @@
           //  t=23: S1 activa → S2+S8+S1=17. Bomba 17/20.
           //  t=32: S2(15s) y S8(11s) terminan juntos → solo S1(6) activo.
           //  t=37: S1 termina. Fin.
-          id: 4, horaInicio: "08:00", dias: 21, ciclico: false,
+          id: 4, nombre: "Riego completo", horaInicio: "08:00", dias: 21, ciclico: false,
           nodos: [
             { sectorId: 4, tiempoRiego: 18, retardo: 0, padre: null, caudal: 11 }, // raíz 1 (caudal = S1+S8)
             { sectorId: 6, tiempoRiego: 13, retardo: 0, padre: null, caudal: 7  }, // raíz 2 — S4+S6=18≤20 ✓
@@ -1034,7 +1263,7 @@
           //  t=20: S2 termina → S5(4,0): 7+5+4=16≤20 activa; S6(4,4): 16+4=20≤20 → pending 4s
           //  t=24: S6 pending→activo: 5+4+4=13/20
           //  t=27: S3 termina → sin cola. t=32: S4 termina. t=36: S5 y S6 terminan. Fin ~t=36
-          id: 5, horaInicio: "15:00", dias: 42, ciclico: false,
+          id: 5, nombre: "Macetas y bordes", horaInicio: "15:00", dias: 42, ciclico: false,
           nodos: [
             { sectorId: 1, tiempoRiego: 15, retardo: 0, padre: null, caudal: 12 }, // raíz 1
             { sectorId: 2, tiempoRiego: 20, retardo: 0, padre: null, caudal: 8  }, // raíz 2 — S1+S2=20 ✓
@@ -1051,7 +1280,10 @@
     function fromStorageFormat(raw) {
       return {
         id: Number(raw.id),
+        nombre: typeof raw.nombre === "string" ? raw.nombre : "",
         horaInicio: raw.horaInicio || "07:00",
+        // horaFin solo aplica a programas cíclicos (rango horario de repetición)
+        horaFin: raw.horaFin || null,
         dias: Number(raw.dias) || 0,
         ciclico: !!raw.ciclico,
         nodos: (raw.nodos || []).map((n) => ({
@@ -1067,7 +1299,9 @@
     function toStorageFormat(prog) {
       return {
         id: prog.id,
+        nombre: prog.nombre || "",
         horaInicio: prog.horaInicio,
+        horaFin: prog.ciclico ? (prog.horaFin || null) : null,
         dias: prog.dias,
         ciclico: prog.ciclico,
         nodos: prog.nodos.map((n) => ({
@@ -1090,18 +1324,21 @@
         try {
           const data = JSON.parse(raw);
           if (data.caudalBomba) systemConfig.caudalBomba = Number(data.caudalBomba);
+          systemConfig.caudalManual = normalizeManualFlows(data.caudalManual);
           return (data.programas || []).map(fromStorageFormat);
         } catch (err) {
           console.warn("Storage corrupto, reseeding:", err);
           localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_SEED));
-          systemConfig.caudalBomba = DEFAULT_SEED.caudalBomba;
+          systemConfig.caudalBomba  = DEFAULT_SEED.caudalBomba;
+          systemConfig.caudalManual = normalizeManualFlows(DEFAULT_SEED.caudalManual);
           return DEFAULT_SEED.programas.map(fromStorageFormat);
         }
       },
 
       async saveProgramas(list) {
         const payload = {
-          caudalBomba: systemConfig.caudalBomba,
+          caudalBomba:  systemConfig.caudalBomba,
+          caudalManual: systemConfig.caudalManual,
           programas: list.map(toStorageFormat)
         };
         localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
@@ -1124,6 +1361,16 @@
     const $  = (sel) => document.querySelector(sel);
     const $$ = (sel) => document.querySelectorAll(sel);
 
+    // Íconos SVG inline (stroke = currentColor → heredan el color del contexto).
+    // Reemplazan emojis para un look sobrio y consistente. viewBox 24×24.
+    const ICON = {
+      edit:  '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
+      trash: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>',
+      warn:  '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>',
+      drop:  '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.7S5.5 9.8 5.5 14.3a6.5 6.5 0 0 0 13 0C18.5 9.8 12 2.7 12 2.7Z"/></svg>',
+      chevron: '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>'
+    };
+
     function toast(msg, isError = false) {
       const t = $("#toast");
       t.textContent = msg;
@@ -1138,6 +1385,12 @@
       const m = Math.floor(seconds / 60);
       const s = seconds % 60;
       return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+    }
+
+    // Nombre a mostrar de un programa, con fallback a "Programa #id" si está vacío
+    function programName(p) {
+      if (!p) return "";
+      return (p.nombre && p.nombre.trim()) ? p.nombre : `Programa #${p.id}`;
     }
 
     function formatDateTime(rtcData) {
@@ -1161,6 +1414,25 @@
 
     function isManualSectorActive(id) {
       return (manualSectorMask & (1 << (id - 1))) !== 0;
+    }
+
+    // "HH:MM" → minutos desde la medianoche (NaN si vacío/ inválido)
+    function hmToMinutes(hhmm) {
+      if (!hhmm) return NaN;
+      const [h, m] = hhmm.split(":").map(Number);
+      if (isNaN(h) || isNaN(m)) return NaN;
+      return h * 60 + m;
+    }
+
+    // ¿Sigue dentro del rango horario para repetir un programa cíclico?
+    // Solo aplica a cíclicos con horaFin definida. Si la hora actual ya alcanzó
+    // la hora de fin, el ciclo no se reinicia (el programa termina).
+    function isWithinCyclicWindow(prog, rtc) {
+      if (!prog.ciclico) return true;          // no cíclico: no hay rango que limitar
+      const finMin = hmToMinutes(prog.horaFin);
+      if (isNaN(finMin)) return true;          // sin horaFin: repetición indefinida (legacy)
+      const nowMin = rtc.hour * 60 + rtc.minute;
+      return nowMin < finMin;
     }
 
     function stopProgram() {
@@ -1275,7 +1547,7 @@
         fakeState.pendingActivations.length === 0 &&
         fakeState.queuedSectors.length      === 0
       ) {
-        if (prog.ciclico) {
+        if (prog.ciclico && isWithinCyclicWindow(prog, getFakeRTC())) {
           startRootSectors(prog);
         } else {
           stopProgram();
@@ -1360,7 +1632,7 @@
 
       card.style.display = "";
       document.getElementById("flowProgramTitle").textContent =
-        `Programa #${prog.id} · ${prog.horaInicio}`;
+        `${programName(prog)} · ${prog.horaInicio}`;
 
       const feedingIds = getFeedingSectors();
       const nodos      = prog.nodos;
@@ -1477,13 +1749,13 @@
           timerText  = info ? formatTime(info.tiempoRestante) : "";
         } else if (state === "pending") {
           const info = fakeState.pendingActivations.find((p) => p.sectorId === node.sectorId);
-          timerText  = info ? `⏱ ${info.delay}s` : "";
+          timerText  = info ? `+${info.delay}s` : "";
         } else if (state === "queued") {
           timerText = "en cola";
         } else if (state === "feeding") {
-          timerText = "abierta ↓";
+          timerText = "abierta";
         } else if (state === "done") {
-          timerText = "✓ listo";
+          timerText = "listo";
         }
 
         const div     = document.createElement("div");
@@ -1505,7 +1777,7 @@
       pumpDiv.style.left = pumpX + "px";
       pumpDiv.style.top  = (pumpY - FT.NODE_H / 2) + "px";
       pumpDiv.innerHTML  = `
-        <div class="flow-node-label">⚙ Bomba</div>
+        <div class="flow-node-label">Bomba</div>
         <div class="flow-node-timer">${pumpOn ? `${activeFlow}/${systemConfig.caudalBomba} L/min` : "inactiva"}</div>
       `;
       container.appendChild(pumpDiv);
@@ -1558,14 +1830,15 @@
 
       const pendingIds = fakeState.pendingActivations.map((p) => p.sectorId);
 
-      $("#activeProgram").textContent = fakeState.programaActivo ? `#${fakeState.programaActivo}` : "—";
+      const activeProg = programs.find((p) => p.id === fakeState.programaActivo);
+      $("#activeProgram").textContent = activeProg ? programName(activeProg) : "—";
 
       const activeLabels  = allActiveIds.map((id) => `S${id}`);
       const pendingLabels = pendingIds
         .filter((id) => !allActiveIds.includes(id))
-        .map((id) => `S${id}⏱`);
+        .map((id) => `S${id} (espera)`);
       const queuedLabels  = fakeState.queuedSectors
-        .map((q) => `S${q.sectorId}⏱`)
+        .map((q) => `S${q.sectorId} (cola)`)
         .filter((lbl, idx, arr) => arr.indexOf(lbl) === idx);
       const allLabels = [...activeLabels, ...pendingLabels, ...queuedLabels];
       $("#activeSector").textContent = allLabels.length ? allLabels.join(", ") : "—";
@@ -1578,6 +1851,19 @@
       const pumpOn = fakeState.bomba || manualSectorMask !== 0;
       $("#pumpIndicator").classList.toggle("on", pumpOn);
       $("#pumpLabel").textContent = pumpOn ? "Encendida" : "Apagada";
+
+      // Uso de caudal: sectores en riego (su caudal) + manuales (caudal por sector)
+      const programFlow = fakeState.sectoresActivos.reduce((sum, a) => sum + (a.caudal || 0), 0);
+      const usedFlow    = programFlow + manualUsedFlow();
+      const maxFlow     = systemConfig.caudalBomba;
+      $("#pumpFlowUsed").textContent = usedFlow;
+      $("#pumpFlowMax").textContent  = maxFlow;
+      const flowPct  = maxFlow > 0 ? Math.min(100, Math.round((usedFlow / maxFlow) * 100)) : 0;
+      const flowFill = $("#pumpFlowFill");
+      if (flowFill) {
+        flowFill.style.width = flowPct + "%";
+        flowFill.classList.toggle("over", usedFlow > maxFlow);
+      }
 
       $$(".sector").forEach((el) => {
         const id        = parseInt(el.dataset.id, 10);
@@ -1598,11 +1884,11 @@
             const info = fakeState.sectoresActivos.find((a) => a.sectorId === id);
             timerEl.textContent = info ? formatTime(info.tiempoRestante) : "";
           } else if (isPending) {
-            timerEl.textContent = `⏱ ${pendingInfo.delay}s`;
+            timerEl.textContent = `+${pendingInfo.delay}s`;
           } else if (isQueued) {
             timerEl.textContent = "en cola";
           } else if (isFeeding) {
-            timerEl.textContent = "↓ cañería";
+            timerEl.textContent = "cañería";
           } else {
             timerEl.textContent = "";
           }
@@ -1625,7 +1911,7 @@
         el.dataset.id = i;
         el.innerHTML = `
           <div class="name">Sector ${i}</div>
-          <div class="icon">◉</div>
+          <div class="icon">${ICON.drop}</div>
           <div class="sector-timer"></div>
         `;
         el.addEventListener("click", () => toggleSectorManual(i));
@@ -1633,11 +1919,39 @@
       }
     }
 
+    // Caudal manual de un sector (índice sectorId-1 del arreglo de config).
+    function manualSectorFlow(sectorId) {
+      return systemConfig.caudalManual[sectorId - 1] || MANUAL_SECTOR_FLOW_DEFAULT;
+    }
+
+    // Caudal total consumido por los sectores encendidos manualmente.
+    function manualUsedFlow() {
+      let sum = 0;
+      for (let i = 0; i < NUM_SECTORS; i++) {
+        if (manualSectorMask & (1 << i)) sum += manualSectorFlow(i + 1);
+      }
+      return sum;
+    }
+
     function toggleSectorManual(sectorId) {
       const mask = 1 << (sectorId - 1);
       if (manualSectorMask & mask) {
+        // Apagar siempre se permite.
         manualSectorMask &= ~mask;
       } else {
+        // Encender: solo si hay caudal libre en la bomba. En manual no corre
+        // ningún programa, así que los únicos consumidores son otros manuales.
+        const maxCaudal   = systemConfig.caudalBomba;
+        const sectorFlow  = manualSectorFlow(sectorId);
+        const usedFlow    = manualUsedFlow();
+        if (usedFlow + sectorFlow > maxCaudal) {
+          toast(
+            `Sin caudal libre: la bomba da ${maxCaudal} L/min, S${sectorId} ` +
+            `consume ${sectorFlow} L/min (${usedFlow} ya en uso)`,
+            true
+          );
+          return;
+        }
         manualSectorMask |= mask;
         stopProgram();
         fakeState.estado = "IDLE";
@@ -1662,15 +1976,20 @@
         if (_visited.has(node.sectorId)) return ""; // guard anti-ciclo (datos corruptos)
         const visited = new Set(_visited);
         visited.add(node.sectorId);
-        const delayBadge = (node.padre !== null && node.retardo > 0)
-          ? `<span class="delay-badge">⏱ ${node.retardo}s</span>`
+        const isRoot = node.padre === null;
+        const delayBadge = (!isRoot && node.retardo > 0)
+          ? `<span class="delay-badge">+${node.retardo}s</span>`
           : "";
         const subTree = buildTreeHtml(nodos, node.sectorId, visited);
         const childrenHtml = subTree ? `<div class="tree-children">${subTree}</div>` : "";
         return `
           <div class="tree-item">
             <div class="tree-node-row">
-              ${delayBadge}<span class="chip">S${node.sectorId} · ${formatTime(node.tiempoRiego)}</span>
+              <span class="chip">
+                <span class="tree-dot ${isRoot ? "" : "child"}"></span>
+                S${node.sectorId} <span class="chip-meta">· ${node.tiempoRiego}s · ${node.caudal || 6} L/min</span>
+              </span>
+              ${delayBadge}
             </div>
             ${childrenHtml}
           </div>
@@ -1691,33 +2010,48 @@
         const hasCrowded    = consistency.crowded;
         const isInconsistent = hasDeadlock || hasCrowded;
 
-        // Badge de estado
+        const isRunning = (p.id === activeId);
+
+        // Badge de estado (ejecución tiene prioridad visual)
         let badgeHtml = "";
-        if (hasDeadlock) {
+        if (isRunning) {
+          badgeHtml = `<span class="prog-badge running"><span class="run-dot"></span>Ejecutando</span>`;
+        } else if (hasDeadlock) {
           const sects = consistency.deadlocked.map((s) => `S${s}`).join(", ");
-          badgeHtml = `<span class="prog-badge danger" title="${sects} tienen caudal mayor al de la bomba y nunca podrían activarse">⛔ ${sects} bloqueado${consistency.deadlocked.length > 1 ? "s" : ""}</span>`;
+          badgeHtml = `<span class="prog-badge danger" title="${sects} tienen caudal mayor al de la bomba y nunca podrían activarse">${sects} bloqueado${consistency.deadlocked.length > 1 ? "s" : ""}</span>`;
         } else if (hasCrowded) {
-          badgeHtml = `<span class="prog-badge warn" title="La suma de sectores raíz supera el caudal de la bomba; algunos sectores irán a cola">⚠️ Raíces exceden bomba</span>`;
+          badgeHtml = `<span class="prog-badge warn" title="La suma de sectores raíz supera el caudal de la bomba; algunos sectores irán a cola">Raíces exceden bomba</span>`;
         }
 
+        const isExpanded = expandedPrograms.has(p.id);
         const item = document.createElement("div");
-        item.className = "program-item" + (p.id === activeId ? " active" : "");
+        item.className = "program-item" + (isRunning ? " active" : "") + (isExpanded ? "" : " collapsed");
+        item.dataset.progId = p.id;
         const treeHtml = buildTreeHtml(p.nodos);
+
+        // Botón Ejecutar inteligente: si ya corre, mostrar estado en vez de reiniciar
+        const runBtn = isRunning
+          ? `<button class="btn small disabled" disabled>En ejecución</button>`
+          : `<button class="btn small ${hasDeadlock ? "disabled" : ""}" data-action="run" data-id="${p.id}" ${hasDeadlock ? 'title="Corregí los caudales antes de ejecutar"' : ""}>Ejecutar</button>`;
+
         item.innerHTML = `
-          <div class="program-item-header">
-            <div>
+          <div class="program-item-header" title="Click para ver el árbol de riego">
+            <div class="program-title-wrap">
               <div class="program-title">
-                Programa #${p.id} · ${p.horaInicio}
+                <span class="prog-chevron">${ICON.chevron}</span>
+                ${programName(p)} <span class="program-time">· ${p.horaInicio}</span>
                 ${badgeHtml}
               </div>
               <div class="program-meta">
                 <span>${daysMaskToLabel(p.dias)}</span>
-                <span>${p.ciclico ? "Cíclico" : "Ejecución única"}</span>
+                <span>${p.ciclico
+                  ? (p.horaFin ? `Cíclico · ${p.horaInicio}–${p.horaFin}` : "Cíclico")
+                  : "Ejecución única"}</span>
               </div>
             </div>
             <div class="program-actions">
               <button class="btn small secondary" data-action="edit"   data-id="${p.id}">Editar</button>
-              <button class="btn small ${hasDeadlock ? "disabled" : ""}" data-action="run" data-id="${p.id}" ${hasDeadlock ? 'title="Corregí los caudales antes de ejecutar"' : ""}>Ejecutar</button>
+              ${runBtn}
               <button class="btn small danger"    data-action="delete" data-id="${p.id}">Borrar</button>
             </div>
           </div>
@@ -1727,207 +2061,359 @@
       });
     }
 
-    // --- Editor de programas ---
-    function buildSectorConfigList() {
-      const list = $("#sectorConfigList");
-      list.innerHTML = "";
-      for (let i = 1; i <= NUM_SECTORS; i++) {
-        const row = document.createElement("div");
-        row.className = "sector-config-row";
-        row.innerHTML = `
-          <input type="checkbox" id="sec_${i}_enabled" data-sector="${i}">
-          <label class="sector-name" for="sec_${i}_enabled">Sector ${i}</label>
-          <select class="parent-select" id="sec_${i}_parent" disabled title="Este sector arranca cuando el padre termina">
-            <option value="">Al inicio (raíz)</option>
-          </select>
-          <div class="delay-wrapper">
-            <input type="number" class="delay-input" id="sec_${i}_delay" min="0" max="3600" value="0" disabled title="Segundos de espera después de que el padre termina">
-            <span class="unit">s espera</span>
-          </div>
-          <div class="time-wrapper">
-            <input type="number" id="sec_${i}_time" min="1" max="3600" value="60" disabled>
-            <span class="unit">s riego</span>
-          </div>
-          <div class="flow-wrapper">
-            <input type="number" id="sec_${i}_flow" min="1" max="50" step="1" value="6" disabled title="Caudal requerido por este sector (L/min)">
-            <span class="unit">L/min</span>
-          </div>
-        `;
-        list.appendChild(row);
+    // --- Editor visual de árbol -------------------------------------------
+    // Copia de trabajo del programa en edición: array de nodos
+    //   { sectorId, tiempoRiego, retardo, padre, caudal }   (padre null = raíz)
+    // Es la ÚNICA fuente de verdad mientras el editor está abierto; el DOM se
+    // re-renderiza desde acá. El modelo es idéntico al `nodos[]` que se guarda,
+    // así que el contrato con el firmware no cambia: solo cambia cómo se edita.
+    let editorNodes     = [];
+    let editorEditingId = null;   // sectorId del nodo con el acordeón abierto
+    let editorEditBackup = null;  // snapshot de editorNodes al abrir un acordeón (para Cancelar)
 
-        const cb  = $(`#sec_${i}_enabled`);
-        const sel = $(`#sec_${i}_parent`);
-        const t   = $(`#sec_${i}_time`);
-        const d   = $(`#sec_${i}_delay`);
-        const fl  = $(`#sec_${i}_flow`);
+    const edNode       = (id)  => editorNodes.find((n) => n.sectorId === id);
+    const edChildrenOf = (pid) => editorNodes
+      .filter((n) => n.padre === pid)
+      .sort((a, b) => a.sectorId - b.sectorId);
+    const edRoots    = ()    => edChildrenOf(null);
+    const edRootSum  = ()    => edRoots().reduce((s, n) => s + (n.caudal || 0), 0);
+    const edChildSum = (pid) => edChildrenOf(pid).reduce((s, n) => s + (n.caudal || 0), 0);
 
-        cb.addEventListener("change", (e) => {
-          const checked = e.target.checked;
-          t.disabled  = !checked;
-          fl.disabled = !checked;
-          sel.disabled = !checked;
-          if (checked) {
-            // Caudal inicial inteligente: usar el espacio libre en la bomba para raíces,
-            // así no se pisan los valores que el usuario ya configuró en otros sectores.
-            // Por defecto el nuevo sector es raíz (sel todavía no tiene valor).
-            let usedByOtherRoots = 0;
-            for (let j = 1; j <= NUM_SECTORS; j++) {
-              if (j === i || !$(`#sec_${j}_enabled`)?.checked) continue;
-              const jSel = $(`#sec_${j}_parent`);
-              const jFl  = $(`#sec_${j}_flow`);
-              if (jSel && !jSel.value && jFl && !jFl.disabled) {
-                usedByOtherRoots += parseInt(jFl.value, 10) || 0;
-              }
-            }
-            const remaining = systemConfig.caudalBomba - usedByOtherRoots;
-            fl.value = remaining > 0 ? Math.min(6, remaining) : 1;
-          } else {
-            for (let j = 1; j <= NUM_SECTORS; j++) {
-              if (j === i) continue;
-              const jSel = $(`#sec_${j}_parent`);
-              if (jSel && jSel.value === String(i)) jSel.value = "";
-            }
-            d.disabled = true;
-            d.value = 0;
-          }
-          updateParentSelectors();
-          updateFlowConstraints(); // sin editingSectorId → solo actualiza maxes y UI
-        });
-
-        sel.addEventListener("change", () => {
-          const hasParent = !!sel.value;
-          d.disabled = !hasParent;
-          if (!hasParent) d.value = 0;
-          updateFlowConstraints(); // sin editingSectorId → no clampea
-        });
-
-        // Cuando el caudal del padre cambia, propagar la restricción a sus hijos.
-        // Pasamos el id del sector para que solo se recorte ese campo si excede el max.
-        fl.addEventListener("input", () => updateFlowConstraints(i));
-      }
+    function edFreeSectors() {
+      const used = new Set(editorNodes.map((n) => n.sectorId));
+      const free = [];
+      for (let i = 1; i <= NUM_SECTORS; i++) if (!used.has(i)) free.push(i);
+      return free;
     }
 
-    function updateParentSelectors() {
-      const enabled = [];
-      for (let i = 1; i <= NUM_SECTORS; i++) {
-        if ($(`#sec_${i}_enabled`).checked) enabled.push(i);
-      }
-
-      // Calcula qué sectores son descendientes de `sectorId` según las selecciones
-      // actuales. Usamos propagación iterativa para terminar siempre (sin recursión).
-      function getDescendants(sectorId) {
-        const result = new Set([sectorId]);
-        let changed = true;
-        while (changed) {
-          changed = false;
-          for (const id of enabled) {
-            if (result.has(id)) continue;
-            const pSel = $(`#sec_${id}_parent`);
-            const pVal = pSel ? parseInt(pSel.value, 10) : NaN;
-            if (!isNaN(pVal) && result.has(pVal)) {
-              result.add(id);
-              changed = true;
-            }
+    // Set de descendientes (incluido el propio sector). Sirve para excluir padres
+    // que formarían ciclo y para borrar un subárbol completo.
+    function edDescendants(sectorId) {
+      const result = new Set([sectorId]);
+      let changed = true;
+      while (changed) {
+        changed = false;
+        for (const n of editorNodes) {
+          if (!result.has(n.sectorId) && n.padre != null && result.has(n.padre)) {
+            result.add(n.sectorId);
+            changed = true;
           }
         }
-        return result;
       }
-
-      for (let i = 1; i <= NUM_SECTORS; i++) {
-        const sel = $(`#sec_${i}_parent`);
-        if (!sel) continue;
-        const prev        = sel.value;
-        const descendants = getDescendants(i); // sectores que NO pueden ser padre de i
-        sel.innerHTML = '<option value="">Al inicio (raíz)</option>';
-        enabled
-          .filter((id) => !descendants.has(id)) // excluye i mismo y sus descendientes
-          .forEach((id) => {
-            const opt = document.createElement("option");
-            opt.value = String(id);
-            opt.textContent = `Sector ${id}`;
-            sel.appendChild(opt);
-          });
-        // Restaurar selección anterior sólo si sigue siendo una opción válida (no forma ciclo)
-        if (prev && enabled.includes(parseInt(prev)) && !descendants.has(parseInt(prev))) {
-          sel.value = prev;
-        } else {
-          sel.value = "";
-        }
-      }
+      return result;
     }
 
-    // Ajusta el max de caudal de cada sector descontando lo que ya consumen sus
-    // "hermanos" (mismos padre). Para raíces, la bomba actúa como padre común:
-    //   raíz.max   = caudalBomba  − suma_de_otras_raíces
-    //   hijo.max   = padre.caudal − suma_de_otros_hijos_del_mismo_padre
-    //
-    // editingSectorId: si se pasa, se permite recortar ese sector (el usuario lo
-    // está editando activamente con el spinner/teclado). Los demás nunca se tocan
-    // automáticamente para no destruir valores que el usuario ya configuró.
-    function updateFlowConstraints(editingSectorId = null) {
-      // Paso 1: acumular caudal por padre y caudal total de raíces
-      const childSumByParent = {};
-      let   rootCaudalSum    = 0;
+    // Caudal máximo permitido por el presupuesto actual:
+    //   raíz → bomba − (otras raíces);  hijo → caudal_padre − (otros hermanos)
+    function edMaxCaudal(node) {
+      const bomba = systemConfig.caudalBomba;
+      if (node.padre == null) {
+        return Math.max(1, bomba - (edRootSum() - node.caudal));
+      }
+      const parent       = edNode(node.padre);
+      const parentCaudal = parent ? parent.caudal : bomba;
+      const siblings     = edChildSum(node.padre) - node.caudal;
+      return Math.min(bomba, Math.max(1, parentCaudal - siblings));
+    }
 
-      for (let i = 1; i <= NUM_SECTORS; i++) {
-        const cb = $(`#sec_${i}_enabled`);
-        if (!cb || !cb.checked) continue;
-        const sel = $(`#sec_${i}_parent`);
-        const fl  = $(`#sec_${i}_flow`);
-        if (!sel || !fl || fl.disabled) continue;
-        const caudal = parseInt(fl.value, 10) || 0;
-        if (sel.value) {
-          const parentId = parseInt(sel.value, 10);
-          childSumByParent[parentId] = (childSumByParent[parentId] || 0) + caudal;
-        } else {
-          rootCaudalSum += caudal;
+    // Motivo por el que un nodo está en conflicto de caudal (o null si está OK).
+    // Sirve para marcar EN EL ÁRBOL qué nodos hay que ajustar, no solo la cabecera.
+    function edOverReason(node) {
+      const bomba = systemConfig.caudalBomba;
+      if (node.caudal > bomba) {
+        return `S${node.sectorId} pide ${node.caudal} L/min y la bomba solo da ${bomba}: nunca se activaría.`;
+      }
+      if (node.padre == null) {
+        const sum = edRootSum();
+        if (sum > bomba) {
+          const detalle = edRoots().map((n) => `S${n.sectorId}(${n.caudal})`).join(" + ");
+          return `Las raíces suman ${sum} L/min y superan la bomba (${bomba}). Reducí el caudal de alguna: ${detalle}.`;
+        }
+      } else {
+        const parent = edNode(node.padre);
+        if (parent) {
+          const sum = edChildSum(node.padre);
+          if (sum > parent.caudal) {
+            const detalle = edChildrenOf(node.padre).map((n) => `S${n.sectorId}(${n.caudal})`).join(" + ");
+            return `Los hijos de S${parent.sectorId} suman ${sum} L/min y superan su caudal (${parent.caudal}). Reducí alguno: ${detalle}.`;
+          }
         }
       }
+      return null;
+    }
 
-      // Paso 2: fijar el max de cada sector.
-      // Solo recortar el valor del sector que el usuario está editando en este momento
-      // (editingSectorId). El resto mantiene su valor aunque sea mayor al max actual,
-      // para que el usuario pueda ver qué necesita ajustar sin que el sistema le pise
-      // los valores que ya configuró.
-      for (let i = 1; i <= NUM_SECTORS; i++) {
-        const cb = $(`#sec_${i}_enabled`);
-        if (!cb || !cb.checked) continue;
-        const sel = $(`#sec_${i}_parent`);
-        const fl  = $(`#sec_${i}_flow`);
-        if (!sel || !fl || fl.disabled) continue;
+    // --- Edición con aceptar/cancelar (snapshot para revertir) ---
+    function edBeginEdit(sectorId) {
+      editorEditBackup = JSON.parse(JSON.stringify(editorNodes));
+      editorEditingId  = sectorId;
+      renderEditorTree();
+    }
 
-        const myCaudal = parseInt(fl.value, 10) || 0;
-        let maxForThis;
+    function edDoneEdit() {            // ✓ aceptar: conserva los cambios y cierra
+      editorEditingId  = null;
+      editorEditBackup = null;
+      renderEditorTree();
+    }
 
-        if (sel.value) {
-          // Con padre: max = caudal_padre − suma_hermanos
-          const parentId     = parseInt(sel.value, 10);
-          const parentFl     = $(`#sec_${parentId}_flow`);
-          const parentCaudal = parentFl ? (parseInt(parentFl.value, 10) || systemConfig.caudalBomba) : systemConfig.caudalBomba;
-          const siblingsSum  = (childSumByParent[parentId] || 0) - myCaudal;
-          maxForThis = Math.min(systemConfig.caudalBomba, Math.max(1, parentCaudal - siblingsSum));
-        } else {
-          // Raíz: la bomba es el padre común — max = caudalBomba − suma_otras_raíces
-          const otherRootsSum = rootCaudalSum - myCaudal;
-          maxForThis = Math.max(1, systemConfig.caudalBomba - otherRootsSum);
-        }
+    function edCancelEdit() {          // ✕ cancelar: revierte al estado previo
+      if (editorEditBackup) editorNodes = editorEditBackup;
+      editorEditBackup = null;
+      editorEditingId  = null;
+      renderEditorTree();
+    }
 
-        fl.max = maxForThis;
-        // Recortar solo el sector que el usuario está editando activamente
-        if (editingSectorId === i && myCaudal > maxForThis) fl.value = maxForThis;
+    // --- Mutaciones del árbol ---
+    function edAddNode(parentId) {
+      const free = edFreeSectors();
+      if (!free.length) { toast("Ya usaste los 8 sectores", true); return; }
+      // Snapshot ANTES de agregar: si el usuario cancela, el nodo nuevo desaparece.
+      editorEditBackup = JSON.parse(JSON.stringify(editorNodes));
+      const sectorId = free[0];
+      const bomba    = systemConfig.caudalBomba;
+      let avail;
+      if (parentId == null) {
+        avail = bomba - edRootSum();
+      } else {
+        const parent = edNode(parentId);
+        avail = (parent ? parent.caudal : bomba) - edChildSum(parentId);
       }
+      editorNodes.push({
+        sectorId,
+        tiempoRiego: 15,
+        retardo: 0,
+        padre: parentId == null ? null : parentId,
+        caudal: avail > 0 ? Math.min(5, avail) : 1
+      });
+      editorEditingId = sectorId;   // abrir el acordeón del nodo recién creado
+      renderEditorTree();
+    }
 
-      // Paso 3: actualizar indicador de suma de raíces
-      const sumEl  = $("#rootFlowSum");
-      const maxEl  = $("#rootFlowMax");
-      const iconEl = $("#rootFlowIcon");
-      const barEl  = $("#rootFlowBar");
-      if (sumEl)  sumEl.textContent  = rootCaudalSum;
-      if (maxEl)  maxEl.textContent  = systemConfig.caudalBomba;
-      if (iconEl) iconEl.textContent = rootCaudalSum > systemConfig.caudalBomba ? " ⚠️ excede la bomba" : "";
-      if (barEl)  barEl.style.color  = rootCaudalSum > systemConfig.caudalBomba
-                                         ? "var(--danger, #e74c3c)"
-                                         : "var(--text-soft)";
+    function edDeleteNode(sectorId) {
+      const descendants = edDescendants(sectorId);
+      if (descendants.size > 1) {
+        const n = descendants.size - 1;
+        if (!confirm(`¿Borrar el sector S${sectorId} y sus ${n} sub-sector${n > 1 ? "es" : ""}?`)) return;
+      }
+      editorNodes = editorNodes.filter((n) => !descendants.has(n.sectorId));
+      if (descendants.has(editorEditingId)) { editorEditingId = null; editorEditBackup = null; }
+      renderEditorTree();
+    }
+
+    // Cambiar el sector de un nodo: como `padre` se referencia por sectorId, hay
+    // que re-apuntar los hijos que colgaban del id viejo.
+    function edSetSector(oldId, newId) {
+      if (oldId === newId) return;
+      const node = edNode(oldId);
+      if (!node) return;
+      editorNodes.forEach((n) => { if (n.padre === oldId) n.padre = newId; });
+      node.sectorId = newId;
+      if (editorEditingId === oldId) editorEditingId = newId;
+      renderEditorTree();
+    }
+
+    function edSetParent(sectorId, newParent) {
+      const node = edNode(sectorId);
+      if (!node) return;
+      node.padre = newParent;            // null o sectorId
+      if (newParent == null) node.retardo = 0;
+      renderEditorTree();
+    }
+
+    // Campos numéricos: actualizan el modelo y refrescan solo los textos/barras
+    // dinámicos (sin re-render estructural) para no perder el foco del input.
+    function edSetNumber(sectorId, field, raw) {
+      const node = edNode(sectorId);
+      if (!node) return;
+      let v = parseInt(raw, 10);
+      if (isNaN(v)) v = 0;
+      if      (field === "tiempoRiego") node.tiempoRiego = Math.max(1, v);
+      else if (field === "retardo")     node.retardo     = Math.max(0, v);
+      else if (field === "caudal")      node.caudal      = Math.max(1, v);
+      edRefreshDynamic();
+    }
+
+    // --- Render ---
+    function edChipMeta(node) {
+      return `S${node.sectorId} · ${node.tiempoRiego}s · ${node.caudal} L/min`;
+    }
+
+    function edBudgetHtml(label, used, max, attr) {
+      const over = used > max;
+      const pct  = max > 0 ? Math.min(100, Math.round((used / max) * 100)) : 0;
+      return `<span class="ed-budget ${over ? "over" : ""}" ${attr}>${label}` +
+             ` <span class="ed-budget-num">${used}/${max}</span>` +
+             `<span class="ed-bar"><span class="ed-bar-fill" style="width:${pct}%"></span></span></span>`;
+    }
+
+    function edEditHtml(node) {
+      const id     = node.sectorId;
+      const isRoot = node.padre == null;
+
+      const sectorOpts = [id, ...edFreeSectors()]
+        .sort((a, b) => a - b)
+        .map((s) => `<option value="${s}" ${s === id ? "selected" : ""}>Sector ${s}</option>`)
+        .join("");
+
+      const desc = edDescendants(id); // no puede colgar de sí mismo ni de sus hijos
+      const parentOpts = ['<option value="">Al inicio (raíz)</option>']
+        .concat(editorNodes
+          .filter((n) => !desc.has(n.sectorId))
+          .sort((a, b) => a.sectorId - b.sectorId)
+          .map((n) => `<option value="${n.sectorId}" ${n.sectorId === node.padre ? "selected" : ""}>Sector ${n.sectorId}</option>`))
+        .join("");
+
+      const max  = edMaxCaudal(node);
+      const over = node.caudal > max;
+
+      const retardoField = isRoot ? "" : `
+            <label class="ed-edit-field">
+              <span>Retardo</span>
+              <input type="number" data-ed-field="retardo" data-id="${id}" min="0" max="3600" value="${node.retardo}">
+              <span class="ed-unit">segundos tras terminar el padre</span>
+            </label>`;
+
+      return `
+        <div class="ed-edit">
+          <div class="ed-edit-grid">
+            <label class="ed-edit-field">
+              <span>Sector</span>
+              <select data-ed-field="sector" data-id="${id}">${sectorOpts}</select>
+            </label>
+            <label class="ed-edit-field">
+              <span>Riego</span>
+              <input type="number" data-ed-field="tiempoRiego" data-id="${id}" min="1" max="3600" value="${node.tiempoRiego}">
+              <span class="ed-unit">segundos</span>
+            </label>
+            <label class="ed-edit-field">
+              <span>Padre</span>
+              <select data-ed-field="padre" data-id="${id}">${parentOpts}</select>
+            </label>
+            <label class="ed-edit-field">
+              <span>Caudal</span>
+              <input type="number" data-ed-field="caudal" data-id="${id}" min="1" max="${max}" value="${node.caudal}" class="${over ? "over" : ""}">
+              <span class="ed-maxhint ${over ? "over" : ""}" data-maxhint>máx ${max}${over ? " · excede" : ""}</span>
+            </label>
+            ${retardoField}
+          </div>
+          <div class="ed-edit-foot">
+            <button type="button" class="btn small secondary" data-ed-action="cancel" data-id="${id}">✕ Cancelar</button>
+            <button type="button" class="btn small"           data-ed-action="done"   data-id="${id}">✓ Listo</button>
+          </div>
+        </div>`;
+    }
+
+    function edNodeHtml(node) {
+      const id       = node.sectorId;
+      const isRoot   = node.padre == null;
+      const children = edChildrenOf(id);
+      const selected = editorEditingId === id;
+
+      const showDelay = (!isRoot && node.retardo > 0);
+      const delayHtml = `<span class="ed-delay" data-chipdelay="${id}" style="${showDelay ? "" : "display:none"}">+${node.retardo}s</span>`;
+
+      const childrenBudget = children.length
+        ? `<div class="ed-budget-child">${edBudgetHtml("hijos", edChildSum(id), node.caudal, `data-budget="${id}"`)}</div>`
+        : "";
+      const childrenHtml = children.length
+        ? `<div class="ed-children">${children.map(edNodeHtml).join("")}</div>`
+        : "";
+      const editHtml = selected ? edEditHtml(node) : "";
+
+      const reason = edOverReason(node);  // motivo de conflicto de caudal, o null
+      const editBtn = selected
+        ? `<button type="button" data-ed-action="done" data-id="${id}" title="Listo">✓</button>`
+        : `<button type="button" data-ed-action="edit" data-id="${id}" title="Editar">${ICON.edit}</button>`;
+
+      return `
+        <div class="ed-node">
+          <div class="ed-node-row ${selected ? "selected" : ""} ${reason ? "flow-over" : ""}" data-noderow="${id}">
+            <span class="ed-chip">
+              <span class="ed-dot ${isRoot ? "" : "child"}"></span>
+              <span data-chipmeta="${id}">${edChipMeta(node)}</span>
+              ${delayHtml}
+              <span class="ed-warn" data-warn="${id}" title="${reason || ""}" style="${reason ? "" : "display:none"}">${ICON.warn}</span>
+            </span>
+            <span class="ed-node-actions">
+              <button type="button" data-ed-action="add"  data-id="${id}" title="Agregar un sub-sector que arranca cuando S${id} termina">+ hijo</button>
+              ${editBtn}
+              <button type="button" class="ed-del" data-ed-action="del" data-id="${id}" title="Borrar">${ICON.trash}</button>
+            </span>
+          </div>
+          ${editHtml}
+          ${childrenBudget}
+          ${childrenHtml}
+        </div>`;
+    }
+
+    function renderEditorTree() {
+      const host = $("#editorTree");
+      if (!host) return;
+      const bomba = systemConfig.caudalBomba;
+      const roots = edRoots();
+      const free  = edFreeSectors();
+
+      const rootsHtml = roots.length
+        ? roots.map(edNodeHtml).join("")
+        : `<div class="ed-empty">Todavía no agregaste ningún sector. Empezá por una raíz ↓</div>`;
+
+      host.innerHTML = `
+        <div class="ed-bomba">
+          <span class="ed-bomba-label">Bomba · ${bomba} L/min</span>
+          ${edBudgetHtml("raíces", edRootSum(), bomba, "data-rootbudget")}
+        </div>
+        <div class="ed-tree-root">
+          ${rootsHtml}
+          <button type="button" class="btn small secondary ed-add" data-ed-action="add-root" ${free.length ? "" : "disabled"}>
+            ＋ Agregar sector raíz
+          </button>
+        </div>`;
+    }
+
+    // Actualiza textos/barras sin re-render estructural (preserva foco de inputs).
+    function setBudgetEl(el, used, max) {
+      if (!el) return;
+      const over = used > max;
+      const pct  = max > 0 ? Math.min(100, Math.round((used / max) * 100)) : 0;
+      el.classList.toggle("over", over);
+      const fill = el.querySelector(".ed-bar-fill");
+      const num  = el.querySelector(".ed-budget-num");
+      if (fill) fill.style.width   = pct + "%";
+      if (num)  num.textContent    = `${used}/${max}`;
+    }
+
+    function edRefreshDynamic() {
+      const bomba = systemConfig.caudalBomba;
+      setBudgetEl($("[data-rootbudget]"), edRootSum(), bomba);
+      editorNodes.forEach((n) => {
+        if (edChildrenOf(n.sectorId).length) {
+          setBudgetEl($(`[data-budget="${n.sectorId}"]`), edChildSum(n.sectorId), n.caudal);
+        }
+        const chip = $(`[data-chipmeta="${n.sectorId}"]`);
+        if (chip) chip.textContent = edChipMeta(n);
+        // Marca de conflicto: cambiar un caudal puede afectar a hermanos/raíces,
+        // así que recalculamos el motivo de TODOS los nodos, no solo el editado.
+        const reason = edOverReason(n);
+        const row  = $(`[data-noderow="${n.sectorId}"]`);
+        const warn = $(`[data-warn="${n.sectorId}"]`);
+        if (row)  row.classList.toggle("flow-over", !!reason);
+        if (warn) { warn.style.display = reason ? "" : "none"; warn.title = reason || ""; }
+      });
+      // Acordeón abierto: recalcular max/hint del caudal
+      if (editorEditingId != null) {
+        const node = edNode(editorEditingId);
+        const inp  = $('[data-ed-field="caudal"]');
+        const hint = $("[data-maxhint]");
+        if (node && inp) {
+          const max  = edMaxCaudal(node);
+          const over = node.caudal > max;
+          inp.max = max;
+          inp.classList.toggle("over", over);
+          if (hint) {
+            hint.textContent = `máx ${max}${over ? " · excede" : ""}`;
+            hint.classList.toggle("over", over);
+          }
+        }
+      }
     }
 
     function openEditor(program) {
@@ -1935,102 +2421,92 @@
       card.style.display = "";
       card.scrollIntoView({ behavior: "smooth", block: "start" });
 
-      // Reset
-      for (let i = 1; i <= NUM_SECTORS; i++) {
-        $(`#sec_${i}_enabled`).checked  = false;
-        $(`#sec_${i}_time`).value       = 60;
-        $(`#sec_${i}_time`).disabled    = true;
-        $(`#sec_${i}_delay`).value      = 0;
-        $(`#sec_${i}_delay`).disabled   = true;
-        $(`#sec_${i}_flow`).value       = 6;
-        $(`#sec_${i}_flow`).disabled    = true;
-        const sel = $(`#sec_${i}_parent`);
-        if (sel) { sel.value = ""; sel.disabled = true; }
-      }
-
-      // Sincronizar hint de caudal de bomba
-      const hintEl = $("#flowHintValue");
-      if (hintEl) hintEl.textContent = systemConfig.caudalBomba;
-      const maxEl = $("#rootFlowMax");
-      if (maxEl) maxEl.textContent = systemConfig.caudalBomba;
+      editorEditingId = null;
 
       if (program) {
         editingId = program.id;
-        $("#editorTitle").textContent = `Editar programa #${program.id}`;
+        $("#editorTitle").textContent = `Editar ${program.nombre || ("programa #" + program.id)}`;
         $("#programId").value = program.id;
+        $("#progName").value  = program.nombre || "";
         $("#startTime").value = program.horaInicio;
         $("#cyclic").value    = program.ciclico ? "true" : "false";
+        $("#endTime").value   = program.horaFin || "09:00";
         selectedDays = program.dias;
-        updateDaysUI();
-
-        program.nodos.forEach((n) => {
-          $(`#sec_${n.sectorId}_enabled`).checked  = true;
-          $(`#sec_${n.sectorId}_time`).disabled    = false;
-          $(`#sec_${n.sectorId}_time`).value       = n.tiempoRiego;
-          $(`#sec_${n.sectorId}_flow`).disabled    = false;
-          $(`#sec_${n.sectorId}_flow`).value       = n.caudal || 6;
-          const sel = $(`#sec_${n.sectorId}_parent`);
-          if (sel) sel.disabled = false;
-        });
-
-        updateParentSelectors();
-
-        // Asignar padres y retardos después de poblar el dropdown
-        program.nodos.forEach((n) => {
-          const sel = $(`#sec_${n.sectorId}_parent`);
-          if (sel) sel.value = n.padre != null ? String(n.padre) : "";
-          const d = $(`#sec_${n.sectorId}_delay`);
-          if (d) {
-            d.value    = n.retardo || 0;
-            d.disabled = n.padre === null;
-          }
-        });
-
-        // Aplicar restricciones de caudal padre→hijo
-        updateFlowConstraints();
+        // Copia profunda de los nodos hacia la copia de trabajo del editor
+        editorNodes = program.nodos.map((n) => ({
+          sectorId: n.sectorId,
+          tiempoRiego: n.tiempoRiego,
+          retardo: n.padre != null ? (n.retardo || 0) : 0,
+          padre: n.padre != null ? n.padre : null,
+          caudal: n.caudal || 6
+        }));
       } else {
         editingId = null;
         $("#editorTitle").textContent = "Nuevo programa";
         $("#programId").value = "";
+        $("#progName").value  = "";
         $("#startTime").value = "07:00";
         $("#cyclic").value    = "false";
+        $("#endTime").value   = "09:00";
         selectedDays = 0;
-        updateDaysUI();
-        updateFlowConstraints();
+        editorNodes = [];
       }
+
+      updateDaysUI();
+      updateCyclicUI();
+      renderEditorTree();
+    }
+
+    // El campo "Hora de finalización" solo tiene sentido en programas cíclicos.
+    function updateCyclicUI() {
+      const isCyclic = $("#cyclic").value === "true";
+      $("#endTimeField").style.display = isCyclic ? "" : "none";
     }
 
     function closeEditor() {
       $("#editorCard").style.display = "none";
       editingId = null;
+      editorEditingId = null;
+      editorNodes = [];
     }
+
+    const ALL_DAYS  = 0x7F; // bits 0..6 (L..D)
+    const WEEK_DAYS = 0x1F; // bits 0..4 (L..V)
 
     function updateDaysUI() {
       $$("#daysPicker .day-toggle").forEach((btn) => {
         const bit = parseInt(btn.dataset.bit, 10);
         btn.classList.toggle("on", (selectedDays & (1 << bit)) !== 0);
       });
+      const allBtn = $("#dayAll");
+      if (allBtn) {
+        const all = (selectedDays & ALL_DAYS) === ALL_DAYS;
+        allBtn.classList.toggle("on", all);
+        allBtn.textContent = all ? "Ninguno" : "Todos";
+      }
+      const weekBtn = $("#dayWeek");
+      if (weekBtn) weekBtn.classList.toggle("on", selectedDays === WEEK_DAYS);
     }
 
     function collectProgramFromForm() {
-      const nodos = [];
-      for (let i = 1; i <= NUM_SECTORS; i++) {
-        if (!$(`#sec_${i}_enabled`).checked) continue;
-        const padreVal = $(`#sec_${i}_parent`).value;
-        const padre    = padreVal ? parseInt(padreVal, 10) : null;
-        nodos.push({
-          sectorId: i,
-          tiempoRiego: parseInt($(`#sec_${i}_time`).value, 10) || 0,
-          retardo: padre !== null ? (parseInt($(`#sec_${i}_delay`).value, 10) || 0) : 0,
-          padre,
-          caudal: Math.max(1, parseInt($(`#sec_${i}_flow`).value, 10) || 6)
-        });
-      }
+      const nodos = editorNodes
+        .slice()
+        .sort((a, b) => a.sectorId - b.sectorId)
+        .map((n) => ({
+          sectorId: n.sectorId,
+          tiempoRiego: Math.max(1, n.tiempoRiego || 0),
+          retardo: n.padre != null ? Math.max(0, n.retardo || 0) : 0,
+          padre: n.padre != null ? n.padre : null,
+          caudal: Math.max(1, n.caudal || 6)
+        }));
+      const ciclico = $("#cyclic").value === "true";
       return {
         id:        editingId || null,
+        nombre:     $("#progName").value.trim(),
         horaInicio: $("#startTime").value,
+        horaFin:    ciclico ? $("#endTime").value : null,
         dias:       selectedDays,
-        ciclico:    $("#cyclic").value === "true",
+        ciclico,
         nodos
       };
     }
@@ -2040,6 +2516,16 @@
       if (!prog.horaInicio) { toast("Indicá una hora de inicio", true); return; }
       if (!prog.dias)        { toast("Elegí al menos un día", true); return; }
       if (!prog.nodos.length){ toast("Agregá al menos un sector", true); return; }
+
+      // Programas cíclicos: la hora de finalización define el rango de repetición
+      // y debe ser posterior a la hora de inicio (mismo día).
+      if (prog.ciclico) {
+        if (!prog.horaFin) { toast("Indicá una hora de finalización para el ciclo", true); return; }
+        if (hmToMinutes(prog.horaFin) <= hmToMinutes(prog.horaInicio)) {
+          toast("La hora de finalización debe ser posterior a la de inicio", true);
+          return;
+        }
+      }
 
       const roots = prog.nodos.filter((n) => n.padre === null);
       if (!roots.length) {
@@ -2171,14 +2657,16 @@
       fakeState.estado = "RUNNING";
       fakeState.programaActivo = id;
       startRootSectors(p);
+      expandedPrograms.add(id);  // auto-expandir el programa que arranca
 
-      toast(`Ejecutando programa #${id}`);
+      toast(`Ejecutando ${programName(p)}`);
       loadPrograms();
       renderStatus();
     }
 
     async function deleteProgram(id) {
-      if (!confirm(`¿Borrar el programa #${id}?`)) return;
+      const p = programs.find((x) => x.id === id);
+      if (!confirm(`¿Borrar ${p ? programName(p) : ("el programa #" + id)}?`)) return;
       const idx = programs.findIndex((p) => p.id === id);
       if (idx >= 0) programs.splice(idx, 1);
       if (fakeState.programaActivo === id) stopProgram();
@@ -2199,16 +2687,108 @@
     }
 
     // --- Config editor ---
+    let pumpFlowConfirmPending = false;  // true tras la 1ª advertencia: el 2º click guarda igual
+
+    function resetConfigSaveButton() {
+      const btn = $("#btnConfigSave");
+      if (btn) { btn.textContent = "✓ Guardar"; btn.classList.remove("danger"); }
+      pumpFlowConfirmPending = false;
+    }
+
+    // Muestra/oculta la advertencia DENTRO del modal de config y devuelve el impacto.
+    // Reemplaza al viejo confirm() nativo: todo el feedback vive en el mismo modal.
+    function renderConfigImpact(val) {
+      const affected = programs.map((p) => {
+        const c = checkProgramConsistency(p, val);
+        return { prog: p, ...c };
+      }).filter((x) => x.deadlocked.length > 0 || x.crowded);
+      const hasDeadlock = affected.some((x) => x.deadlocked.length > 0);
+
+      const warningEl = $("#configImpactWarning");
+      if (!warningEl) return { affected, hasDeadlock };
+
+      if (affected.length === 0) {
+        warningEl.style.display = "none";
+        warningEl.innerHTML = "";
+        warningEl.style.background = ""; warningEl.style.borderColor = ""; warningEl.style.color = "";
+        return { affected, hasDeadlock };
+      }
+
+      const lines = affected.map(({ prog, deadlocked, crowded }) => {
+        const parts = [];
+        if (deadlocked.length) {
+          parts.push(`S${deadlocked.join(", S")} nunca podrían activarse (caudal > ${val} L/min)`);
+        }
+        if (crowded && !deadlocked.length) {
+          parts.push(`sus raíces suman más de ${val} L/min (irán a cola)`);
+        } else if (crowded) {
+          parts.push(`además sus raíces suman más de ${val} L/min`);
+        }
+        return `• Programa #${prog.id}: ${parts.join("; ")}`;
+      });
+
+      warningEl.innerHTML = `
+        <strong>${hasDeadlock ? "Atención" : "Info"}</strong> — con ${val} L/min algunos programas quedan inconsistentes:<br>
+        <div style="margin-top:0.4rem; line-height:1.7;">${lines.join("<br>")}</div>
+        <div style="margin-top:0.5rem;">
+          ${hasDeadlock
+            ? "Los programas en rojo no podrán ejecutarse hasta que corrijas sus caudales."
+            : "Los programas en ámbar seguirán funcionando pero con más sectores en cola."}
+        </div>`;
+      warningEl.style.display = "block";
+      if (hasDeadlock) {
+        warningEl.style.background  = "color-mix(in srgb,#e74c3c 10%,transparent)";
+        warningEl.style.borderColor = "#e74c3c";
+        warningEl.style.color       = "#a93226";
+      } else {
+        warningEl.style.background = ""; warningEl.style.borderColor = ""; warningEl.style.color = "";
+      }
+      return { affected, hasDeadlock };
+    }
+
+    // Construye la grilla de inputs de caudal manual (uno por sector) y los
+    // inicializa con la config actual. El máximo de cada uno es el caudal de la bomba.
+    function buildManualFlowInputs() {
+      const grid = $("#manualFlowGrid");
+      if (!grid) return;
+      const maxFlow = systemConfig.caudalBomba;
+      grid.innerHTML = "";
+      for (let i = 1; i <= NUM_SECTORS; i++) {
+        const item = document.createElement("div");
+        item.className = "manual-flow-item";
+        item.innerHTML =
+          `<label for="manualFlow${i}">S${i}</label>` +
+          `<input type="number" id="manualFlow${i}" data-sector="${i}" ` +
+          `min="1" max="${maxFlow}" step="1" value="${systemConfig.caudalManual[i - 1]}">`;
+        grid.appendChild(item);
+      }
+    }
+
+    // Live: al tocar el caudal de la bomba, refrescar advertencia, actualizar el
+    // máximo de los caudales manuales (clamp si exceden) y cancelar la confirmación.
+    function onPumpFlowInput() {
+      const val = Math.max(1, parseInt($("#pumpFlow").value, 10) || 0);
+      renderConfigImpact(val);
+      for (let i = 1; i <= NUM_SECTORS; i++) {
+        const inp = $(`#manualFlow${i}`);
+        if (!inp) continue;
+        inp.max = val;
+        if ((parseInt(inp.value, 10) || 0) > val) inp.value = val;
+      }
+      resetConfigSaveButton();
+    }
+
     function openSystemConfigModal() {
       $("#pumpFlow").value = systemConfig.caudalBomba;
-      // Resetear warning de sesión anterior
-      const w = $("#configImpactWarning");
-      if (w) { w.style.display = "none"; w.innerHTML = ""; w.style.background = ""; w.style.borderColor = ""; w.style.color = ""; }
+      buildManualFlowInputs();
+      resetConfigSaveButton();
+      renderConfigImpact(systemConfig.caudalBomba); // con el valor actual no debería haber impacto
       $("#systemConfigModal").classList.add("show");
     }
 
     function closeSystemConfigModal() {
       $("#systemConfigModal").classList.remove("show");
+      resetConfigSaveButton();
     }
 
     // --- Chequeo de consistencia programa ↔ caudal de bomba ---
@@ -2227,67 +2807,55 @@
 
     function saveSystemConfig() {
       const val = Math.max(1, parseInt($("#pumpFlow").value, 10) || 20);
+      const { hasDeadlock } = renderConfigImpact(val);
 
-      // Detectar programas que quedarían inconsistentes con el nuevo límite
-      const affected = programs.map((p) => {
-        const c = checkProgramConsistency(p, val);
-        return { prog: p, ...c };
-      }).filter((x) => x.deadlocked.length > 0 || x.crowded);
-
-      if (affected.length > 0) {
-        // Construir descripción del impacto
-        const lines = affected.map(({ prog, deadlocked, crowded }) => {
-          const parts = [];
-          if (deadlocked.length) {
-            parts.push(`S${deadlocked.join(", S")} nunca podrían activarse (caudal > ${val} L/min)`);
-          }
-          if (crowded && !deadlocked.length) {
-            parts.push(`sus raíces suman más de ${val} L/min (irán a cola)`);
-          } else if (crowded) {
-            parts.push(`además sus raíces suman más de ${val} L/min`);
-          }
-          return `• Programa #${prog.id}: ${parts.join("; ")}`;
-        });
-
-        const warningEl = $("#configImpactWarning");
-        if (warningEl) {
-          const hasDeadlock = affected.some((x) => x.deadlocked.length > 0);
-          warningEl.innerHTML = `
-            <strong>${hasDeadlock ? "⚠️ Atención" : "ℹ️ Info"}</strong> — con ${val} L/min algunos programas quedan inconsistentes:<br>
-            <div style="margin-top:0.4rem; line-height:1.7;">${lines.join("<br>")}</div>
-            <div style="margin-top:0.5rem;">
-              ${hasDeadlock
-                ? "Los programas marcados con ⛔ no podrán ejecutarse hasta que corrijas sus caudales."
-                : "Los programas marcados con ⚠️ seguirán funcionando pero con más sectores en cola."}
-            </div>
-          `;
-          warningEl.style.display = "block";
-          if (hasDeadlock) {
-            warningEl.style.background = "color-mix(in srgb,#e74c3c 10%,transparent)";
-            warningEl.style.borderColor = "#e74c3c";
-            warningEl.style.color       = "#a93226";
-          }
-        }
-        // Preguntar confirmación solo cuando hay sectores bloqueados de forma permanente
-        const hasDeadlock = affected.some((x) => x.deadlocked.length > 0);
-        if (hasDeadlock) {
-          if (!confirm(`⚠️ Con ${val} L/min, algunos sectores de ${affected.length} programa(s) nunca podrían activarse. ¿Guardar de todas formas?`)) {
-            return; // usuario canceló
-          }
-        }
-        // Si solo hay crowded (sin deadlock), guardar silenciosamente con badges
+      // Si quedarían programas bloqueados, NO guardar en el primer click: mostramos
+      // la advertencia en el modal y convertimos el botón en confirmación explícita.
+      if (hasDeadlock && !pumpFlowConfirmPending) {
+        pumpFlowConfirmPending = true;
+        const btn = $("#btnConfigSave");
+        if (btn) { btn.textContent = "Guardar de todas formas"; btn.classList.add("danger"); }
+        return;
       }
 
       systemConfig.caudalBomba = val;
-      const hintEl = $("#flowHintValue");
-      if (hintEl) hintEl.textContent = val;
-      const maxEl = $("#rootFlowMax");
-      if (maxEl) maxEl.textContent = val;
+      // Caudal manual por sector: cada uno entre 1 y el caudal de la bomba.
+      systemConfig.caudalManual = Array.from({ length: NUM_SECTORS }, (_, i) => {
+        const raw = parseInt(($(`#manualFlow${i + 1}`) || {}).value, 10) || MANUAL_SECTOR_FLOW_DEFAULT;
+        return Math.max(1, Math.min(val, raw));
+      });
+      // El nuevo presupuesto puede dejar fuera sectores manuales ya encendidos
+      // (subiste su caudal o bajaste la bomba): los apagamos para no exceder.
+      trimManualSectorsToFlow();
       persistPrograms();
-      updateFlowConstraints();
+      // Si el editor está abierto, re-renderizar para reflejar el nuevo presupuesto
+      if ($("#editorCard").style.display !== "none") renderEditorTree();
       renderPrograms(programs, fakeState.programaActivo || 0); // actualizar badges
+      renderStatus(); // refrescar barra de caudal y estado de los sectores
       toast("✓ Configuración guardada");
       closeSystemConfigModal();
+    }
+
+    // Apaga los sectores manuales que ya no entran en el caudal de la bomba
+    // (recorrido por id, manteniendo los primeros que entren en el presupuesto).
+    function trimManualSectorsToFlow() {
+      let sum = 0, changed = false;
+      for (let i = 1; i <= NUM_SECTORS; i++) {
+        const mask = 1 << (i - 1);
+        if (!(manualSectorMask & mask)) continue;
+        const flow = manualSectorFlow(i);
+        if (sum + flow > systemConfig.caudalBomba) {
+          manualSectorMask &= ~mask;  // no entra: apagar
+          changed = true;
+        } else {
+          sum += flow;
+        }
+      }
+      if (changed) {
+        fakeState.modoManual = manualSectorMask !== 0;
+        fakeState.manualSectorMask = manualSectorMask;
+        toast("Se apagaron sectores manuales que excedían el caudal de la bomba", true);
+      }
     }
 
     // --- RTC editor ---
@@ -2338,33 +2906,102 @@
           updateDaysUI();
         });
       });
+      // Botón "Todos / Ninguno": selecciona o limpia los 7 días de una
+      $("#dayAll").addEventListener("click", () => {
+        selectedDays = ((selectedDays & ALL_DAYS) === ALL_DAYS) ? 0 : ALL_DAYS;
+        updateDaysUI();
+      });
+      // Preset "L–V": días de semana (lunes a viernes)
+      $("#dayWeek").addEventListener("click", () => {
+        selectedDays = (selectedDays === WEEK_DAYS) ? 0 : WEEK_DAYS;
+        updateDaysUI();
+      });
 
+      $("#cyclic").addEventListener("change", updateCyclicUI);
       $("#btnSaveProg").addEventListener("click", saveProgram);
       $("#btnCancel").addEventListener("click", closeEditor);
       $("#btnNewProgram").addEventListener("click", () => openEditor(null));
       $("#btnStop").addEventListener("click", manualStop);
 
+      // Editor visual de árbol (delegación de eventos sobre el contenedor)
+      const tree = $("#editorTree");
+      tree.addEventListener("click", (e) => {
+        const btn = e.target.closest("[data-ed-action]");
+        if (!btn) return;
+        const action = btn.dataset.edAction;
+        const id     = btn.dataset.id ? parseInt(btn.dataset.id, 10) : null;
+        if      (action === "add-root") edAddNode(null);
+        else if (action === "add")      edAddNode(id);
+        else if (action === "del")      edDeleteNode(id);
+        else if (action === "edit")     edBeginEdit(id);
+        else if (action === "done")     edDoneEdit();
+        else if (action === "cancel")   edCancelEdit();
+      });
+      tree.addEventListener("change", (e) => {
+        const el = e.target.closest("[data-ed-field]");
+        if (!el) return;
+        const id = parseInt(el.dataset.id, 10);
+        if      (el.dataset.edField === "sector") edSetSector(id, parseInt(el.value, 10));
+        else if (el.dataset.edField === "padre")  edSetParent(id, el.value ? parseInt(el.value, 10) : null);
+      });
+      tree.addEventListener("input", (e) => {
+        const el = e.target.closest("[data-ed-field]");
+        if (!el) return;
+        const field = el.dataset.edField;
+        if (field !== "tiempoRiego" && field !== "retardo" && field !== "caudal") return;
+        const id = parseInt(el.dataset.id, 10);
+        edSetNumber(id, field, el.value);
+        if (field === "retardo") {
+          const node = edNode(id);
+          const d    = $(`[data-chipdelay="${id}"]`);
+          if (node && d) {
+            d.textContent   = `+${node.retardo}s`;
+            d.style.display = (node.padre != null && node.retardo > 0) ? "" : "none";
+          }
+        }
+      });
+
       // Modal de configuración del sistema
       $("#headerConfig").addEventListener("click", openSystemConfigModal);
       $("#btnConfigCancel").addEventListener("click", closeSystemConfigModal);
       $("#btnConfigSave").addEventListener("click", saveSystemConfig);
+      $("#pumpFlow").addEventListener("input", onPumpFlowInput);
+      // Tope en vivo de los caudales manuales: ninguno puede superar la bomba.
+      $("#manualFlowGrid").addEventListener("input", (e) => {
+        const inp = e.target.closest("input[data-sector]");
+        if (!inp) return;
+        const maxFlow = Math.max(1, parseInt($("#pumpFlow").value, 10) || systemConfig.caudalBomba);
+        if ((parseInt(inp.value, 10) || 0) > maxFlow) inp.value = maxFlow;
+        resetConfigSaveButton();
+      });
       $("#systemConfigModal").addEventListener("click", (e) => {
         if (e.target === $("#systemConfigModal")) closeSystemConfigModal();
       });
 
       $("#programsList").addEventListener("click", (e) => {
         const btn = e.target.closest("button[data-action]");
-        if (!btn) return;
-        const id     = parseInt(btn.dataset.id, 10);
-        const action = btn.dataset.action;
-        if (action === "edit") {
-          const prog = programs.find((p) => p.id === id);
-          if (prog) openEditor(prog);
-        } else if (action === "run") {
-          runProgram(id);
-        } else if (action === "delete") {
-          deleteProgram(id);
+        if (btn) {
+          const id     = parseInt(btn.dataset.id, 10);
+          const action = btn.dataset.action;
+          if (action === "edit") {
+            const prog = programs.find((p) => p.id === id);
+            if (prog) openEditor(prog);
+          } else if (action === "run") {
+            runProgram(id);
+          } else if (action === "delete") {
+            deleteProgram(id);
+          }
+          return;
         }
+        // Click en la cabecera (fuera de los botones) → expandir/colapsar el árbol
+        const head = e.target.closest(".program-item-header");
+        if (!head) return;
+        const item = head.closest(".program-item[data-prog-id]");
+        if (!item) return;
+        const pid = parseInt(item.dataset.progId, 10);
+        if (expandedPrograms.has(pid)) expandedPrograms.delete(pid);
+        else                           expandedPrograms.add(pid);
+        item.classList.toggle("collapsed");
       });
 
       $("#headerTime").addEventListener("click", () => openTimeEditor(getFakeRTC()));
@@ -2377,15 +3014,10 @@
 
     async function init() {
       buildSectorsGrid();
-      buildSectorConfigList();
       wireEvents();
       await loadPrograms();
       // Sincronizar el input de caudal de bomba con el valor cargado del storage
       $("#pumpFlow").value = systemConfig.caudalBomba;
-      const hintEl = $("#flowHintValue");
-      if (hintEl) hintEl.textContent = systemConfig.caudalBomba;
-      const maxEl = $("#rootFlowMax");
-      if (maxEl) maxEl.textContent = systemConfig.caudalBomba;
       renderStatus();
       refreshTime();
       setInterval(refreshStatus, POLL_INTERVAL_MS);

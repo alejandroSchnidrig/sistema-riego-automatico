@@ -7,7 +7,9 @@ Program::Program() {
 void Program::reset() {
   _valid       = false;
   _id          = 0;
+  memset(_name, 0, sizeof(_name));
   memset(_startTime, 0, sizeof(_startTime));
+  memset(_endTime, 0, sizeof(_endTime));
   _days        = 0;
   _cyclic      = false;
   _sectorCount = 0;
@@ -20,10 +22,24 @@ void Program::setValid(bool valid) { _valid = valid; }
 uint16_t Program::getId() const { return _id; }
 void Program::setId(uint16_t id) { _id = id; }
 
+const char* Program::getName() const { return _name; }
+void Program::setName(const char* name) {
+  if (name == nullptr) { _name[0] = '\0'; return; }
+  strncpy(_name, name, sizeof(_name) - 1);
+  _name[sizeof(_name) - 1] = '\0';
+}
+
 const char* Program::getStartTime() const { return _startTime; }
 void Program::setStartTime(const char* time) {
   strncpy(_startTime, time, sizeof(_startTime) - 1);
   _startTime[sizeof(_startTime) - 1] = '\0';
+}
+
+const char* Program::getEndTime() const { return _endTime; }
+void Program::setEndTime(const char* time) {
+  if (time == nullptr) { _endTime[0] = '\0'; return; }
+  strncpy(_endTime, time, sizeof(_endTime) - 1);
+  _endTime[sizeof(_endTime) - 1] = '\0';
 }
 
 uint8_t Program::getDays() const { return _days; }

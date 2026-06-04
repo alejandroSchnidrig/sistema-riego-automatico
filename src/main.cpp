@@ -157,6 +157,14 @@ void setup() {
 void loop() {
   httpServer.handleClient();
   scheduler.tick();
-  irrigationSystem.tick();
+
+  // Pasar la hora actual al motor para que respete la horaFin de los cíclicos.
+  // Si el RTC no es válido, -1 → el ciclo reinicia siempre (comportamiento legacy).
+  const RTC_Time rtcNow = rtcManager.now();
+  const int nowMinutes  = rtcManager.isValid(rtcNow)
+                            ? (rtcNow.hour * 60 + rtcNow.minute)
+                            : -1;
+  irrigationSystem.tick(nowMinutes);
+
   printPeriodicStatus();
 }

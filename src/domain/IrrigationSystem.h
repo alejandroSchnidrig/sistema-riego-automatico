@@ -73,12 +73,17 @@ public:
   void begin();
   void clearPrograms();
   void seedDefaultPrograms();
-  void tick();
+  // nowMinutes: minutos desde medianoche (hora actual del RTC). -1 = sin hora
+  // (en tests sin RTC); en ese caso un programa cíclico reinicia siempre.
+  void tick(int nowMinutes = -1);
 
   bool startProgramById(uint16_t id);
   void stop();
   void clearManualOverrides();
-  void setManualSector(uint8_t sectorId, bool on);
+  // Enciende/apaga un sector en modo manual. Al encender devuelve false si no
+  // hay caudal libre en la bomba (Σ caudal manual + el nuevo > caudalBomba).
+  // Apagar siempre tiene éxito.
+  bool setManualSector(uint8_t sectorId, bool on);
 
   // Program management
   uint16_t saveProgram(Program& p);
@@ -88,6 +93,10 @@ public:
   // Caudal de la bomba (límite global de concurrencia)
   uint16_t getPumpFlow() const;
   void setPumpFlow(uint16_t flow);
+
+  // Caudal asumido por sector (1..8) cuando se enciende en modo manual (L/min)
+  uint16_t getManualSectorFlow(uint8_t sectorId) const;
+  void setManualSectorFlow(uint8_t sectorId, uint16_t flow);
 
   // State queries
   bool isRunning() const;
@@ -127,11 +136,15 @@ private:
   uint16_t     _completedMask;
 
   uint16_t      _manualSectorMask;
+  uint16_t      _manualSectorFlow[Config::NUM_SECTORES]; // caudal manual por sector
   unsigned long _lastStepMs;          // marca del último paso de 1 s procesado
 
   // Motor de ejecución
-  void stepOneSecond();
+  void stepOneSecond(int nowMinutes);
   void startRoots(int programIndex);
+  // ¿Un programa cíclico puede reiniciar su ciclo a la hora actual?
+  // false cuando ya se pasó la horaFin del programa (nowMinutes >= finMin).
+  bool canRestartCycle(const Program& p, int nowMinutes) const;
   uint16_t committedFlow() const;
   void tryActivateSector(uint8_t sectorId, uint32_t irrigationTime,
                          uint16_t flow, uint16_t delaySec);

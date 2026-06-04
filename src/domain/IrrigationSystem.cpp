@@ -26,6 +26,10 @@ IrrigationSystem::IrrigationSystem(InitMode mode)
     _manualSectorMask(0),
     _lastStepMs(0)
 {
+  for (uint8_t i = 0; i < Config::NUM_SECTORES; i++) {
+    _manualSectorFlow[i] = Config::CAUDAL_MANUAL_DEFAULT;
+  }
+
   clearPrograms();
 
   if (_initMode == InitMode::WITH_SEED) {
@@ -62,7 +66,9 @@ void IrrigationSystem::seedDefaultPrograms() {
   // S1 alimenta S2+S3 en paralelo (caudal S1 = 6+6 = 12); cada hoja iguala a su padre.
   _programs[0].setValid(true);
   _programs[0].setId(1);
+  _programs[0].setName("Jardin delantero");
   _programs[0].setStartTime("07:00");
+  _programs[0].setEndTime("09:00");  // cíclico: repite dentro de [07:00, 09:00)
   _programs[0].setDays(62);          // lun-vie
   _programs[0].setCyclic(true);
   _programs[0].addNode({1, 15, 0, 0, 12});
@@ -74,6 +80,7 @@ void IrrigationSystem::seedDefaultPrograms() {
   // Programa 2: dos raíces (S4, S6 = 7 L/min c/u → 14 ≤ 20) con un hijo cada una.
   _programs[1].setValid(true);
   _programs[1].setId(2);
+  _programs[1].setName("Huerta (noche)");
   _programs[1].setStartTime("19:30");
   _programs[1].setDays(96);          // sáb-dom
   _programs[1].setCyclic(false);
@@ -85,6 +92,7 @@ void IrrigationSystem::seedDefaultPrograms() {
   // Programa 3: tres raíces en paralelo (3 × 6 = 18 ≤ 20), sin cola.
   _programs[2].setValid(true);
   _programs[2].setId(3);
+  _programs[2].setName("Cesped lateral");
   _programs[2].setStartTime("12:00");
   _programs[2].setDays(127);         // todos los días
   _programs[2].setCyclic(false);
@@ -99,7 +107,7 @@ void IrrigationSystem::seedDefaultPrograms() {
 // Motor de ejecución — modelo árbol + caudal
 // ============================================================
 
-void IrrigationSystem::tick() {
+void IrrigationSystem::tick(int nowMinutes) {
   if (_state != SystemState::RUNNING || _runningProgramIndex < 0) return;
 
   unsigned long now = hal_millis();
@@ -107,10 +115,10 @@ void IrrigationSystem::tick() {
   if (now - _lastStepMs < Config::INTERVALO_SCHEDULER_MS) return;
   _lastStepMs += Config::INTERVALO_SCHEDULER_MS;
 
-  stepOneSecond();
+  stepOneSecond(nowMinutes);
 }
 
-void IrrigationSystem::stepOneSecond() {
+void IrrigationSystem::stepOneSecond(int nowMinutes) {
   // 1) Pendientes: descontar retardo; los que llegan a 0 pasan a activos.
   uint8_t finished[Config::NUM_SECTORES];
   uint8_t finishedCount = 0;
@@ -161,8 +169,12 @@ void IrrigationSystem::stepOneSecond() {
   }
 
   // 6) Fin de programa: todo vacío → cíclico reinicia raíces / si no, fin.
+  //    El ciclo solo reinicia si todavía estamos dentro de la ventana horaria
+  //    [horaInicio, horaFin]; pasada la horaFin el programa termina (no se hace
+  //    stop mid-ciclo, solo se bloquea el reinicio — igual que el prototipo).
   if (_activeCount == 0 && _pendingCount == 0 && _queueCount == 0) {
-    if (_programs[_runningProgramIndex].isCyclic()) {
+    const Program& prog = _programs[_runningProgramIndex];
+    if (prog.isCyclic() && canRestartCycle(prog, nowMinutes)) {
       startRoots(_runningProgramIndex);
     } else {
       stopRuntime(SystemState::IDLE);
@@ -271,14 +283,29 @@ void IrrigationSystem::clearManualOverrides() {
   _manualSectorMask = 0;
 }
 
-void IrrigationSystem::setManualSector(uint8_t sectorId, bool on) {
+bool IrrigationSystem::setManualSector(uint8_t sectorId, bool on) {
+  if (sectorId < 1 || sectorId > Config::NUM_SECTORES) return false;
+  const uint16_t bit = sectorIdToMask(sectorId);
+
   if (on) {
-    _manualSectorMask |= sectorIdToMask(sectorId);
+    if (_manualSectorMask & bit) return true; // ya estaba encendido
+
+    // En manual no corre ningún programa, así que los únicos consumidores de
+    // caudal son otros sectores manuales. Rechazar si el nuevo no entra.
+    uint32_t used = 0;
+    for (uint8_t i = 1; i <= Config::NUM_SECTORES; i++) {
+      if (_manualSectorMask & sectorIdToMask(i)) used += _manualSectorFlow[i - 1];
+    }
+    if (used + _manualSectorFlow[sectorId - 1] > _pumpFlow) return false;
+
+    _manualSectorMask |= bit;
     stopRuntime(SystemState::IDLE); // activar manual detiene el programa en curso
-  } else {
-    _manualSectorMask &= (uint16_t)~sectorIdToMask(sectorId);
-    applyOutputsFromState(); // desactivar solo refresca salidas, no toca el programa
+    return true;
   }
+
+  _manualSectorMask &= (uint16_t)~bit;
+  applyOutputsFromState(); // desactivar solo refresca salidas, no toca el programa
+  return true;
 }
 
 // ============================================================
@@ -315,6 +342,36 @@ uint16_t IrrigationSystem::getPumpFlow() const { return _pumpFlow; }
 
 void IrrigationSystem::setPumpFlow(uint16_t flow) {
   if (flow > 0) _pumpFlow = flow;
+}
+
+uint16_t IrrigationSystem::getManualSectorFlow(uint8_t sectorId) const {
+  if (sectorId < 1 || sectorId > Config::NUM_SECTORES) return 0;
+  return _manualSectorFlow[sectorId - 1];
+}
+
+void IrrigationSystem::setManualSectorFlow(uint8_t sectorId, uint16_t flow) {
+  if (sectorId < 1 || sectorId > Config::NUM_SECTORES) return;
+  _manualSectorFlow[sectorId - 1] = (flow > 0) ? flow : Config::CAUDAL_MANUAL_DEFAULT;
+}
+
+// "HH:MM" → minutos desde medianoche; -1 si está vacío o mal formado.
+static int parseHHMMToMinutes(const char* hhmm) {
+  if (hhmm == nullptr || hhmm[0] == '\0') return -1;
+  // Esperamos exactamente "HH:MM".
+  if (hhmm[2] != ':') return -1;
+  if (hhmm[0] < '0' || hhmm[0] > '9' || hhmm[1] < '0' || hhmm[1] > '9') return -1;
+  if (hhmm[3] < '0' || hhmm[3] > '9' || hhmm[4] < '0' || hhmm[4] > '9') return -1;
+  int h = (hhmm[0] - '0') * 10 + (hhmm[1] - '0');
+  int m = (hhmm[3] - '0') * 10 + (hhmm[4] - '0');
+  if (h > 23 || m > 59) return -1;
+  return h * 60 + m;
+}
+
+bool IrrigationSystem::canRestartCycle(const Program& p, int nowMinutes) const {
+  if (nowMinutes < 0) return true;             // sin hora (tests): reinicia siempre
+  const int finMin = parseHHMMToMinutes(p.getEndTime());
+  if (finMin < 0) return true;                 // sin horaFin: repetición indefinida
+  return nowMinutes < finMin;
 }
 
 // ============================================================

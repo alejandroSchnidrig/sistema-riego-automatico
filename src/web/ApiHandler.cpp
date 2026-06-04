@@ -43,8 +43,14 @@ void ApiHandler::handleControl() {
       _server.send(400, "application/json", buildOkJson(false, "\"error\":\"id invalido\""));
       return;
     }
-    _sys.setManualSector((uint8_t)id, state != 0);
-    _server.send(200, "application/json", buildOkJson(true));
+    bool ok = _sys.setManualSector((uint8_t)id, state != 0);
+    if (ok) {
+      _server.send(200, "application/json", buildOkJson(true));
+    } else {
+      // Encendido rechazado: no hay caudal libre en la bomba para este sector.
+      _server.send(409, "application/json",
+                   buildOkJson(false, "\"error\":\"caudal insuficiente\""));
+    }
 
   } else if (type == "pump") {
     _server.send(409, "application/json",
@@ -124,6 +130,32 @@ void ApiHandler::handleConfig() {
     _sys.setPumpFlow((uint16_t)caudal);
     _storage.savePrograms(_sys);
     _server.send(200, "application/json", buildOkJson(true, "\"caudalBomba\":" + String(caudal)));
+    return;
+  }
+
+  // Caudal manual por sector: arreglo de NUM_SECTORES valores (L/min).
+  if (body.indexOf("\"caudalManual\"") >= 0) {
+    String arr;
+    if (!extractArrayField(body, "caudalManual", arr)) {
+      _server.send(400, "application/json", buildOkJson(false, "\"error\":\"caudalManual invalido\""));
+      return;
+    }
+    const uint16_t maxFlow = _sys.getPumpFlow();
+    int pos = 0;
+    for (uint8_t i = 1; i <= Config::NUM_SECTORES; i++) {
+      // Avanzar hasta el próximo dígito (separadores '[', ',', espacios).
+      while (pos < (int)arr.length() &&
+             (arr[pos] < '0' || arr[pos] > '9')) pos++;
+      if (pos >= (int)arr.length()) break;
+      int value = 0, endPos = pos;
+      if (!extractIntAt(arr, pos, value, endPos)) break;
+      if (value < 1) value = Config::CAUDAL_MANUAL_DEFAULT;
+      if ((uint16_t)value > maxFlow) value = (int)maxFlow; // clamp a la bomba
+      _sys.setManualSectorFlow(i, (uint16_t)value);
+      pos = endPos;
+    }
+    _storage.savePrograms(_sys);
+    _server.send(200, "application/json", buildOkJson(true));
     return;
   }
 
@@ -227,7 +259,15 @@ String ApiHandler::buildStatusJson() const {
 }
 
 String ApiHandler::buildProgramsJson() const {
-  String json = "{\"caudalBomba\":" + String(_sys.getPumpFlow()) + ",\"programas\":[";
+  String json = "{\"caudalBomba\":" + String(_sys.getPumpFlow()) + ",";
+
+  // Caudal manual por sector (arreglo de NUM_SECTORES valores, L/min).
+  json += "\"caudalManual\":[";
+  for (uint8_t i = 1; i <= Config::NUM_SECTORES; i++) {
+    if (i > 1) json += ",";
+    json += String(_sys.getManualSectorFlow(i));
+  }
+  json += "],\"programas\":[";
   bool firstProgram = true;
 
   for (uint8_t i = 0; i < Config::MAX_PROGRAMAS; i++) {
@@ -238,7 +278,12 @@ String ApiHandler::buildProgramsJson() const {
 
     json += "{";
     json += "\"id\":"           + String(p.getId())                             + ",";
+    json += "\"nombre\":\""     + escapeJson(String(p.getName()))               + "\",";
     json += "\"horaInicio\":\"" + escapeJson(String(p.getStartTime()))          + "\",";
+    // horaFin: null si está vacío (sin fin); string "HH:MM" si está definido.
+    json += "\"horaFin\":"      + (p.getEndTime()[0] == '\0'
+                                     ? String("null")
+                                     : ("\"" + escapeJson(String(p.getEndTime())) + "\"")) + ",";
     json += "\"dias\":"         + String(p.getDays())                           + ",";
     json += "\"ciclico\":"      + boolToJson(p.isCyclic())                      + ",";
     json += "\"nodos\":[";
@@ -302,6 +347,12 @@ bool ApiHandler::parseProgramFromJson(const String& programJson, Program& outPro
   extractNullableId(programJson, id);
   outProgram.setId((uint16_t)id);
 
+  // Nombre: opcional. Si está ausente o vacío, queda "" (la UI usa "Programa #id").
+  String nombre;
+  if (extractStringField(programJson, "nombre", nombre)) {
+    outProgram.setName(nombre.c_str());
+  }
+
   String hora;
   uint8_t startHour = 0, startMinute = 0;
   if (!extractStringField(programJson, "horaInicio", hora) ||
@@ -317,6 +368,15 @@ bool ApiHandler::parseProgramFromJson(const String& programJson, Program& outPro
   bool ciclico = false;
   if (!extractBoolField(programJson, "ciclico", ciclico)) return false;
   outProgram.setCyclic(ciclico);
+
+  // horaFin: opcional, solo relevante para cíclicos. Acepta null/ausente ("")
+  // o "HH:MM" válido. Si viene mal formado, se ignora (queda sin fin).
+  String horaFin;
+  uint8_t endHour = 0, endMinute = 0;
+  if (ciclico && extractStringField(programJson, "horaFin", horaFin) &&
+      RTCManager::parseHourMinute(horaFin.c_str(), endHour, endMinute)) {
+    outProgram.setEndTime(horaFin.c_str());
+  }
 
   String nodosArray;
   if (!extractArrayField(programJson, "nodos", nodosArray)) return false;

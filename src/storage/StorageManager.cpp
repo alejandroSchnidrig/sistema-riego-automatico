@@ -44,6 +44,21 @@ bool StorageManager::loadPrograms(IrrigationSystem& sys) {
     sys.setPumpFlow((uint16_t)caudalBomba);
   }
 
+  // Restaurar el caudal manual por sector (arreglo de NUM_SECTORES valores).
+  String caudalManualArr;
+  if (extractArrayField(json, "caudalManual", caudalManualArr)) {
+    int pos = 0;
+    for (uint8_t i = 1; i <= Config::NUM_SECTORES; i++) {
+      while (pos < (int)caudalManualArr.length() &&
+             (caudalManualArr[pos] < '0' || caudalManualArr[pos] > '9')) pos++;
+      if (pos >= (int)caudalManualArr.length()) break;
+      int value = 0, endPos = pos;
+      if (!extractIntAt(caudalManualArr, pos, value, endPos)) break;
+      if (value > 0) sys.setManualSectorFlow(i, (uint16_t)value);
+      pos = endPos;
+    }
+  }
+
   int loaded = 0;
   int pos    = 0;
   while (pos < (int)programasArray.length() && loaded < Config::MAX_PROGRAMAS) {
@@ -116,10 +131,22 @@ bool StorageManager::parseOneProgram(const String& json, Program& out) {
   extractNullableId(json, id);
   out.setId((uint16_t)id);
 
+  // nombre: opcional (formato viejo no lo tiene).
+  String nombre;
+  if (extractStringField(json, "nombre", nombre)) {
+    out.setName(nombre.c_str());
+  }
+
   // horaInicio: string "HH:MM" — se acepta tal cual, ya fue validado al guardarse
   String hora;
   if (!extractStringField(json, "horaInicio", hora) || hora.length() != 5) return false;
   out.setStartTime(hora.c_str());
+
+  // horaFin: opcional, "HH:MM" o null/ausente ("").
+  String horaFin;
+  if (extractStringField(json, "horaFin", horaFin) && horaFin.length() == 5) {
+    out.setEndTime(horaFin.c_str());
+  }
 
   int dias = 0;
   if (!extractIntField(json, "dias", dias) || dias < 0 || dias > 0x7F) return false;
@@ -176,7 +203,15 @@ bool StorageManager::parseOneProgram(const String& json, Program& out) {
 }
 
 String StorageManager::buildConfigJson(const IrrigationSystem& sys) {
-  String json = "{\"caudalBomba\":" + String(sys.getPumpFlow()) + ",\"programas\":[";
+  String json = "{\"caudalBomba\":" + String(sys.getPumpFlow()) + ",";
+
+  // Caudal manual por sector (arreglo de NUM_SECTORES valores, L/min).
+  json += "\"caudalManual\":[";
+  for (uint8_t i = 1; i <= Config::NUM_SECTORES; i++) {
+    if (i > 1) json += ",";
+    json += String(sys.getManualSectorFlow(i));
+  }
+  json += "],\"programas\":[";
   bool firstProgram = true;
 
   for (uint8_t i = 0; i < Config::MAX_PROGRAMAS; i++) {
@@ -187,7 +222,11 @@ String StorageManager::buildConfigJson(const IrrigationSystem& sys) {
 
     json += "{";
     json += "\"id\":"           + String(p.getId())                    + ",";
+    json += "\"nombre\":\""     + escapeJson(String(p.getName()))      + "\",";
     json += "\"horaInicio\":\"" + escapeJson(String(p.getStartTime())) + "\",";
+    json += "\"horaFin\":"      + (p.getEndTime()[0] == '\0'
+                                     ? String("null")
+                                     : ("\"" + escapeJson(String(p.getEndTime())) + "\"")) + ",";
     json += "\"dias\":"         + String(p.getDays())                  + ",";
     json += "\"ciclico\":"      + boolToJson(p.isCyclic())             + ",";
     json += "\"nodos\":[";

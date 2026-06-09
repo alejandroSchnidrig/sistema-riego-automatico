@@ -54,7 +54,7 @@ namespace Config {
   // Límite global de caudal simultáneo en L/min; gobierna la
   // concurrencia de sectores y la cola FIFO.
   // ----------------------------------------------------------
-  constexpr uint16_t CAUDAL_BOMBA_DEFAULT = 20;
+  constexpr uint16_t CAUDAL_BOMBA_DEFAULT = 30;
 
   // Caudal asumido (L/min) al encender un sector en modo manual. Un sector
   // manual no tiene caudal propio (ese vive en el ProgramNode), así que se

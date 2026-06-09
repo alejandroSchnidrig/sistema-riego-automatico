@@ -145,7 +145,16 @@ private:
   // ¿Un programa cíclico puede reiniciar su ciclo a la hora actual?
   // false cuando ya se pasó la horaFin del programa (nowMinutes >= finMin).
   bool canRestartCycle(const Program& p, int nowMinutes) const;
+  // Caudal total que circularía si estuvieran abiertas las válvulas de
+  // 'irrigatingMask': suma el caudal de cada sector y el de TODOS sus ancestros
+  // (cañería), contando cada sector una sola vez. Usa el programa en ejecución.
+  uint16_t flowForSectorSet(uint16_t irrigatingMask) const;
   uint16_t committedFlow() const;
+  // Máscara de sectores con caudal ya comprometido (pendientes de retardo).
+  uint16_t computePendingMask() const;
+  // ¿Activar 'sectorId' (abriendo su cañería) cabe en el caudal de la bomba,
+  // dado lo que ya está activo/pendiente? Equivale al flowIfActivated del proto.
+  bool fitsToActivate(uint8_t sectorId) const;
   void tryActivateSector(uint8_t sectorId, uint32_t irrigationTime,
                          uint16_t flow, uint16_t delaySec);
   void drainQueue();

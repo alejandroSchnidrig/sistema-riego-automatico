@@ -52,8 +52,9 @@ void test_save_and_load_programs(void)
     IrrigationSystem sys(IrrigationSystem::InitMode::EMPTY);
     sys.begin();
 
-    //Caudal de bomba no-default para verificar que persiste.
-    sys.setPumpFlow(17);
+    //Caudal de bomba no-default para verificar que persiste. Debe alcanzar
+    //para la cañería del hijo: pathFlow(S2) = S2(6) + S1(12) = 18 ≤ 20.
+    sys.setPumpFlow(20);
 
     //Crear un programa (modelo árbol: raíz + un hijo).
     Program p;
@@ -85,7 +86,7 @@ void test_save_and_load_programs(void)
     TEST_ASSERT_TRUE(storage.loadPrograms(sys2));
 
     //El caudal de bomba persistido debe restaurarse.
-    TEST_ASSERT_EQUAL(17, sys2.getPumpFlow());
+    TEST_ASSERT_EQUAL(20, sys2.getPumpFlow());
 
     //Verificar programa cargado verificando el primer programa cargado (debería ser el mismo que guardamos).
     const Program &loaded = sys2.programAt(0);

@@ -48,6 +48,10 @@ public:
   uint8_t getRootCount() const;
   // Cantidad de hijos directos de un sector dado.
   uint8_t getChildCount(uint8_t parentSectorId) const;
+  // Caudal de la "cañería" de un sector: su propio caudal + el de TODOS sus
+  // ancestros (la cadena de padres que debe abrirse para que el agua le llegue).
+  // 0 si el sector no existe. Guarda anti-ciclo para árboles mal formados.
+  uint16_t getPathFlow(uint8_t sectorId) const;
 
   void reset();
 

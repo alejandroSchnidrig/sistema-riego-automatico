@@ -275,14 +275,15 @@ const char INDEX_HTML[] PROGMEM = R"=====(
     .sector.queued .sector-timer { color: #b07020; font-style: italic; }
 
     .sector.feeding {
-      background: #e0f7fa;
-      border-color: #00acc1;
-      box-shadow: 0 0 8px rgba(0, 172, 193, 0.25);
+      background: linear-gradient(to top right, var(--primary) 0 50%, #00acc1 50% 100%);
+      border-color: #00838f;
+      box-shadow: 0 0 8px rgba(0, 172, 193, 0.35);
+      color: #fff;
     }
-    .sector.feeding .name  { color: #006064; }
-    .sector.feeding .icon  { color: #00acc1; }
+    .sector.feeding .name  { color: #fff; }
+    .sector.feeding .icon  { color: #fff; }
     .sector.feeding .sector-timer {
-      color: #00838f; font-weight: 600; font-style: italic;
+      color: rgba(255,255,255,0.9); font-weight: 600; font-style: italic;
     }
 
     @keyframes pulse-amber {
@@ -517,13 +518,13 @@ const char INDEX_HTML[] PROGMEM = R"=====(
     .flow-node-box.flow-active .flow-node-caudal { color: rgba(255,255,255,0.65); }
 
     .flow-node-box.flow-feeding {
-      background: #e0f7fa;
-      border-color: #00acc1;
-      box-shadow: 0 0 8px rgba(0, 172, 193, 0.35);
+      background: linear-gradient(to top right, var(--primary) 0 50%, #00acc1 50% 100%);
+      border-color: #00838f;
+      box-shadow: 0 0 8px rgba(0, 172, 193, 0.4);
     }
-    .flow-node-box.flow-feeding .flow-node-label  { color: #006064; }
-    .flow-node-box.flow-feeding .flow-node-timer  { color: #00838f; font-weight: 600; }
-    .flow-node-box.flow-feeding .flow-node-caudal { color: #00838f; }
+    .flow-node-box.flow-feeding .flow-node-label  { color: #fff; }
+    .flow-node-box.flow-feeding .flow-node-timer  { color: rgba(255,255,255,0.9); font-weight: 600; }
+    .flow-node-box.flow-feeding .flow-node-caudal { color: rgba(255,255,255,0.75); }
 
     .flow-node-box.flow-pending {
       background: #e6f1fb;
@@ -969,7 +970,7 @@ const char INDEX_HTML[] PROGMEM = R"=====(
             </span>
           </div>
           <div class="pump-flow">
-            <div class="pump-flow-text"><span id="pumpFlowUsed">0</span> / <span id="pumpFlowMax">20</span> L/min</div>
+            <div class="pump-flow-text"><span id="pumpFlowUsed">0</span> / <span id="pumpFlowMax">30</span> L/min</div>
             <span class="pump-flow-bar"><span class="pump-flow-fill" id="pumpFlowFill"></span></span>
           </div>
         </div>
@@ -982,7 +983,7 @@ const char INDEX_HTML[] PROGMEM = R"=====(
         <div id="sectorsGrid" class="sectors-grid"></div>
         <div class="state-legend">
           <span class="legend-item"><span class="legend-dot" style="background:var(--primary)"></span>Irrigando</span>
-          <span class="legend-item"><span class="legend-dot" style="background:#00acc1"></span>Cañería abierta</span>
+          <span class="legend-item"><span class="legend-dot" style="background:linear-gradient(to top right, var(--primary) 0 50%, #00acc1 50% 100%)"></span>Riega + cañería</span>
           <span class="legend-item"><span class="legend-dot" style="background:#4a8ec4"></span>Retardo</span>
           <span class="legend-item"><span class="legend-dot" style="background:var(--warning)"></span>En cola</span>
           <span class="legend-item"><span class="legend-dot" style="background:#c8d2d0"></span>Inactivo</span>
@@ -1086,7 +1087,7 @@ const char INDEX_HTML[] PROGMEM = R"=====(
           <div class="form-field" style="margin:0;">
             <label for="pumpFlow" style="font-size:0.75rem; text-transform:uppercase; color:var(--text-soft);">Caudal de la bomba</label>
             <div style="display:flex; align-items:center; gap:0.6rem;">
-              <input type="number" id="pumpFlow" min="1" max="200" step="1" value="20" style="width:100px;">
+              <input type="number" id="pumpFlow" min="1" max="200" step="1" value="30" style="width:100px;">
               <span style="font-size:0.85rem; color:var(--text-soft);">L/min</span>
             </div>
             <p class="muted" style="margin:0.5rem 0 0; font-size:0.8rem;">
@@ -1185,7 +1186,7 @@ const char INDEX_HTML[] PROGMEM = R"=====(
     // --- Configuración física del sistema ---
     // caudalManual: arreglo de NUM_SECTORS valores (L/min por sector en manual)
     let systemConfig = {
-      caudalBomba: 20,
+      caudalBomba: 30,
       caudalManual: Array(NUM_SECTORS).fill(MANUAL_SECTOR_FLOW_DEFAULT)
     };
 
@@ -1585,7 +1586,8 @@ const char INDEX_HTML[] PROGMEM = R"=====(
       });
 
       // Nodo bomba (último para quedar por encima del SVG)
-      const activeFlow  = liveState.sectoresActivos.reduce((s, a) => s + (a.caudal || 0), 0);
+      // Incluye el caudal de la cañería (ancestros abiertos), no solo los activos.
+      const activeFlow  = openProgramFlow();
       const pumpDiv     = document.createElement("div");
       pumpDiv.className = `flow-node-box flow-pump-${pumpOn ? "on" : "off"}`;
       pumpDiv.style.left = pumpX + "px";
@@ -1618,6 +1620,22 @@ const char INDEX_HTML[] PROGMEM = R"=====(
       // Un sector que está irrigando no puede ser "cañería" al mismo tiempo
       activeSectorIds.forEach((id) => feeding.delete(id));
       return feeding;
+    }
+
+    // Caudal del programa que circula AHORA = sectores irrigando + su cañería
+    // (ancestros abiertos). El caudal de los ancestros sigue contando contra la
+    // bomba aunque ya hayan terminado de regar.
+    function openProgramFlow() {
+      const activeFlow = liveState.sectoresActivos.reduce((s, a) => s + (a.caudal || 0), 0);
+      if (liveState.estado !== "RUNNING" || !liveState.programaActivo) return activeFlow;
+      const prog = programs.find((p) => p.id === liveState.programaActivo);
+      if (!prog) return activeFlow;
+      let feedingFlow = 0;
+      getFeedingSectors().forEach((id) => {
+        const n = prog.nodos.find((x) => x.sectorId === id);
+        if (n) feedingFlow += (n.caudal || 0);
+      });
+      return activeFlow + feedingFlow;
     }
 
     // --- Render: Estado ---
@@ -1666,8 +1684,8 @@ const char INDEX_HTML[] PROGMEM = R"=====(
       $("#pumpIndicator").classList.toggle("on", pumpOn);
       $("#pumpLabel").textContent = pumpOn ? "Encendida" : "Apagada";
 
-      // Uso de caudal: sectores en riego (su caudal) + manuales (caudal por sector)
-      const programFlow = liveState.sectoresActivos.reduce((sum, a) => sum + (a.caudal || 0), 0);
+      // Uso de caudal: sectores en riego + su cañería (ancestros) + manuales.
+      const programFlow = openProgramFlow();
       const usedFlow    = programFlow + manualUsedFlow();
       const maxFlow     = systemConfig.caudalBomba;
       $("#pumpFlowUsed").textContent = usedFlow;
@@ -1839,9 +1857,9 @@ const char INDEX_HTML[] PROGMEM = R"=====(
           badgeHtml = `<span class="prog-badge running"><span class="run-dot"></span>Ejecutando</span>`;
         } else if (hasDeadlock) {
           const sects = consistency.deadlocked.map((s) => `S${s}`).join(", ");
-          badgeHtml = `<span class="prog-badge danger" title="${sects} tienen caudal mayor al de la bomba y nunca podrían activarse">${sects} bloqueado${consistency.deadlocked.length > 1 ? "s" : ""}</span>`;
+          badgeHtml = `<span class="prog-badge danger" title="${sects} + su cañería (ancestros) superan el caudal de la bomba: esa cadena debe abrirse entera para regar y nunca entraría">${sects} bloqueado${consistency.deadlocked.length > 1 ? "s" : ""}</span>`;
         } else if (hasCrowded) {
-          badgeHtml = `<span class="prog-badge warn" title="La suma de sectores raíz supera el caudal de la bomba; algunos sectores irán a cola">Raíces exceden bomba</span>`;
+          badgeHtml = `<span class="prog-badge warn" title="Por el caudal de la bomba, algunos sectores no pueden regar a la vez: irán a la cola y riegan después">Sectores en cola</span>`;
         }
 
         const isExpanded = expandedPrograms.has(p.id);
@@ -1900,6 +1918,22 @@ const char INDEX_HTML[] PROGMEM = R"=====(
     const edRootSum  = ()    => edRoots().reduce((s, n) => s + (n.caudal || 0), 0);
     const edChildSum = (pid) => edChildrenOf(pid).reduce((s, n) => s + (n.caudal || 0), 0);
 
+    // Caudal de la cañería de un nodo: el de TODOS sus ancestros (sin incluirlo).
+    function edAncestorFlow(node) {
+      let sum = 0, cur = node;
+      const seen = new Set([node.sectorId]);
+      while (cur && cur.padre != null && !seen.has(cur.padre)) {
+        const p = edNode(cur.padre);
+        if (!p) break;
+        sum += (p.caudal || 0);
+        seen.add(p.sectorId);
+        cur = p;
+      }
+      return sum;
+    }
+    // Caudal total que circula para regar este nodo: él + toda su cañería.
+    const edPathFlow = (node) => (node.caudal || 0) + edAncestorFlow(node);
+
     function edFreeSectors() {
       const used = new Set(editorNodes.map((n) => n.sectorId));
       const free = [];
@@ -1924,43 +1958,38 @@ const char INDEX_HTML[] PROGMEM = R"=====(
       return result;
     }
 
-    // Caudal máximo permitido por el presupuesto actual:
-    //   raíz → bomba − (otras raíces);  hijo → caudal_padre − (otros hermanos)
+    // Caudal máximo permitido por el presupuesto actual: lo que deja la bomba
+    // tras abrir la cañería (ancestros) de este nodo. Unificado para raíz e hijo
+    // (una raíz no tiene ancestros → su tope es la bomba completa).
     function edMaxCaudal(node) {
       const bomba = systemConfig.caudalBomba;
-      if (node.padre == null) {
-        return Math.max(1, bomba - (edRootSum() - node.caudal));
-      }
-      const parent       = edNode(node.padre);
-      const parentCaudal = parent ? parent.caudal : bomba;
-      const siblings     = edChildSum(node.padre) - node.caudal;
-      return Math.min(bomba, Math.max(1, parentCaudal - siblings));
+      return Math.max(1, bomba - edAncestorFlow(node));
     }
 
     // Motivo por el que un nodo está en conflicto de caudal (o null si está OK).
-    // Sirve para marcar EN EL ÁRBOL qué nodos hay que ajustar, no solo la cabecera.
+    // Único conflicto que bloquea: DEADLOCK. Para regar un nodo se abre toda su
+    // cañería (él + ancestros); si esa cadena supera la bomba, nunca regaría.
+    // (Que las raíces, o un padre + hijos a la vez, sumen de más NO es error: el
+    //  motor los encola y riegan por turnos.)
     function edOverReason(node) {
       const bomba = systemConfig.caudalBomba;
-      if (node.caudal > bomba) {
+      const path  = edPathFlow(node);
+      if (path <= bomba) return null;
+      if (node.padre == null) {
         return `S${node.sectorId} pide ${node.caudal} L/min y la bomba solo da ${bomba}: nunca se activaría.`;
       }
-      if (node.padre == null) {
-        const sum = edRootSum();
-        if (sum > bomba) {
-          const detalle = edRoots().map((n) => `S${n.sectorId}(${n.caudal})`).join(" + ");
-          return `Las raíces suman ${sum} L/min y superan la bomba (${bomba}). Reducí el caudal de alguna: ${detalle}.`;
-        }
-      } else {
-        const parent = edNode(node.padre);
-        if (parent) {
-          const sum = edChildSum(node.padre);
-          if (sum > parent.caudal) {
-            const detalle = edChildrenOf(node.padre).map((n) => `S${n.sectorId}(${n.caudal})`).join(" + ");
-            return `Los hijos de S${parent.sectorId} suman ${sum} L/min y superan su caudal (${parent.caudal}). Reducí alguno: ${detalle}.`;
-          }
-        }
+      // Reconstruir la cadena raíz→nodo para mostrar la cañería que se abre.
+      const chain = [];
+      let cur = node;
+      const seen = new Set();
+      while (cur && !seen.has(cur.sectorId)) {
+        chain.push(cur);
+        seen.add(cur.sectorId);
+        cur = cur.padre == null ? null : edNode(cur.padre);
       }
-      return null;
+      const detalle = chain.reverse().map((n) => `S${n.sectorId}(${n.caudal})`).join(" + ");
+      return `Para regar S${node.sectorId} queda abierta toda su cañería: ${detalle} = ${path} L/min ` +
+             `> bomba (${bomba}). Nunca se activaría. Bajá el caudal de S${node.sectorId} o de un ancestro.`;
     }
 
     // --- Edición con aceptar/cancelar (snapshot para revertir) ---
@@ -1993,10 +2022,11 @@ const char INDEX_HTML[] PROGMEM = R"=====(
       const bomba    = systemConfig.caudalBomba;
       let avail;
       if (parentId == null) {
-        avail = bomba - edRootSum();
+        avail = bomba - edRootSum();        // headroom para arrancar junto a las otras raíces
       } else {
         const parent = edNode(parentId);
-        avail = (parent ? parent.caudal : bomba) - edChildSum(parentId);
+        // Lo que deja la bomba tras abrir la cañería del padre (padre + sus ancestros).
+        avail = bomba - (parent ? edPathFlow(parent) : 0);
       }
       editorNodes.push({
         sectorId,
@@ -2132,8 +2162,11 @@ const char INDEX_HTML[] PROGMEM = R"=====(
       const showDelay = (!isRoot && node.retardo > 0);
       const delayHtml = `<span class="ed-delay" data-chipdelay="${id}" style="${showDelay ? "" : "display:none"}">+${node.retardo}s</span>`;
 
+      // Cuántos hijos entran a la vez = lo que deja la bomba tras abrir la
+      // cañería de este nodo (él + sus ancestros), no su caudal propio.
+      const childConcurMax = Math.max(0, systemConfig.caudalBomba - edPathFlow(node));
       const childrenBudget = children.length
-        ? `<div class="ed-budget-child">${edBudgetHtml("hijos", edChildSum(id), node.caudal, `data-budget="${id}"`)}</div>`
+        ? `<div class="ed-budget-child">${edBudgetHtml("hijos a la vez", edChildSum(id), childConcurMax, `data-budget="${id}"`)}</div>`
         : "";
       const childrenHtml = children.length
         ? `<div class="ed-children">${children.map(edNodeHtml).join("")}</div>`
@@ -2207,7 +2240,8 @@ const char INDEX_HTML[] PROGMEM = R"=====(
       setBudgetEl($("[data-rootbudget]"), edRootSum(), bomba);
       editorNodes.forEach((n) => {
         if (edChildrenOf(n.sectorId).length) {
-          setBudgetEl($(`[data-budget="${n.sectorId}"]`), edChildSum(n.sectorId), n.caudal);
+          const childConcurMax = Math.max(0, bomba - edPathFlow(n));
+          setBudgetEl($(`[data-budget="${n.sectorId}"]`), edChildSum(n.sectorId), childConcurMax);
         }
         const chip = $(`[data-chipmeta="${n.sectorId}"]`);
         if (chip) chip.textContent = edChipMeta(n);
@@ -2385,48 +2419,26 @@ const char INDEX_HTML[] PROGMEM = R"=====(
         }
       }
 
-      // Ningún sector puede pedir más caudal que la bomba: nunca podría activarse.
+      // Único caudal que bloquea el guardado: DEADLOCK. Un sector cuyo caudal +
+      // el de su cañería (ancestros) supera la bomba nunca podría regar, porque esa
+      // cadena entera tiene que abrirse para que el agua le llegue.
+      // (Que las raíces, o los hermanos, sumen más que la bomba NO es error: el
+      //  motor los manda a la cola y riegan por turnos.)
       for (const nodo of prog.nodos) {
-        if (nodo.caudal > systemConfig.caudalBomba) {
+        const path = nodePathFlow(prog.nodos, nodo);
+        if (path > systemConfig.caudalBomba) {
+          const chain = [];
+          let c = nodo;
+          const seen = new Set();
+          while (c && !seen.has(c.sectorId)) {
+            chain.push(c);
+            seen.add(c.sectorId);
+            c = c.padre == null ? null : prog.nodos.find((n) => n.sectorId === c.padre);
+          }
+          const detalle = chain.reverse().map((n) => `S${n.sectorId}(${n.caudal})`).join(" + ");
           toast(
-            `S${nodo.sectorId} pide ${nodo.caudal} L/min pero la bomba solo tiene ${systemConfig.caudalBomba} L/min — nunca podría activarse`,
-            true
-          );
-          return;
-        }
-      }
-
-      // La suma de los sectores raíz no puede superar la bomba:
-      // todos arrancan simultáneamente y la bomba es su cañería común.
-      const rootNodos   = prog.nodos.filter((n) => n.padre === null);
-      const rootCaudalSum = rootNodos.reduce((s, n) => s + n.caudal, 0);
-      if (rootCaudalSum > systemConfig.caudalBomba) {
-        const detalle = rootNodos.map((n) => `S${n.sectorId}(${n.caudal})`).join(" + ");
-        toast(
-          `Los sectores raíz suman ${rootCaudalSum} L/min pero la bomba solo tiene ${systemConfig.caudalBomba} L/min (${detalle})`,
-          true
-        );
-        return;
-      }
-
-      // El padre es la cañería que alimenta a todos sus hijos simultáneamente.
-      // La suma de caudales de los hijos directos no puede superar el caudal del padre.
-      const nodeMap = Object.fromEntries(prog.nodos.map((n) => [n.sectorId, n]));
-      const childSumByParent = {};
-      for (const nodo of prog.nodos) {
-        if (nodo.padre !== null) {
-          childSumByParent[nodo.padre] = (childSumByParent[nodo.padre] || 0) + nodo.caudal;
-        }
-      }
-      for (const [padreId, suma] of Object.entries(childSumByParent)) {
-        const padre = nodeMap[Number(padreId)];
-        if (padre && suma > padre.caudal) {
-          const detalle = prog.nodos
-            .filter((n) => n.padre === Number(padreId))
-            .map((n) => `S${n.sectorId}(${n.caudal})`)
-            .join(" + ");
-          toast(
-            `S${padreId} tiene ${padre.caudal} L/min pero sus hijos suman ${suma} L/min (${detalle})`,
+            `S${nodo.sectorId} + su cañería suman ${path} L/min y la bomba solo da ` +
+            `${systemConfig.caudalBomba} (${detalle}): nunca regaría. Bajá algún caudal.`,
             true
           );
           return;
@@ -2459,13 +2471,14 @@ const char INDEX_HTML[] PROGMEM = R"=====(
       const p = programs.find((x) => x.id === id);
       if (!p || !p.nodos.length) { toast("Programa sin sectores", true); return; }
 
-      // Bloquear ejecución si algún sector tiene caudal > bomba (jamás se activaría)
+      // Bloquear ejecución solo ante deadlock: un sector cuyo caudal + el de su
+      // cañería (ancestros) supera la bomba nunca regaría.
       const { deadlocked } = checkProgramConsistency(p, systemConfig.caudalBomba);
       if (deadlocked.length) {
         const sects = deadlocked.map((s) => `S${s}`).join(", ");
         toast(
-          `No se puede ejecutar: ${sects} tiene${deadlocked.length > 1 ? "n" : ""} un caudal mayor al de la bomba (${systemConfig.caudalBomba} L/min). ` +
-          `Editá el programa para corregir los caudales.`,
+          `No se puede ejecutar: ${sects} + su cañería superan la bomba (${systemConfig.caudalBomba} L/min) y nunca regarían. ` +
+          `Editá el programa para bajar esos caudales.`,
           true
         );
         return;
@@ -2546,12 +2559,12 @@ const char INDEX_HTML[] PROGMEM = R"=====(
       const lines = affected.map(({ prog, deadlocked, crowded }) => {
         const parts = [];
         if (deadlocked.length) {
-          parts.push(`S${deadlocked.join(", S")} nunca podrían activarse (caudal > ${val} L/min)`);
+          parts.push(`S${deadlocked.join(", S")} + su cañería superan ${val} L/min y nunca regarían`);
         }
         if (crowded && !deadlocked.length) {
-          parts.push(`sus raíces suman más de ${val} L/min (irán a cola)`);
+          parts.push(`algunos sectores no entran a la vez y van a cola`);
         } else if (crowded) {
-          parts.push(`además sus raíces suman más de ${val} L/min`);
+          parts.push(`además algunos sectores irán a cola`);
         }
         return `• Programa #${prog.id}: ${parts.join("; ")}`;
       });
@@ -2620,22 +2633,54 @@ const char INDEX_HTML[] PROGMEM = R"=====(
       resetConfigSaveButton();
     }
 
+    // Caudal de la cañería de un nodo (sobre un array de nodos crudo): su caudal
+    // + el de TODOS sus ancestros. Versión de edPathFlow para datos sin editor.
+    function nodePathFlow(nodos, node) {
+      let sum = node.caudal || 0, cur = node;
+      const seen = new Set([node.sectorId]);
+      while (cur && cur.padre != null && !seen.has(cur.padre)) {
+        const p = nodos.find((n) => n.sectorId === cur.padre);
+        if (!p) break;
+        sum += (p.caudal || 0);
+        seen.add(p.sectorId);
+        cur = p;
+      }
+      return sum;
+    }
+
     // --- Chequeo de consistencia programa ↔ caudal de bomba ---
     // Devuelve: { deadlocked: [sectorIds], crowded: bool }
-    //   deadlocked → algún sector tiene caudal > caudalBomba: nunca podría activarse
-    //   crowded    → la suma de raíces > caudalBomba: el programa funciona pero con más cola
+    //   deadlocked → un sector + su cañería (ancestros) supera la bomba: como esa
+    //                cadena debe abrirse entera para regarlo, nunca podría activarse.
+    //   crowded    → alguna combinación que correría a la vez supera la bomba: el
+    //                programa funciona, pero esos sectores irán a la cola (serializan).
     function checkProgramConsistency(prog, caudalBomba) {
       const deadlocked = prog.nodos
-        .filter((n) => n.caudal > caudalBomba)
+        .filter((n) => nodePathFlow(prog.nodos, n) > caudalBomba)
         .map((n) => n.sectorId);
+
+      let crowded = false;
       const rootSum = prog.nodos
         .filter((n) => n.padre === null)
-        .reduce((s, n) => s + n.caudal, 0);
-      return { deadlocked, crowded: rootSum > caudalBomba };
+        .reduce((s, n) => s + (n.caudal || 0), 0);
+      if (rootSum > caudalBomba) crowded = true;
+      if (!crowded) {
+        // Un padre como cañería + todos sus hijos a la vez no entran en la bomba.
+        for (const p of prog.nodos) {
+          const childSum = prog.nodos
+            .filter((n) => n.padre === p.sectorId)
+            .reduce((s, n) => s + (n.caudal || 0), 0);
+          if (childSum > 0 && nodePathFlow(prog.nodos, p) + childSum > caudalBomba) {
+            crowded = true;
+            break;
+          }
+        }
+      }
+      return { deadlocked, crowded };
     }
 
     async function saveSystemConfig() {
-      const val = Math.max(1, parseInt($("#pumpFlow").value, 10) || 20);
+      const val = Math.max(1, parseInt($("#pumpFlow").value, 10) || 30);
       const { hasDeadlock } = renderConfigImpact(val);
 
       // Si quedarían programas bloqueados, NO guardar en el primer click: mostramos

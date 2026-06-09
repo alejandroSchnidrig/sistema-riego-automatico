@@ -92,3 +92,17 @@ uint8_t Program::getChildCount(uint8_t parentSectorId) const {
   }
   return count;
 }
+
+uint16_t Program::getPathFlow(uint8_t sectorId) const {
+  const ProgramNode* node = findNodeBySectorId(sectorId);
+  if (node == nullptr) return 0;
+  uint32_t sum  = 0;
+  uint8_t  hops = 0;
+  while (node != nullptr) {
+    sum += node->flow;
+    if (node->parentSectorId == 0) break;
+    if (++hops > _sectorCount) break;  // guarda anti-ciclo
+    node = findNodeBySectorId(node->parentSectorId);
+  }
+  return (uint16_t)sum;
+}

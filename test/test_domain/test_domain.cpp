@@ -311,9 +311,10 @@ void test_engine_cyclic_restarts_roots(void) {
 
 void test_engine_validations(void) {
     IrrigationSystem sys(IrrigationSystem::InitMode::EMPTY);
-    sys.begin(); // pumpFlow default = 20
+    sys.begin();
+    sys.setPumpFlow(20);
 
-    //Válido: raíz + hijo dentro de los límites.
+    //Válido: raíz + hijo dentro de los límites (pathFlow hijo = 6 + 10 = 16 ≤ 20).
     Program ok;
     ok.addNode({2, 10, 0, 0, 10});
     ok.addNode({3, 10, 0, 2, 6});
@@ -331,23 +332,33 @@ void test_engine_validations(void) {
     badParent.addNode({3, 10, 0, 7, 6}); // sector 7 no está en el programa
     TEST_ASSERT_EQUAL(0, sys.saveProgram(badParent));
 
-    //Caudal de un sector mayor que la bomba.
+    //Deadlock: una raíz que pide más caudal que la bomba nunca podría regar.
     Program tooMuchFlow;
     tooMuchFlow.addNode({2, 10, 0, 0, 25});
     TEST_ASSERT_EQUAL(0, sys.saveProgram(tooMuchFlow));
 
-    //Σ caudal de raíces mayor que la bomba.
-    Program rootsTooMuch;
-    rootsTooMuch.addNode({2, 10, 0, 0, 12});
-    rootsTooMuch.addNode({3, 10, 0, 0, 12});
-    TEST_ASSERT_EQUAL(0, sys.saveProgram(rootsTooMuch));
+    //Deadlock por cañería: caudal del nodo + el de sus ancestros supera la bomba.
+    //S2(12) raíz, S3(12) hijo → pathFlow(S3) = 24 > 20: la cadena entera debe
+    //abrirse para regar S3 y nunca entraría en la bomba.
+    Program deadlockChain;
+    deadlockChain.addNode({2, 10, 0, 0, 12});
+    deadlockChain.addNode({3, 10, 0, 2, 12});
+    TEST_ASSERT_EQUAL(0, sys.saveProgram(deadlockChain));
 
-    //Σ caudal de hijos mayor que el del padre.
-    Program childrenTooMuch;
-    childrenTooMuch.addNode({2, 10, 0, 0, 6});
-    childrenTooMuch.addNode({3, 10, 0, 2, 5});
-    childrenTooMuch.addNode({4, 10, 0, 2, 5}); // 5 + 5 > 6
-    TEST_ASSERT_EQUAL(0, sys.saveProgram(childrenTooMuch));
+    //YA NO bloquea: Σ caudal de las raíces > bomba. El motor las encola por
+    //turnos (cada pathFlow individual ≤ bomba).
+    Program rootsOverflow;
+    rootsOverflow.addNode({2, 10, 0, 0, 12});
+    rootsOverflow.addNode({3, 10, 0, 0, 12}); // 24 > 20, pero cada raíz ≤ 20
+    TEST_ASSERT_NOT_EQUAL(0, sys.saveProgram(rootsOverflow));
+
+    //YA NO bloquea: Σ caudal de hijos > caudal del padre. No es deadlock
+    //(pathFlow de cada hijo = 5 + 6 = 11 ≤ 20); de a uno entran, el resto encola.
+    Program childrenOverflow;
+    childrenOverflow.addNode({2, 10, 0, 0, 6});
+    childrenOverflow.addNode({3, 10, 0, 2, 5});
+    childrenOverflow.addNode({4, 10, 0, 2, 5});
+    TEST_ASSERT_NOT_EQUAL(0, sys.saveProgram(childrenOverflow));
 }
 
 void test_seed_programs_tree_shape(void) {
@@ -355,14 +366,17 @@ void test_seed_programs_tree_shape(void) {
     IrrigationSystem sys; // InitMode::WITH_SEED
     sys.begin();
 
-    //Programa 1: S1 raíz con dos hijos (S2, S3); S5 cuelga del árbol.
+    //La bomba por defecto pasó a 30 L/min (modelo cañería suma caudal).
+    TEST_ASSERT_EQUAL(30, sys.getPumpFlow());
+
+    //Programa 1: S1 raíz con dos hijos (S2, S3). Ya no incluye S4/S5.
     const Program &p1 = sys.programAt(0);
     TEST_ASSERT_TRUE(p1.isValid());
     TEST_ASSERT_EQUAL(1, p1.getId());
-    TEST_ASSERT_EQUAL(5, p1.getSectorCount());
+    TEST_ASSERT_EQUAL(3, p1.getSectorCount());
     TEST_ASSERT_EQUAL(1, p1.getRootCount());
     TEST_ASSERT_EQUAL(2, p1.getChildCount(1)); // S2 y S3 cuelgan de S1
-    TEST_ASSERT_TRUE(p1.hasNode(5));
+    TEST_ASSERT_FALSE(p1.hasNode(5));
     const ProgramNode *root = p1.findNodeBySectorId(1);
     TEST_ASSERT_NOT_NULL(root);
     TEST_ASSERT_EQUAL(0, root->parentSectorId);
@@ -378,6 +392,40 @@ void test_seed_programs_tree_shape(void) {
     const Program &p3 = sys.programAt(2);
     TEST_ASSERT_EQUAL(3, p3.getId());
     TEST_ASSERT_EQUAL(3, p3.getRootCount());
+}
+
+void test_engine_feeding_counts_toward_flow(void) {
+    //Modelo nuevo: la cañería (ancestros abiertos) suma caudal contra la bomba.
+    //S1 raíz (12), S2 y S3 hijos de S1 (6 c/u), sin retardo. Bomba = 20.
+    //Naïve S2+S3 = 12 ≤ 20, pero con S1 de cañería: 12+6+6 = 24 > 20 → no caben
+    //juntos. Uno riega y el otro espera en la cola hasta que se libere caudal.
+    IrrigationSystem sys(IrrigationSystem::InitMode::EMPTY);
+    sys.begin();
+    sys.setPumpFlow(20);
+
+    Program p;
+    p.addNode({1, 3, 0, 0, 12});
+    p.addNode({2, 3, 0, 1, 6});
+    p.addNode({3, 3, 0, 1, 6});
+    uint16_t id = sys.saveProgram(p); // pathFlow(S2)=pathFlow(S3)=18 ≤ 20 → válido
+    TEST_ASSERT_NOT_EQUAL(0, id);
+    TEST_ASSERT_TRUE(sys.startProgramById(id));
+
+    //Al terminar S1 (3 s): S2 entra (S1 cañería 12 + S2 6 = 18 ≤ 20); S3 no
+    //entra (sumaría 24) y queda en la cola.
+    advanceSeconds(sys, 3);
+    SystemStateSnapshot s = sys.getStateSnapshot();
+    TEST_ASSERT_EQUAL(1, s.activeCount);
+    TEST_ASSERT_EQUAL(2, s.active[0].sectorId);
+    TEST_ASSERT_EQUAL(1, s.queuedCount);
+    TEST_ASSERT_EQUAL(3, s.queued[0].sectorId);
+
+    //Al terminar S2 (3 s más) se libera caudal y S3 drena de la cola a activo.
+    advanceSeconds(sys, 3);
+    s = sys.getStateSnapshot();
+    TEST_ASSERT_EQUAL(0, s.queuedCount);
+    TEST_ASSERT_EQUAL(1, s.activeCount);
+    TEST_ASSERT_EQUAL(3, s.active[0].sectorId);
 }
 
 //Igual que advanceSeconds, pero pasando la hora actual (minutos desde medianoche)
@@ -446,6 +494,7 @@ int main(int argc, char **argv) {
     RUN_TEST(test_engine_cyclic_stops_after_endtime);
     RUN_TEST(test_irrigation_system_manual_flow_limit);
     RUN_TEST(test_engine_validations);
+    RUN_TEST(test_engine_feeding_counts_toward_flow);
     RUN_TEST(test_seed_programs_tree_shape);
     return UNITY_END();
 }

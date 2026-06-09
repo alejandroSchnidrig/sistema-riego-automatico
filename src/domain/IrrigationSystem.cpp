@@ -58,12 +58,14 @@ void IrrigationSystem::seedDefaultPrograms() {
   for (uint8_t i = 0; i < Config::MAX_PROGRAMAS; i++) {
     _programs[i] = Program();
   }
-  _pumpFlow = Config::CAUDAL_BOMBA_DEFAULT; // los demos están diseñados para 20 L/min
+  _pumpFlow = Config::CAUDAL_BOMBA_DEFAULT; // los demos están diseñados para 30 L/min
 
   // Nodos: {sectorId, irrigationTime, delay, parentSectorId, flow} (padre 0 = raíz)
 
-  // Programa 1: árbol S1→{S2,S3}; S2→S4; S3→S5. Cíclico, lun-vie 07:00.
-  // S1 alimenta S2+S3 en paralelo (caudal S1 = 6+6 = 12); cada hoja iguala a su padre.
+  // Programa 1: árbol S1→{S2,S3}. Cíclico, lun-vie 07:00.
+  // Modelo físico: mientras un hijo riega, la válvula del padre queda abierta
+  // como cañería y SU caudal sigue contando. Cuando S1 (12) termina, arrancan
+  // S2 y S3 (6 c/u): S1(cañería 12)+S2(6)+S3(6)=24 ≤ 30 (bomba) → riegan juntos.
   _programs[0].setValid(true);
   _programs[0].setId(1);
   _programs[0].setName("Jardin delantero");
@@ -74,10 +76,8 @@ void IrrigationSystem::seedDefaultPrograms() {
   _programs[0].addNode({1, 15, 0, 0, 12});
   _programs[0].addNode({2, 12, 3, 1, 6});
   _programs[0].addNode({3, 18, 3, 1, 6});
-  _programs[0].addNode({4, 10, 2, 2, 6});
-  _programs[0].addNode({5, 12, 2, 3, 6});
 
-  // Programa 2: dos raíces (S4, S6 = 7 L/min c/u → 14 ≤ 20) con un hijo cada una.
+  // Programa 2: dos raíces (S4, S6 = 7 L/min c/u → 14 ≤ 30) con un hijo cada una.
   _programs[1].setValid(true);
   _programs[1].setId(2);
   _programs[1].setName("Huerta (noche)");
@@ -89,7 +89,7 @@ void IrrigationSystem::seedDefaultPrograms() {
   _programs[1].addNode({7, 15, 3, 4, 6});
   _programs[1].addNode({8, 18, 3, 6, 6});
 
-  // Programa 3: tres raíces en paralelo (3 × 6 = 18 ≤ 20), sin cola.
+  // Programa 3: tres raíces en paralelo (3 × 6 = 18 ≤ 30), sin cola.
   _programs[2].setValid(true);
   _programs[2].setId(3);
   _programs[2].setName("Cesped lateral");
@@ -128,9 +128,16 @@ void IrrigationSystem::stepOneSecond(int nowMinutes) {
   for (uint8_t i = 0; i < _pendingCount; i++) {
     PendingEntry e = _pending[i];
     if (e.delaySec <= 1) {
-      // El caudal ya estaba comprometido como pendiente; pasa a activo.
+      // Al cumplirse el retardo se abre la válvula del sector y la de toda su
+      // cañería (ancestros). Si el caudal total no entra en la bomba (p. ej.
+      // tras bajar el caudal de la bomba en caliente), rebota a la cola y
+      // reintenta cuando se libere caudal (drainQueue).
       if (!activeContains(e.sectorId)) {
-        addActive(e.sectorId, e.irrigationTime, e.flow);
+        if (fitsToActivate(e.sectorId)) {
+          addActive(e.sectorId, e.irrigationTime, e.flow);
+        } else {
+          addQueued(e.sectorId, e.irrigationTime, 0, e.flow);
+        }
       }
     } else {
       e.delaySec = (uint16_t)(e.delaySec - 1);
@@ -200,16 +207,57 @@ void IrrigationSystem::startRoots(int programIndex) {
   }
 }
 
-uint16_t IrrigationSystem::committedFlow() const {
+uint16_t IrrigationSystem::flowForSectorSet(uint16_t irrigatingMask) const {
+  if (_runningProgramIndex < 0) return 0;
+  const Program& p = _programs[_runningProgramIndex];
+
+  // 1) Para cada sector que riega, abrir la cadena de ancestros (cañería).
+  uint16_t openMask = irrigatingMask;
+  for (uint8_t id = 1; id <= Config::NUM_SECTORES; id++) {
+    if (!(irrigatingMask & sectorIdToMask(id))) continue;
+    const ProgramNode* node = p.findNodeBySectorId(id);
+    uint8_t hops = 0;
+    while (node != nullptr && node->parentSectorId != 0) {
+      openMask |= sectorIdToMask(node->parentSectorId);
+      if (++hops > Config::NUM_SECTORES) break;  // guarda anti-ciclo
+      node = p.findNodeBySectorId(node->parentSectorId);
+    }
+  }
+
+  // 2) Sumar el caudal de cada válvula abierta una sola vez (dedup por máscara).
   uint32_t total = 0;
-  for (uint8_t i = 0; i < _activeCount; i++)  total += _active[i].flow;
-  for (uint8_t i = 0; i < _pendingCount; i++) total += _pending[i].flow;
+  for (uint8_t id = 1; id <= Config::NUM_SECTORES; id++) {
+    if (!(openMask & sectorIdToMask(id))) continue;
+    const ProgramNode* node = p.findNodeBySectorId(id);
+    if (node != nullptr) total += node->flow;
+  }
   return (uint16_t)total;
+}
+
+uint16_t IrrigationSystem::computePendingMask() const {
+  uint16_t mask = 0;
+  for (uint8_t i = 0; i < _pendingCount; i++) {
+    mask |= sectorIdToMask(_pending[i].sectorId);
+  }
+  return mask;
+}
+
+uint16_t IrrigationSystem::committedFlow() const {
+  // Caudal reservado: activos + pendientes + toda su cañería (ancestros).
+  return flowForSectorSet(computeActiveMask() | computePendingMask());
+}
+
+bool IrrigationSystem::fitsToActivate(uint8_t sectorId) const {
+  // Al abrir 'sectorId' también se abre su cañería; el caudal total (con los ya
+  // comprometidos) debe entrar en la bomba. Dedup natural por máscara.
+  const uint16_t set = computeActiveMask() | computePendingMask() |
+                       sectorIdToMask(sectorId);
+  return flowForSectorSet(set) <= _pumpFlow;
 }
 
 void IrrigationSystem::tryActivateSector(uint8_t sectorId, uint32_t irrigationTime,
                                          uint16_t flow, uint16_t delaySec) {
-  if ((uint32_t)committedFlow() + flow <= _pumpFlow) {
+  if (fitsToActivate(sectorId)) {
     if (delaySec > 0) {
       addPending(sectorId, delaySec, flow, irrigationTime);
     } else {
@@ -221,9 +269,8 @@ void IrrigationSystem::tryActivateSector(uint8_t sectorId, uint32_t irrigationTi
 }
 
 void IrrigationSystem::drainQueue() {
-  // FIFO: si el primero de la cola no entra, se detiene el drenado.
-  while (_queueCount > 0 &&
-         (uint32_t)committedFlow() + _queue[0].flow <= _pumpFlow) {
+  // FIFO: si el primero de la cola no entra (con su cañería), se detiene.
+  while (_queueCount > 0 && fitsToActivate(_queue[0].sectorId)) {
     QueuedEntry e = _queue[0];
     for (uint8_t i = 1; i < _queueCount; i++) _queue[i - 1] = _queue[i];
     _queueCount--;
@@ -606,9 +653,6 @@ bool IrrigationSystem::validateProgram(const Program& p) const {
   for (uint8_t i = 0; i < count; i++) {
     const ProgramNode& n = p.getNode(i);
 
-    // Ningún sector puede pedir más caudal que la bomba.
-    if (n.flow > _pumpFlow) return false;
-
     // El padre (si lo hay) debe existir y no ser uno mismo.
     if (n.parentSectorId != 0) {
       if (n.parentSectorId == n.sectorId) return false;
@@ -626,23 +670,13 @@ bool IrrigationSystem::validateProgram(const Program& p) const {
     }
   }
 
-  // Σ caudal de las raíces ≤ caudal de la bomba.
-  uint32_t rootSum = 0;
+  // Único caudal que bloquea el guardado: DEADLOCK. Un sector cuyo caudal + el
+  // de su cañería (ancestros) supera la bomba nunca podría regar, porque esa
+  // cadena entera debe abrirse para que el agua le llegue. (Que las raíces, o
+  // un padre + sus hijos a la vez, sumen más que la bomba NO es error: el motor
+  // los manda a la cola y riegan por turnos.)
   for (uint8_t i = 0; i < count; i++) {
-    if (p.getNode(i).parentSectorId == 0) rootSum += p.getNode(i).flow;
-  }
-  if (rootSum > _pumpFlow) return false;
-
-  // Σ caudal de los hijos ≤ caudal del padre (la cañería no agrega caudal).
-  for (uint8_t i = 0; i < count; i++) {
-    const ProgramNode& parent = p.getNode(i);
-    uint32_t childSum = 0;
-    for (uint8_t j = 0; j < count; j++) {
-      if (p.getNode(j).parentSectorId == parent.sectorId) {
-        childSum += p.getNode(j).flow;
-      }
-    }
-    if (childSum > parent.flow) return false;
+    if (p.getPathFlow(p.getNode(i).sectorId) > _pumpFlow) return false;
   }
 
   return true;

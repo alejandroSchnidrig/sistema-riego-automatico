@@ -107,7 +107,6 @@ riegan, sus retardos y la cañería (ancestros que dejan pasar el agua).
 
 - [PlatformIO](https://platformio.org/) (CLI o extensión de VS Code).
 - Una placa ESP32 (o el entorno `native` para correr los tests sin hardware).
-- Python 3 (solo para regenerar la UI embebida).
 
 ### Compilar y flashear
 

@@ -44,6 +44,10 @@ bool extractStringField(const String& json, const String& key, String& out);
 // Extrae el campo "id" que puede ser null o estar ausente (retorna 0 en esos casos)
 bool extractNullableId(const String& json, int& out);
 
+// Extrae un campo entero "key" que puede ser null o estar ausente.
+// En esos casos escribe 0 en `out` (p. ej. "padre": null → raíz).
+bool extractNullableIntField(const String& json, const String& key, int& out);
+
 // Extrae un objeto JSON anidado bajo "key" (devuelve el substring {...} balanceado)
 bool extractObjectField(const String& json, const String& key, String& out);
 

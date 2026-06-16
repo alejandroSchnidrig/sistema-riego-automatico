@@ -166,6 +166,30 @@ bool extractNullableId(const String& json, int& out) {
   return extractIntAt(json, pos, out, endPos);
 }
 
+// Versión genérica de extractNullableId para cualquier campo: acepta null,
+// ausencia del campo o un número. En los dos primeros casos escribe 0 en `out`.
+// Útil para "padre": null (sector raíz) en el modelo árbol.
+bool extractNullableIntField(const String& json, const String& key, int& out) {
+  String pattern = "\"" + key + "\"";
+  int pos = json.indexOf(pattern);
+  if (pos < 0) { out = 0; return true; }  // campo ausente → 0
+
+  pos = json.indexOf(':', pos);
+  if (pos < 0) return false;
+  pos++;
+
+  // Saltear espacios
+  while (pos < (int)json.length() &&
+         (json[pos] == ' ' || json[pos] == '\t' || json[pos] == '\n' || json[pos] == '\r')) {
+    pos++;
+  }
+
+  if (json.startsWith("null", pos)) { out = 0; return true; }  // null → 0
+
+  int endPos = pos;
+  return extractIntAt(json, pos, out, endPos);
+}
+
 // Busca el campo `"key": { ... }` en json y devuelve en `out` el substring
 // completo del objeto anidado, respetando llaves balanceadas para no cortar
 // en llaves internas de objetos más profundos. Retorna false si no lo encuentra.

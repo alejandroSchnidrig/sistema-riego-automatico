@@ -7,17 +7,58 @@
 
 enum class SystemState { IDLE, RUNNING, MANUAL_STOP };
 
+// ------------------------------------------------------------
+// Entradas de las listas de runtime del motor árbol + caudal.
+// ------------------------------------------------------------
+
+// Sector regando: válvula abierta, descontando tiempo.
+struct ActiveEntry {
+  uint8_t  sectorId;
+  uint32_t remainingTimeSec;
+  uint16_t flow;
+};
+
+// Sector cuyo padre terminó: espera su retardo antes de regar.
+// El caudal ya está comprometido, pero la válvula sigue cerrada.
+struct PendingEntry {
+  uint8_t  sectorId;
+  uint16_t delaySec;        // segundos restantes de espera
+  uint16_t flow;
+  uint32_t irrigationTime;  // duración a aplicar al activarse
+};
+
+// Sector sin caudal libre: espera en cola FIFO.
+struct QueuedEntry {
+  uint8_t  sectorId;
+  uint32_t irrigationTime;
+  uint16_t delaySec;
+  uint16_t flow;
+};
+
 // DTO inmutable que ApiHandler serializa a JSON; no contiene referencias al estado interno.
 struct SystemStateSnapshot {
   const char* stateName;
   uint16_t    activeProgramId;
-  uint8_t     activeSectorId;
-  uint16_t    activeSectorMask;    // máscara combinada: manual | programático
-  uint32_t    remainingTimeSec;
+
+  // Listas del modelo árbol + caudal (se serializan en /estado, Fase E3)
+  uint8_t      activeCount;
+  ActiveEntry  active[Config::NUM_SECTORES];
+  uint8_t      pendingCount;
+  PendingEntry pending[Config::NUM_SECTORES];
+  uint8_t      queuedCount;
+  QueuedEntry  queued[Config::NUM_SECTORES];
+  uint16_t     completedMask;   // bit N-1 encendido = sector N completado
+
   bool        pumpOn;
   bool        manualActive;
   uint16_t    manualSectorMask;
   uint8_t     firstManualSectorId; // primer bit encendido de manualSectorMask (para UI)
+  uint16_t    pumpFlow;            // caudal máximo de la bomba (L/min)
+
+  // Resumen escalar (usado por el debug serial de main.cpp; /estado usa las listas)
+  uint8_t     activeSectorId;
+  uint16_t    activeSectorMask;    // máscara combinada: manual | programático
+  uint32_t    remainingTimeSec;
 };
 
 class IrrigationSystem {
@@ -32,17 +73,30 @@ public:
   void begin();
   void clearPrograms();
   void seedDefaultPrograms();
-  void tick();
+  // nowMinutes: minutos desde medianoche (hora actual del RTC). -1 = sin hora
+  // (en tests sin RTC); en ese caso un programa cíclico reinicia siempre.
+  void tick(int nowMinutes = -1);
 
   bool startProgramById(uint16_t id);
   void stop();
   void clearManualOverrides();
-  void setManualSector(uint8_t sectorId, bool on);
+  // Enciende/apaga un sector en modo manual. Al encender devuelve false si no
+  // hay caudal libre en la bomba (Σ caudal manual + el nuevo > caudalBomba).
+  // Apagar siempre tiene éxito.
+  bool setManualSector(uint8_t sectorId, bool on);
 
   // Program management
   uint16_t saveProgram(Program& p);
   bool deleteProgram(uint16_t id);
   const Program& programAt(uint8_t index) const;
+
+  // Caudal de la bomba (límite global de concurrencia)
+  uint16_t getPumpFlow() const;
+  void setPumpFlow(uint16_t flow);
+
+  // Caudal asumido por sector (1..8) cuando se enciende en modo manual (L/min)
+  uint16_t getManualSectorFlow(uint8_t sectorId) const;
+  void setManualSectorFlow(uint8_t sectorId, uint16_t flow);
 
   // State queries
   bool isRunning() const;
@@ -64,29 +118,68 @@ private:
   Pump     _pump;
   Program  _programs[Config::MAX_PROGRAMAS];
   uint16_t _nextProgramId;
+  uint16_t _pumpFlow;
 
   InitMode _initMode;
 
   SystemState   _state;
   uint16_t      _activeProgramId;
-  uint8_t       _activeSectorId;
-  uint32_t      _remainingTimeSec;
-  uint16_t      _manualSectorMask;
-
   int           _runningProgramIndex;
-  int           _runningStepIndex;
-  bool          _waitingBetweenSectors;
-  unsigned long _stepStartMs;
-  unsigned long _delayStartMs;
+
+  // Listas de runtime del motor árbol + caudal
+  ActiveEntry  _active[Config::NUM_SECTORES];
+  uint8_t      _activeCount;
+  PendingEntry _pending[Config::NUM_SECTORES];
+  uint8_t      _pendingCount;
+  QueuedEntry  _queue[Config::NUM_SECTORES];   // FIFO
+  uint8_t      _queueCount;
+  uint16_t     _completedMask;
+
+  uint16_t      _manualSectorMask;
+  uint16_t      _manualSectorFlow[Config::NUM_SECTORES]; // caudal manual por sector
+  unsigned long _lastStepMs;          // marca del último paso de 1 s procesado
+
+  // Motor de ejecución
+  void stepOneSecond(int nowMinutes);
+  void startRoots(int programIndex);
+  // ¿Un programa cíclico puede reiniciar su ciclo a la hora actual?
+  // false cuando ya se pasó la horaFin del programa (nowMinutes >= finMin).
+  bool canRestartCycle(const Program& p, int nowMinutes) const;
+  // Caudal total que circularía si estuvieran abiertas las válvulas de
+  // 'irrigatingMask': suma el caudal de cada sector y el de TODOS sus ancestros
+  // (cañería), contando cada sector una sola vez. Usa el programa en ejecución.
+  uint16_t flowForSectorSet(uint16_t irrigatingMask) const;
+  uint16_t committedFlow() const;
+  // Máscara de sectores con caudal ya comprometido (pendientes de retardo).
+  uint16_t computePendingMask() const;
+  // ¿Activar 'sectorId' (abriendo su cañería) cabe en el caudal de la bomba,
+  // dado lo que ya está activo/pendiente? Equivale al flowIfActivated del proto.
+  bool fitsToActivate(uint8_t sectorId) const;
+  void tryActivateSector(uint8_t sectorId, uint32_t irrigationTime,
+                         uint16_t flow, uint16_t delaySec);
+  void drainQueue();
+  void enqueueChildren(uint8_t parentSectorId);
+
+  bool activeContains(uint8_t sectorId) const;
+  void addActive(uint8_t sectorId, uint32_t remaining, uint16_t flow);
+  void addPending(uint8_t sectorId, uint16_t delaySec, uint16_t flow,
+                  uint32_t irrigationTime);
+  void addQueued(uint8_t sectorId, uint32_t irrigationTime,
+                 uint16_t delaySec, uint16_t flow);
+  void clearRuntimeLists();
+
+  // Salidas (válvulas, bomba). La cañería abre la válvula fija (no titila).
+  uint16_t computeActiveMask() const;
+  uint16_t computeFeedingMask() const;
+  void applyOutputsFromState();
+  void setSectorHardware(uint16_t openMask);
 
   void stopRuntime(SystemState newState);
-  void startStep(int programIndex, int stepIndex);
-  void applyOutputsFromState();
-  void setSectorHardware(uint16_t sectorMask);
 
   static uint16_t sectorIdToMask(uint8_t sectorId);
   static uint8_t firstSectorFromMask(uint16_t mask);
 
   int findProgramIndexById(uint16_t id) const;
   int findFreeProgramSlot() const;
+  bool validateProgram(const Program& p) const;
 };

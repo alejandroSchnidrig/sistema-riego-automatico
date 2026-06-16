@@ -1,14 +1,24 @@
 #include "WebServer.h"
 #include "../config/Config.h"
 
+namespace {
+  const byte DNS_PORT = 53;
+}
+
 HttpServer::HttpServer(IrrigationSystem& sys, RTCManager& rtc, StorageManager& storage)
   : _server(80),
     _api(sys, rtc, storage, _server)
 {}
 
 void HttpServer::begin() {
+  IPAddress apIp;
+  apIp.fromString(Config::AP_IP);
+  IPAddress subnet(255, 255, 255, 0);
+
   WiFi.mode(WIFI_AP);
+  WiFi.softAPConfig(apIp, apIp, subnet);
   WiFi.softAP(Config::AP_SSID, Config::AP_PASSWORD);
+  _dnsServer.start(DNS_PORT, "*", apIp);
 
   Serial.println();
   Serial.println("==================================");
@@ -19,7 +29,10 @@ void HttpServer::begin() {
   Serial.println(Config::AP_PASSWORD);
   Serial.print("IP         : ");
   Serial.println(WiFi.softAPIP());
-  Serial.println("Abrir en navegador: http://192.168.4.1");
+  Serial.print("URL        : http://");
+  Serial.println(Config::AP_DNS_NAME);
+  Serial.print("URL backup : http://");
+  Serial.println(WiFi.softAPIP());
   Serial.println("==================================");
 
   _server.on("/",              HTTP_GET,  [this]() { _api.handleRoot(); });
@@ -38,5 +51,6 @@ void HttpServer::begin() {
 }
 
 void HttpServer::handleClient() {
+  _dnsServer.processNextRequest();
   _server.handleClient();
 }

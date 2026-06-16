@@ -1,6 +1,7 @@
 #include <unity.h>
 #include "../src/storage/StorageManager.h"
 #include "../src/domain/IrrigationSystem.h"
+#include "../src/web/JsonHelpers.h"
 
 #include <iostream>
 #include <map>
@@ -51,16 +52,22 @@ void test_save_and_load_programs(void)
     IrrigationSystem sys(IrrigationSystem::InitMode::EMPTY);
     sys.begin();
 
-    //Crear un programa.
+    //Caudal de bomba no-default para verificar que persiste. Debe alcanzar
+    //para la cañería del hijo: pathFlow(S2) = S2(6) + S1(12) = 18 ≤ 20.
+    sys.setPumpFlow(20);
+
+    //Crear un programa (modelo árbol: raíz + un hijo).
     Program p;
     p.setId(1);
     p.setStartTime("08:00");
     p.setDays(0b01010101);
-    p.setSectorDelay(15);
     p.setCyclic(true);
 
-    ProgramNode n1 = {1, 1, 600};
+    // {sectorId, irrigationTime, delay, parentSectorId, flow}
+    ProgramNode n1 = {1, 600, 0, 0, 12};
+    ProgramNode n2 = {2, 300, 5, 1, 6};
     p.addNode(n1);
+    p.addNode(n2);
     p.setValid(true);
 
     //Agregar programa al sistema.
@@ -78,17 +85,37 @@ void test_save_and_load_programs(void)
 
     TEST_ASSERT_TRUE(storage.loadPrograms(sys2));
 
+    //El caudal de bomba persistido debe restaurarse.
+    TEST_ASSERT_EQUAL(20, sys2.getPumpFlow());
+
     //Verificar programa cargado verificando el primer programa cargado (debería ser el mismo que guardamos).
     const Program &loaded = sys2.programAt(0);
     TEST_ASSERT_TRUE(loaded.isValid());
     TEST_ASSERT_EQUAL(1, loaded.getId());
     TEST_ASSERT_EQUAL_STRING("08:00", loaded.getStartTime());
     TEST_ASSERT_EQUAL(0b01010101, loaded.getDays());
-    TEST_ASSERT_EQUAL(15, loaded.getSectorDelay());
     TEST_ASSERT_TRUE(loaded.isCyclic());
-    TEST_ASSERT_EQUAL(1, loaded.getSectorCount());
-    TEST_ASSERT_EQUAL(1, loaded.getNode(0).id);
-    TEST_ASSERT_EQUAL(600, loaded.getNode(0).irrigationTime);
+    TEST_ASSERT_EQUAL(2, loaded.getSectorCount());
+
+    //Raíz (sector 1).
+    const ProgramNode *root = loaded.findNodeBySectorId(1);
+    TEST_ASSERT_NOT_NULL(root);
+    TEST_ASSERT_EQUAL(600, root->irrigationTime);
+    TEST_ASSERT_EQUAL(0, root->delay);
+    TEST_ASSERT_EQUAL(0, root->parentSectorId);
+    TEST_ASSERT_EQUAL(12, root->flow);
+
+    //Hijo (sector 2, cuelga del 1).
+    const ProgramNode *child = loaded.findNodeBySectorId(2);
+    TEST_ASSERT_NOT_NULL(child);
+    TEST_ASSERT_EQUAL(300, child->irrigationTime);
+    TEST_ASSERT_EQUAL(5, child->delay);
+    TEST_ASSERT_EQUAL(1, child->parentSectorId);
+    TEST_ASSERT_EQUAL(6, child->flow);
+
+    //Estructura de árbol: 1 raíz, 1 hijo del sector 1.
+    TEST_ASSERT_EQUAL(1, loaded.getRootCount());
+    TEST_ASSERT_EQUAL(1, loaded.getChildCount(1));
 }
 
 void test_load_invalid_json(void)
@@ -103,6 +130,42 @@ void test_load_invalid_json(void)
     TEST_ASSERT_FALSE(storage.loadPrograms(sys));
 }
 
+void test_legacy_linear_config_not_migrated(void)
+{
+    //Un config.json del modelo lineal viejo (sectores[]/orden, sin nodos[]) no se
+    //migra: parseOneProgram falla → loadPrograms devuelve false (se re-siembra).
+    StorageManager storage;
+    IrrigationSystem sys(IrrigationSystem::InitMode::EMPTY);
+    sys.begin();
+
+    mock_fs["/config.json"] =
+        "{\"programas\":[{\"id\":1,\"horaInicio\":\"08:00\",\"dias\":1,"
+        "\"retardoEntreSectores\":5,\"ciclico\":true,"
+        "\"sectores\":[{\"id\":1,\"orden\":1,\"tiempoRiego\":600}]}]}";
+
+    TEST_ASSERT_FALSE(storage.loadPrograms(sys));
+}
+
+void test_nullable_parent_field(void)
+{
+    int out = -1;
+
+    //"padre": null → 0 (raíz).
+    out = -1;
+    TEST_ASSERT_TRUE(extractNullableIntField("{\"padre\":null}", "padre", out));
+    TEST_ASSERT_EQUAL(0, out);
+
+    //Campo ausente → 0 (raíz).
+    out = -1;
+    TEST_ASSERT_TRUE(extractNullableIntField("{\"sectorId\":2}", "padre", out));
+    TEST_ASSERT_EQUAL(0, out);
+
+    //"padre": número → ese valor.
+    out = -1;
+    TEST_ASSERT_TRUE(extractNullableIntField("{\"padre\":3}", "padre", out));
+    TEST_ASSERT_EQUAL(3, out);
+}
+
 int main(int argc, char **argv)
 {
     UNITY_BEGIN();
@@ -110,5 +173,7 @@ int main(int argc, char **argv)
     RUN_TEST(test_load_programs_missing_file);
     RUN_TEST(test_save_and_load_programs);
     RUN_TEST(test_load_invalid_json);
+    RUN_TEST(test_legacy_linear_config_not_migrated);
+    RUN_TEST(test_nullable_parent_field);
     return UNITY_END();
 }

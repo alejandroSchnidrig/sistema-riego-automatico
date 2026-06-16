@@ -1,6 +1,0 @@
-Para ejecutar tests unitarios:
--Instalar extension de PlatformIO en VSCode.
--Ir a solapa de testing y ejecutar las pruebas de la carpeta native.
-
-TODO:
--Probar tests en ESP32.

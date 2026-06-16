@@ -26,13 +26,13 @@ public:
   // Debe llamarse desde setup().
   void begin();
 
-  void activate();          // abre la válvula del sector
-  void deactivate();        // cierra la válvula del sector
+  void activate(); // abre la válvula del sector
+  void deactivate(); // cierra la válvula del sector
 
-  bool    isActive() const;
-  uint8_t getId()    const;
-  uint8_t getPin()   const; // pin GPIO de la válvula
-  Valve&  getValve();       // acceso a la válvula subyacente
+  bool isActive() const; // ¿la válvula del sector está abierta?
+  uint8_t getId() const; // ID del sector (1-8)
+  uint8_t getPin() const; // pin GPIO de la válvula
+  Valve&  getValve(); // acceso a la válvula subyacente
 
 private:
   uint8_t _id;

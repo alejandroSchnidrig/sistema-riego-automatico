@@ -27,9 +27,9 @@ public:
   void open();           // activa la válvula (pin → HIGH)
   void close();          // desactiva la válvula (pin → LOW)
 
-  bool    isOpen()  const;
-  uint8_t getId()   const;
-  uint8_t getPin()  const;
+  bool    isOpen()  const;   // ¿la válvula está abierta?
+  uint8_t getId()   const;   // ID de sector (1-8) al que pertenece
+  uint8_t getPin()  const;   // pin GPIO asociado
 
 private:
   uint8_t _pin;

@@ -10,9 +10,8 @@ RTCManager::RTCManager(uint8_t rst, uint8_t dat, uint8_t clk)
 // ============================================================
 
 void RTCManager::begin() {
-  // HAL already began in constructor or could be initialized here again
-  // Some HAL might need re-init, but we assume it's ready.
-  // Delay for stabilization
+  // El HAL del RTC ya se inicializó en el constructor; acá solo esperamos
+  // unos milisegundos a que se estabilice antes de la primera lectura.
   delay(50);
 
   RTC_Time t = hal_rtc_now();
@@ -93,8 +92,8 @@ String RTCManager::formatTime(const RTC_Time& t) {
 // ============================================================
 
 uint8_t RTCManager::dayMaskBitFromDate(uint16_t year, uint8_t month, uint8_t day) {
-  // 0=Dom … 6=Sáb. DS1302 usually expects 1=Sun. We'll use calculateDayOfWeek directly.
-  const uint8_t dow = calculateDayOfWeek(year, month, day); // 1..7 (1=Sun)
+  // Convierte la fecha al bit de día del bitmask del programa (0=lunes … 6=domingo).
+  const uint8_t dow = calculateDayOfWeek(year, month, day); // 1..7 (1=domingo)
   switch (dow) {
     case 2: return 0;   // Lunes
     case 3: return 1;   // Martes

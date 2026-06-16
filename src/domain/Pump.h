@@ -26,8 +26,8 @@ public:
   void on();            // enciende la bomba (pin → HIGH)
   void off();           // apaga la bomba   (pin → LOW)
 
-  bool    isOn()    const;
-  uint8_t getPin()  const;
+  bool    isOn()    const;   // ¿la bomba está encendida?
+  uint8_t getPin()  const;   // pin GPIO asociado
 
 private:
   uint8_t _pin;

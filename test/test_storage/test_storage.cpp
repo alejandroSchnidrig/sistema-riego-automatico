@@ -17,7 +17,9 @@ void setUp(void)
     mock_fs.clear();
     mock_fs_initialized = false;
 
-    //Reinicio los mocks. Esto es necesario porque el mismo mock se comparte entre tests y el estado de un test podría afectar a otro si no se reinicia. Por ejemplo, si un test configura un pin como OUTPUT y lo deja en HIGH, el siguiente test podría encontrar ese pin ya configurado y con estado HIGH, lo que podría causar resultados inesperados o falsos positivos/negativos. Reiniciar los mocks garantiza que cada test comience con un estado limpio e independiente.
+    //Reinicio los mocks. Esto es necesario porque el mismo mock se comparte entre tests y el estado de un test podría afectar a otro si no se reinicia. 
+    //Por ejemplo, si un test configura un pin como OUTPUT y lo deja en HIGH, el siguiente test podría encontrar ese pin ya configurado y con estado HIGH, 
+    //lo que podría causar resultados inesperados o falsos positivos/negativos. Reiniciar los mocks garantiza que cada test comience con un estado limpio e independiente.
     for (int i = 0; i < 256; i++)
     {
         mock_pin_modes[i] = 0;

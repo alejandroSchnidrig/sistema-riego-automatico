@@ -8,17 +8,17 @@ class Program {
 public:
   Program();
 
-  bool isValid() const;
-  void setValid(bool valid);
+  bool isValid() const;       // ¿el slot está ocupado por un programa real?
+  void setValid(bool valid);  // marca el slot como ocupado/libre
 
-  uint16_t getId() const;
+  uint16_t getId() const;     // id del programa (0 = sin asignar)
   void setId(uint16_t id);
 
   // Nombre legible del programa (puede estar vacío → la UI usa "Programa #id").
   const char* getName() const;
   void setName(const char* name);
 
-  const char* getStartTime() const;
+  const char* getStartTime() const;        // hora de inicio "HH:MM"
   void setStartTime(const char* time);
 
   // Hora de finalización "HH:MM" del rango de repetición de un programa cíclico.
@@ -26,18 +26,18 @@ public:
   const char* getEndTime() const;
   void setEndTime(const char* time);
 
-  uint8_t getDays() const;
+  uint8_t getDays() const;    // bitmask de días (bit0=lunes … bit6=domingo)
   void setDays(uint8_t days);
 
-  bool isCyclic() const;
+  bool isCyclic() const;      // ¿repite dentro de su ventana horaria?
   void setCyclic(bool cyclic);
 
-  uint8_t getSectorCount() const;
-  void clearNodes();
-  bool addNode(const ProgramNode& node);
+  uint8_t getSectorCount() const;          // cantidad de nodos del árbol
+  void clearNodes();                        // elimina todos los nodos
+  bool addNode(const ProgramNode& node);   // agrega un nodo (false si está lleno)
 
-  const ProgramNode& getNode(uint8_t index) const;
-  ProgramNode& getNode(uint8_t index);
+  const ProgramNode& getNode(uint8_t index) const; // nodo por índice (solo lectura)
+  ProgramNode& getNode(uint8_t index);              // nodo por índice (mutable)
 
   // Helpers del modelo árbol
   // Devuelve el nodo cuyo sectorId coincide, o nullptr si no existe.
@@ -53,6 +53,7 @@ public:
   // 0 si el sector no existe. Guarda anti-ciclo para árboles mal formados.
   uint16_t getPathFlow(uint8_t sectorId) const;
 
+  // Deja el programa en blanco (sin nodos, sin nombre, valores por defecto).
   void reset();
 
 private:

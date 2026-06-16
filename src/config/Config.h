@@ -65,7 +65,7 @@ namespace Config {
   // Intervalos de temporización (milisegundos)
   // ----------------------------------------------------------
 
-  // Frecuencia con que el Scheduler consulta el RTC (Fase C)
+  // Frecuencia con que el Scheduler consulta el RTC y avanza el motor
   constexpr uint16_t INTERVALO_SCHEDULER_MS = 1000;
 
   // Frecuencia con que se imprime el estado por el monitor serial

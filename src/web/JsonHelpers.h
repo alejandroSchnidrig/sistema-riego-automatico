@@ -25,7 +25,7 @@ String escapeJson(const String& input);
 String buildSectorArrayJson(uint16_t sectorMask);
 
 // ----------------------------------------------------------
-// Parser hand-rolled (sin ArduinoJson — decisión de sprint)
+// Parser hand-rolled (sin ArduinoJson, para minimizar dependencias y heap)
 // ----------------------------------------------------------
 
 // Parsea un entero a partir de startPos en src.

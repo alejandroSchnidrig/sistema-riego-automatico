@@ -40,7 +40,7 @@ struct SystemStateSnapshot {
   const char* stateName;
   uint16_t    activeProgramId;
 
-  // Listas del modelo árbol + caudal (se serializan en /estado, Fase E3)
+  // Listas del modelo árbol + caudal (se serializan en /estado)
   uint8_t      activeCount;
   ActiveEntry  active[Config::NUM_SECTORES];
   uint8_t      pendingCount;

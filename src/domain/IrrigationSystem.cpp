@@ -50,7 +50,7 @@ void IrrigationSystem::begin() {
 }
 
 // ============================================================
-// Programas semilla (demo, se reemplaza por seed árbol en Fase E5)
+// Programas semilla de demostración (se usan si no hay config en LittleFS)
 // ============================================================
 
 void IrrigationSystem::seedDefaultPrograms() {
@@ -486,7 +486,7 @@ SystemStateSnapshot IrrigationSystem::getStateSnapshot() const {
   snap.firstManualSectorId = firstSectorFromMask(_manualSectorMask);
   snap.pumpFlow            = _pumpFlow;
 
-  // Resumen escalar (compatibilidad /estado lineal hasta E3).
+  // Resumen escalar (compatibilidad con el formato lineal de /estado).
   const uint16_t mask   = _manualSectorMask | computeActiveMask();
   snap.activeSectorMask = mask;
   snap.activeSectorId   = firstSectorFromMask(mask);

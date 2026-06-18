@@ -1,5 +1,7 @@
 #include "../core/RTC.h"
 
+// Implementacion de las funciones de RTC para ESP32 usando Arduino y la libreria DS1302.
+
 #ifndef NATIVE_TEST
 
 #include <DS1302.h>

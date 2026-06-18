@@ -1,5 +1,7 @@
 #include "../core/HAL.h"
 
+// Implementacion de las funciones de HAL para ESP32 usando Arduino.
+
 #ifndef NATIVE_TEST
 
 #include <Arduino.h>

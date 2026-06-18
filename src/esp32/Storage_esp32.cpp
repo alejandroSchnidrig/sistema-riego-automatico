@@ -1,5 +1,7 @@
 #include "../core/Storage.h"
 
+// Implementacion de las funciones de Storage para ESP32 usando Arduino y la libreria LittleFS.
+
 #ifndef NATIVE_TEST
 
 #include <LittleFS.h>

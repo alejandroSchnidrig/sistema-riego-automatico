@@ -1,8 +1,8 @@
 # Sistema de Riego Automático
 
 Sistema de riego automático controlado de forma inalámbrica mediante un **ESP32**
-y una aplicación web embebida. Gestiona 8 válvulas solenoides (simuladas con LEDs
-en las maquetas) y una bomba de agua, organizando la zona de riego en sectores
+y una aplicación web embebida. Gestiona 8 válvulas solenoides y una bomba de agua (simuladas con LEDs
+en las maquetas), organizando la zona de riego en sectores
 independientes con programas configurables.
 
 El sistema **no usa sensores**: el comportamiento es 100 % determinístico y se
@@ -37,8 +37,8 @@ ejecuta por horario, secuencia y tiempos preconfigurados.
 |-------------------|------------------------------------------------------------|
 | Microcontrolador  | ESP32 (Wi-Fi + Bluetooth integrado)                        |
 | Válvulas          | 8 solenoides → simuladas con LEDs — GPIO 13, 14, 16, 17, 32, 33, 25, 26 |
-| Bomba             | 1 bomba central — GPIO 27                                  |
-| RTC               | DS1302 por bit-banging — CLK=GPIO18, DAT=GPIO19, RST=GPIO21 |
+| Bomba             | 1 bomba central → simuladas con LED — GPIO 27                                  |
+| RTC               | DS1302 por bit-banging — CLK → GPIO18, DAT → GPIO19, RST → GPIO21 |
 | Persistencia      | Flash interna del ESP32 (LittleFS)                         |
 
 > Los pines, polaridades y credenciales están centralizados en
@@ -68,14 +68,15 @@ ejecuta por horario, secuencia y tiempos preconfigurados.
 │   ├── core/                   # Abstracciones HAL (Arduino, HAL, RTC, Storage)
 │   ├── domain/                 # Dominio de negocio (Valve, Pump, Sector,
 │   │                           #   ProgramNode, Program, IrrigationSystem)
+│   ├── esp32/                  # Implementación HAL real para ESP32
+│   ├── pages/                  # UI: index.html (fuente) → index_html.h (generado)
 │   ├── scheduler/              # Programación horaria (Scheduler, RTCManager)
 │   ├── storage/                # Persistencia en LittleFS (StorageManager)
-│   ├── web/                    # Servidor HTTP + API REST (WebServer, ApiHandler, JsonHelpers)
-│   ├── pages/                  # UI: index.html (fuente) → index_html.h (generado)
-│   └── esp32/                  # Implementación HAL real para ESP32
-├── test/                       # Tests Unity nativos + mocks
-├── tools/                      # build_index_html.py (embebe la UI en el firmware)
-└── docs/                       # Documentación y diagramas
+│   └── web/                    # Servidor HTTP + API REST (WebServer, ApiHandler, JsonHelpers)
+└── test/                       # Tests Unity nativos + mocks
+    ├── test_domain/            # Tests relacionados al dominio general del sistema
+    ├── test_rtc/               # Tests relacionados al modulo RTC
+    └── test_storage/           # Tests relacionados al control de almacenamiento
 ```
 
 El código usa una capa **HAL**: `core/` define las interfaces y `esp32/` las
@@ -130,9 +131,13 @@ pio run --target upload && pio device monitor  # Flash + monitor
 
 ### Tests (sin hardware)
 
+Para ejecutar los tests unitarios con el entorno `native` de PlatformIO es necesario disponer de un compilador nativo de C/C++. En **Windows**, la opción recomendada por el equipo es **MinGW**, que incluye GCC (GNU Compiler Collection).
+
 ```bash
 pio test -e native            # Tests Unity del dominio, RTC y storage
 ```
+
+> Si se utiliza la extensión de PlatformIO para VS Code, debería aparecer una pestaña de **Testing** en la barra lateral izquierda. Desde allí también es posible ejecutar los tests.
 
 ## API REST
 

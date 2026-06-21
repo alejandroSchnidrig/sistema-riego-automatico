@@ -1,5 +1,17 @@
 # Sistema de Riego Automático
 
+## Índice
+
+- [Características](#características)
+- [Hardware](#hardware)
+- [Stack tecnológico](#stack-tecnológico)
+- [Estructura del proyecto](#estructura-del-proyecto)
+- [Dominio de negocio](#dominio-de-negocio)
+- [Puesta en marcha](#puesta-en-marcha)
+- [API REST](#api-rest)
+- [Integrantes](#integrantes)
+- [Licencia](#licencia)
+
 Sistema de riego automático controlado de forma inalámbrica mediante un **ESP32**
 y una aplicación web embebida. Gestiona 8 válvulas solenoides y una bomba de agua (simuladas con LEDs
 en las maquetas), organizando la zona de riego en sectores
@@ -35,7 +47,7 @@ ejecuta por horario, secuencia y tiempos preconfigurados.
 
 | Componente        | Detalle                                                    |
 |-------------------|------------------------------------------------------------|
-| Microcontrolador  | ESP32 (Wi-Fi + Bluetooth integrado)                        |
+| Microcontrolador  | NodeMCU ESP32 38 pines / ESP32 WROOM (Wi-Fi + Bluetooth integrado) |
 | Válvulas          | 8 solenoides → simuladas con LEDs — GPIO 13, 14, 16, 17, 32, 33, 25, 26 |
 | Bomba             | 1 bomba central → simuladas con LED — GPIO 27                                  |
 | RTC               | DS1302 por bit-banging — CLK → GPIO18, DAT → GPIO19, RST → GPIO21 |
@@ -43,6 +55,10 @@ ejecuta por horario, secuencia y tiempos preconfigurados.
 
 > Los pines, polaridades y credenciales están centralizados en
 > [`src/config/Config.h`](src/config/Config.h).
+
+![Pinout del NodeMCU ESP32 38 pines](docs/nodeMCU-ESP32-38-pinout.webp)
+
+_Foto del pinout del NodeMCU ESP32 38 pines usado en este proyecto._
 
 ---
 
@@ -106,38 +122,94 @@ riegan, sus retardos y la cañería (ancestros que dejan pasar el agua).
 
 ### Requisitos
 
-- [PlatformIO](https://platformio.org/) (CLI o extensión de VS Code).
-- Una placa ESP32 (o el entorno `native` para correr los tests sin hardware).
+- Windows
+- Visual Studio Code: https://code.visualstudio.com/download
+- Extensión PlatformIO IDE para VS Code: https://marketplace.visualstudio.com/items?itemName=platformio.platformio-ide
+  - Alternativa: PlatformIO Core instalado globalmente usando Python:
 
-### Compilar y flashear
+```powershell
+python -m pip install platformio
+```
+- Cable USB compatible con tu placa ESP32
+- Módulo RTC DS1302 conectado a los pines definidos en `src/config/Config.h`
 
-```bash
-pio run                                        # Compilar (env esp32dev)
-pio run --target upload                        # Compilar y flashear al ESP32
-pio device monitor                             # Monitor serie (115200 baud)
-pio run --target upload && pio device monitor  # Flash + monitor
+### Dependencias del proyecto
+
+El proyecto usa PlatformIO y la plataforma `espressif32` con framework `arduino`.
+
+En `platformio.ini` se define:
+
+- `env:esp32dev`
+  - `platform = espressif32`
+  - `board = esp32dev`
+  - `framework = arduino`
+  - `monitor_speed = 115200`
+  - `board_build.filesystem = littlefs`
+  - `lib_deps = https://github.com/msparks/arduino-ds1302.git`
+
+- `env:native`
+  - Permite ejecutar tests con Unity en el host (Windows) para la lógica del dominio.
+
+PlatformIO descargará automáticamente la dependencia del RTC DS1302.
+
+### Pasos para ejecutar el proyecto
+
+#### Abrir el proyecto en VS Code
+
+1. Abra Visual Studio Code.
+2. Use `Archivo > Abrir carpeta...` y seleccione la carpeta raíz del proyecto.
+3. Espere a que PlatformIO cargue el proyecto y descargue las dependencias.
+
+#### Compilar y cargar en el ESP32
+
+1. Conecte su placa ESP32 al PC mediante USB.
+2. En PlatformIO, seleccione el entorno `esp32dev`.
+3. Compile usando la terminal o el botón `Build` de PlatformIO:
+
+```powershell
+pio run -e esp32dev
 ```
 
-### Usar el sistema
+4. Cargue el firmware en la placa con la terminal o usando el botón de "flecha derecha" (Upload) de PlatformIO / VS Code:
 
-1. Una vez flasheado, el ESP32 crea una red Wi-Fi:
-   - **SSID:** `Riego-ESP32`
-   - **Contraseña:** `riego12345`
-2. Conectarse a esa red desde el celular/PC.
-3. Abrir en el navegador: **`http://192.168.4.1`**.
-4. Configurar programas, sectores y caudal desde la interfaz.
-
-> Credenciales e IP están definidas en `src/config/Config.h`.
-
-### Tests (sin hardware)
-
-Para ejecutar los tests unitarios con el entorno `native` de PlatformIO es necesario disponer de un compilador nativo de C/C++. En **Windows**, la opción recomendada por el equipo es **MinGW**, que incluye GCC (GNU Compiler Collection).
-
-```bash
-pio test -e native            # Tests Unity del dominio, RTC y storage
+```powershell
+pio run -e esp32dev --target upload
 ```
 
-> Si se utiliza la extensión de PlatformIO para VS Code, debería aparecer una pestaña de **Testing** en la barra lateral izquierda. Desde allí también es posible ejecutar los tests.
+5. Abra el monitor serie para ver mensajes de arranque y estado. También puede usar el botón de "enchufe" (plug icon) de PlatformIO si prefiere la interfaz gráfica:
+
+```powershell
+pio device monitor -e esp32dev
+```
+
+El monitor serie usa velocidad `115200`.
+
+### Uso del sistema después de cargarlo
+
+El ESP32 levanta un Access Point Wi-Fi con estas credenciales:
+
+- SSID: `Riego-ESP32`
+- Password: `riego12345`
+- IP fija: `192.168.4.1`
+- DNS mDNS: `riego.local`
+
+Para acceder a la interfaz web abra en el navegador: `http://192.168.4.1`.
+
+### Ejecutar tests locales (opcional)
+
+El proyecto incluye un entorno de pruebas `native` usando Unity.
+
+Para ejecutar los tests:
+
+```powershell
+pio test -e native
+```
+
+### Solución de problemas rápida
+
+- Si PlatformIO no detecta el ESP32, verifica el puerto COM en el Administrador de dispositivos.
+- Si el RTC no responde, confirma conexiones físicas y el módulo DS1302.
+- Si hay errores de compilación, asegúrate de haber abierto la carpeta raíz del proyecto en VS Code.
 
 ## API REST
 
@@ -179,6 +251,103 @@ Iannuzzi Gianluca · Biscardi Maximiliano
 
 ---
 
+## Instalación y ejecución del proyecto
+
+### 1. Requisitos previos
+
+- Windows
+- Visual Studio Code: https://code.visualstudio.com/download
+- Extensión PlatformIO IDE para VS Code: https://marketplace.visualstudio.com/items?itemName=platformio.platformio-ide
+  - Alternativa: PlatformIO Core instalado globalmente usando Python
+- Cable USB compatible con tu placa ESP32
+- Módulo RTC DS1302 conectado a los pines definidos en `src/config/Config.h`
+
+### 2. Dependencias del proyecto
+
+El proyecto usa PlatformIO y la plataforma `espressif32` con framework `arduino`.
+
+En `platformio.ini` se define:
+
+- `env:esp32dev`
+  - `platform = espressif32`
+  - `board = esp32dev`
+  - `framework = arduino`
+  - `monitor_speed = 115200`
+  - `board_build.filesystem = littlefs`
+  - `lib_deps = https://github.com/msparks/arduino-ds1302.git`
+
+- `env:native`
+  - Permite ejecutar tests con Unity en el host (Windows) para la lógica del dominio.
+
+PlatformIO descargará automáticamente la dependencia del RTC DS1302.
+
+### 3. Pasos para ejecutar el proyecto
+
+#### 3.1 Abrir el proyecto en VS Code
+
+1. Abra Visual Studio Code.
+2. Use `Archivo > Abrir carpeta...` y seleccione la carpeta raíz del proyecto.
+3. Espere a que PlatformIO cargue el proyecto y descargue las dependencias.
+
+#### 3.2 Compilar y cargar en el ESP32
+
+1. Conecte su placa ESP32 al PC mediante USB.
+2. En PlatformIO, seleccione el entorno `esp32dev`.
+3. Compile usando la terminal o el botón `Build` de PlatformIO:
+
+```powershell
+pio run -e esp32dev
+```
+
+4. Cargue el firmware en la placa con la terminal o usando el botón de "flecha derecha" (Upload) de PlatformIO / VS Code:
+
+```powershell
+pio run -e esp32dev --target upload
+```
+
+5. Abra el monitor serie para ver mensajes de arranque y estado. También puede usar el botón de "enchufe" (plug icon) de PlatformIO si prefiere la interfaz gráfica:
+
+```powershell
+pio device monitor -e esp32dev
+```
+
+El monitor serie usa velocidad `115200`.
+
+### 4. Uso del sistema después de cargarlo
+
+El ESP32 levanta un Access Point Wi-Fi con estas credenciales:
+
+- SSID: `Riego-ESP32`
+- Password: `riego12345`
+- IP fija: `192.168.4.1`
+- DNS mDNS: `riego.local`
+
+Para acceder a la interfaz web abra en el navegador: `http://192.168.4.1`.
+
+### 5. Ejecutar tests locales (opcional)
+
+El proyecto incluye un entorno de pruebas `native` usando Unity.
+
+Para ejecutar los tests:
+
+```powershell
+pio test -e native
+```
+
+### 6. Solución de problemas rápida
+
+- Si PlatformIO no detecta el ESP32, verifica el puerto COM en el Administrador de dispositivos.
+- Si el RTC no responde, confirma conexiones físicas y el módulo DS1302.
+- Si hay errores de compilación, asegúrate de haber abierto la carpeta raíz del proyecto en VS Code.
+
+---
+
 ## Licencia
 
 Proyecto académico — UNTREF, Construcción de Sistemas.
+
+---
+
+## Integrantes
+
+Di Leo Tomás · Massimino Agustín · Chavez Matías · Schnidrig Alejandro · Iannuzzi Gianluca · Biscardi Maximiliano

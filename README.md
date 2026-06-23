@@ -244,13 +244,6 @@ Toda la serialización/parsing vive en `web/ApiHandler` + `web/JsonHelpers`.
 
 ---
 
-## Integrantes
-
-Di Leo Tomás · Massimino Agustín · Chavez Matías · Schnidrig Alejandro ·
-Iannuzzi Gianluca · Biscardi Maximiliano
-
----
-
 ## Instalación y ejecución del proyecto
 
 ### 1. Requisitos previos
